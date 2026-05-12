@@ -17,6 +17,11 @@ import * as path from 'path';
 import { StartupsService } from './startups.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateStartupDto } from './dto/update-startup.dto';
+import type { Request as ExpressRequest } from 'express';
+
+interface RequestWithUser extends ExpressRequest {
+  user: { id: number };
+}
 
 @Controller('startups')
 export class StartupsController {
@@ -29,7 +34,7 @@ export class StartupsController {
 
   @Get('moi')
   @UseGuards(JwtAuthGuard)
-  async getMoi(@Request() req: any) {
+  async getMoi(@Request() req: RequestWithUser) {
     console.log(`📡 /startups/moi appelé par user ID: ${req.user.id}`);
     const result = await this.startupsService.getMoi(req.user.id);
     console.log(`📤 Résultat renvoyé: ${JSON.stringify(result)}`);
@@ -38,7 +43,7 @@ export class StartupsController {
 
   @Put('profil')
   @UseGuards(JwtAuthGuard)
-  updateProfil(@Request() req: any, @Body(ValidationPipe) updateDto: UpdateStartupDto) {
+  updateProfil(@Request() req: RequestWithUser, @Body(ValidationPipe) updateDto: UpdateStartupDto) {
     console.log(`✏️ Mise à jour profil pour user ID: ${req.user.id}`);
     return this.startupsService.updateProfil(req.user.id, updateDto);
   }
@@ -48,16 +53,18 @@ export class StartupsController {
   @UseInterceptors(FileInterceptor('photo', {
     storage: diskStorage({
       destination: path.join(process.cwd(), 'uploads', 'photos'),
-      filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
+      filename: (req: ExpressRequest, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+      },
     }),
-    fileFilter: (req, file, cb) => {
+    fileFilter: (req: ExpressRequest, file: Express.Multer.File, cb: (error: Error | null, accept: boolean) => void) => {
       if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
         return cb(new BadRequestException('Le fichier doit être une image (jpg, jpeg, png, gif, webp)'), false);
       }
       cb(null, true);
     },
   }))
-  uploadPhoto(@Request() req: any, @UploadedFile() file: Express.Multer.File) {
+  uploadPhoto(@Request() req: RequestWithUser, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('Aucun fichier reçu');
     }
@@ -67,12 +74,8 @@ export class StartupsController {
 
   @Get('experts-recommandes')
   @UseGuards(JwtAuthGuard)
-  async getRecommendedExperts(@Request() req: any) {
+  async getRecommendedExperts(@Request() req: RequestWithUser) {
     console.log(`🎯 /startups/experts-recommandes appelé par user ID: ${req.user.id}`);
     return this.startupsService.getRecommendedExperts(req.user.id);
   }
-  @Get('test-error')
-testError() {
-  throw new Error('Test erreur 500 pour startups');
-}
 }

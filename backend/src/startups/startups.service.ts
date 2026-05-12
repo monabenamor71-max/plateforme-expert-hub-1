@@ -99,18 +99,21 @@ export class StartupsService {
     if (!startup) {
       throw new NotFoundException(`Startup pour l'utilisateur ${userId} introuvable`);
     }
+    
+    const updateData: Partial<Startup> = {};
+    if (updateDto.nom_startup !== undefined) updateData.nom_startup = updateDto.nom_startup;
+    if (updateDto.secteur !== undefined) updateData.secteur = updateDto.secteur;
+    if (updateDto.taille !== undefined) updateData.taille = updateDto.taille;
+    if (updateDto.site_web !== undefined) updateData.site_web = updateDto.site_web;
+    if (updateDto.description !== undefined) updateData.description = updateDto.description;
+    if (updateDto.fonction !== undefined) updateData.fonction = updateDto.fonction;
+    if (updateDto.localisation !== undefined) updateData.localisation = updateDto.localisation;
+    
     const updateResult = await this.startupRepo.update(
       { user_id: userId },
-      {
-        nom_startup: updateDto.nom_startup,
-        secteur: updateDto.secteur,
-        taille: updateDto.taille,
-        site_web: updateDto.site_web,
-        description: updateDto.description,
-        fonction: updateDto.fonction,
-        localisation: updateDto.localisation,
-      }
+      updateData
     );
+    
     if (updateResult.affected === 0) {
       throw new BadRequestException('Impossible de mettre à jour le profil startup');
     }
@@ -165,9 +168,11 @@ export class StartupsService {
       relations: ['user'],
     });
 
-    const expertsTries = tousLesExperts.sort((a, b) => {
-      const aMatch = domainesRecommandes.includes(a.domaine);
-      const bMatch = domainesRecommandes.includes(b.domaine);
+    const expertsAvecDomaine = tousLesExperts.filter(e => e.domaine);
+
+    const expertsTries = expertsAvecDomaine.sort((a, b) => {
+      const aMatch = domainesRecommandes.includes(a.domaine!);
+      const bMatch = domainesRecommandes.includes(b.domaine!);
       if (aMatch && !bMatch) return -1;
       if (!aMatch && bMatch) return 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

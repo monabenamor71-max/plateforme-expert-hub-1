@@ -9,41 +9,41 @@ import {
 @Entity('medias')
 export class Media {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  titre: string;
+  titre!: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description?: string;
 
   @Column()
-  url: string;
+  url!: string;
 
   @Column({ type: 'enum', enum: ['youtube', 'vimeo', 'upload', 'external'], default: 'youtube' })
-  type: string;
+  type!: string;
 
   @Column({ nullable: true })
-  miniature: string;
+  miniature?: string;
 
   @Column({ nullable: true })
-  emission: string;
+  emission?: string;
 
   @Column({ type: 'date', nullable: true })
-  date_publication: Date | null;
+  date_publication?: Date | null;
 
   @Column({ type: 'enum', enum: ['interview', 'reportage', 'conference'], default: 'interview' })
-  categorie: string;
+  categorie!: string;
 
   @Column({ default: false })
-  featured: boolean;
+  featured!: boolean;
 
   @Column({ type: 'enum', enum: ['brouillon', 'publie'], default: 'brouillon' })
-  statut: string;
+  statut!: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

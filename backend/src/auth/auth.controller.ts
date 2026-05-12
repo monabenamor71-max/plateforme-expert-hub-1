@@ -1,3 +1,4 @@
+// src/auth/auth.controller.ts
 import {
   Controller,
   Post,
@@ -20,7 +21,7 @@ import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import type { Response } from 'express'; // ← correction : import type uniquement
+import type { Response, Request as ExpressRequest } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -36,7 +37,7 @@ export class AuthController {
       ],
       {
         storage: diskStorage({
-          destination: (req, file, cb) => {
+          destination: (req: ExpressRequest, file: Express.Multer.File, cb) => {
             let folder = './uploads';
             if (file.fieldname === 'photo') folder = './uploads/photos';
             else if (file.fieldname === 'cv') folder = './uploads/cv';
@@ -54,12 +55,7 @@ export class AuthController {
   )
   async registerExpert(
     @Body() dto: RegisterExpertDto,
-    @UploadedFiles()
-    files: {
-      photo?: Express.Multer.File[];
-      cv?: Express.Multer.File[];
-      portfolio?: Express.Multer.File[];
-    },
+    @UploadedFiles() files: { photo?: Express.Multer.File[]; cv?: Express.Multer.File[]; portfolio?: Express.Multer.File[] },
   ) {
     const photoPath = files.photo?.[0]?.path;
     const cvPath = files.cv?.[0]?.path;
@@ -105,19 +101,27 @@ export class AuthController {
       const redirectUrl = `http://localhost:3000/confirmation?status=success&message=${encodeURIComponent(result.message)}`;
       return res.redirect(redirectUrl);
     } catch (error) {
-      const errorMessage = error.message || 'Lien de confirmation invalide ou expiré';
+      const errorMessage = error instanceof Error ? error.message : 'Lien de confirmation invalide ou expiré';
       const redirectUrl = `http://localhost:3000/confirmation?status=error&message=${encodeURIComponent(errorMessage)}`;
       return res.redirect(redirectUrl);
     }
   }
 
+  // ✅ NOUVEAU : Vérifier si un email existe dans la table `user`
+  @Get('check-email')
+  async checkEmail(@Query('email') email: string) {
+    if (!email) throw new BadRequestException('Email requis');
+    const user = await this.authService.findUserByEmail(email);
+    return { exists: !!user };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getMe(@Request() req) {
-    const user = await this.authService.getUserById(req.user.id);
-    if (!user) {
-      throw new BadRequestException('Utilisateur non trouvé');
-    }
+  async getMe(@Request() req: ExpressRequest) {
+    const userId = (req.user as { id?: number })?.id;
+    if (!userId) throw new BadRequestException('Utilisateur non authentifié');
+    const user = await this.authService.getUserById(userId);
+    if (!user) throw new BadRequestException('Utilisateur non trouvé');
     return {
       id: user.id,
       email: user.email,

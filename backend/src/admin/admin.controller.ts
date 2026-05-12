@@ -19,19 +19,19 @@ import { Roles } from '../auth/roles.decorator';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-// ✅ Importer les DTOs depuis le bon fichier
+import { Request } from 'express';
 import { CreatePodcastDto, UpdatePodcastDto } from '../podcast/dto/podcast.dto';
 
 // Stockage pour les articles (images + PDF)
 const articleStorage = diskStorage({
-  destination: (_req, file, cb) => {
+  destination: (_req: Request, file: Express.Multer.File, cb) => {
     if (file.fieldname === 'image') {
       cb(null, './uploads/articles-img');
     } else {
       cb(null, './uploads/articles-pdf');
     }
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: Request, file: Express.Multer.File, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     if (file.fieldname === 'image') {
       cb(null, `article-${unique}${extname(file.originalname)}`);
@@ -43,36 +43,48 @@ const articleStorage = diskStorage({
 
 // Stockage pour les miniatures des médias (vidéos)
 const mediaStorage = diskStorage({
-  destination: (_req, file, cb) => {
+  destination: (_req: Request, file: Express.Multer.File, cb) => {
     cb(null, './uploads/videos-miniatures');
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: Request, file: Express.Multer.File, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `miniature-${unique}${extname(file.originalname)}`);
   },
 });
 
-// Stockage pour les podcasts (audio et image)
+// Stockage pour les podcasts (vidéo MP4 + image)
 const podcastStorage = diskStorage({
-  destination: (_req, file, cb) => {
-    const folder = file.fieldname === 'audio_file'
-      ? './uploads/podcasts-audio'
-      : './uploads/podcasts-images';
-    cb(null, folder);
+  destination: (_req: Request, file: Express.Multer.File, cb) => {
+    if (file.fieldname === 'video_file') {
+      cb(null, './uploads/podcasts-audio');   // on garde le même dossier
+    } else if (file.fieldname === 'image_file') {
+      cb(null, './uploads/podcasts-images');
+    } else {
+      cb(new Error('Champ non autorisé'), '');
+    }
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: Request, file: Express.Multer.File, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `podcast-${unique}${extname(file.originalname)}`);
   },
 });
 
-const podcastFileFilter = (req, file, cb) => {
-  if (file.fieldname === 'audio_file' && file.mimetype !== 'audio/mpeg') {
-    cb(new Error('Seuls les fichiers MP3 sont autorisés'), false);
-  } else if (file.fieldname === 'image_file' && !file.mimetype.startsWith('image/')) {
-    cb(new Error('Seules les images sont autorisées'), false);
+// Filtre : seulement MP4 pour la vidéo, images pour l'image
+const podcastFileFilter = (req: Request, file: Express.Multer.File, cb) => {
+  if (file.fieldname === 'video_file') {
+    if (file.mimetype !== 'video/mp4') {
+      cb(new Error('Seuls les fichiers MP4 sont autorisés pour la vidéo'), false);
+    } else {
+      cb(null, true);
+    }
+  } else if (file.fieldname === 'image_file') {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Seules les images sont autorisées'), false);
+    } else {
+      cb(null, true);
+    }
   } else {
-    cb(null, true);
+    cb(new Error('Champ de fichier non autorisé'), false);
   }
 };
 
@@ -248,7 +260,7 @@ export class AdminController {
     return this.adminService.deleteMedia(id);
   }
 
-  // ==================== PODCASTS ====================
+  // ==================== PODCASTS (UNIQUEMENT MP4) ====================
   @Get('podcasts/all')
   async getAllPodcasts() {
     return this.adminService.getAllPodcastsAdmin();
@@ -263,39 +275,39 @@ export class AdminController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'audio_file', maxCount: 1 },
+        { name: 'video_file', maxCount: 1 },
         { name: 'image_file', maxCount: 1 },
       ],
-      { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize: 50 * 1024 * 1024 } },
+      { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize:  500 * 1024 * 1024 } },
     ),
   )
   async createPodcast(
     @Body() dto: CreatePodcastDto,
-    @UploadedFiles() files: { audio_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
+    @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
   ) {
-    const audio = files?.audio_file?.[0];
+    const video = files?.video_file?.[0];
     const image = files?.image_file?.[0];
-    return this.adminService.createPodcast(dto, audio, image);
+    return this.adminService.createPodcast(dto, video, image);
   }
 
   @Put('podcasts/:id')
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'audio_file', maxCount: 1 },
+        { name: 'video_file', maxCount: 1 },
         { name: 'image_file', maxCount: 1 },
       ],
-      { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize: 50 * 1024 * 1024 } },
+      { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize: 200 * 1024 * 1024 } },
     ),
   )
   async updatePodcast(
     @Param('id') id: number,
     @Body() dto: UpdatePodcastDto,
-    @UploadedFiles() files: { audio_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
+    @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
   ) {
-    const audio = files?.audio_file?.[0];
+    const video = files?.video_file?.[0];
     const image = files?.image_file?.[0];
-    return this.adminService.updatePodcast(id, dto, audio, image);
+    return this.adminService.updatePodcast(id, dto, video, image);
   }
 
   @Patch('podcasts/:id/statut')

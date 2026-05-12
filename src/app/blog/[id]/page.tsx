@@ -1,13 +1,11 @@
-// src/app/blog/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  FaArrowLeft, FaCalendarAlt, FaClock, FaEye,
-  FaDownload, FaTag, FaChartLine, FaShare, FaBookmark,
-  FaLinkedin, FaTwitter, FaFacebook, FaFilePdf,
+  FaArrowLeft, FaCalendarAlt, FaEye,
+  FaDownload, FaTag, FaChartLine, FaFilePdf,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
@@ -18,7 +16,7 @@ interface Article {
   description: string;
   contenu: string;
   type: string;
-  categorie: string;          // ← remplacé domaine par categorie
+  categorie: string;
   duree_lecture: string;
   statut: string;
   acces_prive: boolean;
@@ -49,8 +47,6 @@ export default function ArticlePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
 
   const progress = useReadingProgress();
 
@@ -176,47 +172,6 @@ export default function ArticlePage() {
             <Link href="/blog" className="ap-back">
               <FaArrowLeft size={12} /> Retour aux articles
             </Link>
-            <div style={{ display: "flex", gap: 8 }}>
-              <div style={{ position: "relative" }}>
-                <button className="ap-act-btn" onClick={() => setShareOpen(!shareOpen)}>
-                  <FaShare size={13} />
-                </button>
-                {shareOpen && (
-                  <div className="ap-share-dd">
-                    <a
-                      href={`https://linkedin.com/shareArticle?url=${encodeURIComponent(window.location.href)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ap-share-item"
-                    >
-                      <FaLinkedin /> LinkedIn
-                    </a>
-                    <a
-                      href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ap-share-item"
-                    >
-                      <FaTwitter /> Twitter
-                    </a>
-                    <a
-                      href={`https://facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ap-share-item"
-                    >
-                      <FaFacebook /> Facebook
-                    </a>
-                  </div>
-                )}
-              </div>
-              <button
-                className={`ap-act-btn${saved ? " ap-act-saved" : ""}`}
-                onClick={() => setSaved(!saved)}
-              >
-                <FaBookmark size={13} />
-              </button>
-            </div>
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -224,9 +179,7 @@ export default function ArticlePage() {
               {article.categorie || article.type}
             </span>
             {article.acces_prive && (
-              <span className="ap-priv-badge">
-                🔒 Membres
-              </span>
+              <span className="ap-priv-badge">🔒 Membres</span>
             )}
           </div>
 
@@ -245,9 +198,6 @@ export default function ArticlePage() {
               <FaCalendarAlt size={11} /> {dateFormatted}
             </span>
             <span className="ap-meta-item">
-              <FaClock size={11} /> {article.duree_lecture || "5 min"} de lecture
-            </span>
-            <span className="ap-meta-item">
               <FaEye size={11} /> {article.vues?.toLocaleString()} vues
             </span>
           </div>
@@ -257,11 +207,19 @@ export default function ArticlePage() {
       {/* Corps de l'article */}
       <div className="ap-body">
         <main className="ap-main">
+
           {/* Tag (catégorie) */}
           <div className="ap-tags">
             <FaTag size={11} style={{ color: "#94A3B8", flexShrink: 0 }} />
             <span className="ap-tag">{article.categorie || "Non classé"}</span>
           </div>
+
+          {/* ── DESCRIPTION SIMPLIFIÉE ── */}
+          {article.description && (
+            <div className="ap-desc-simple">
+              <p className="ap-desc-simple-text">{article.description}</p>
+            </div>
+          )}
 
           {/* Contenu HTML */}
           {article.contenu && (
@@ -290,7 +248,7 @@ export default function ArticlePage() {
           )}
         </main>
 
-        {/* Sidebar (sans la carte PDF) */}
+        {/* Sidebar */}
         <aside className="ap-sidebar">
           {/* Newsletter */}
           <div className="ap-sb-nl">
@@ -312,10 +270,6 @@ export default function ArticlePage() {
               <span className="ap-sb-meta-val" style={{ color: "#3B82F6" }}>
                 {article.categorie || "—"}
               </span>
-            </div>
-            <div className="ap-sb-meta-row">
-              <span className="ap-sb-meta-label">Lecture</span>
-              <span className="ap-sb-meta-val">{article.duree_lecture || "5 min"}</span>
             </div>
             <div className="ap-sb-meta-row">
               <span className="ap-sb-meta-label">Vues</span>
@@ -371,7 +325,7 @@ const styles = `
     border: 1.5px solid rgba(59,130,246,0.1);
   }
   .ap-gate-lock {
-    width: 66px; height: 66px; border-radius: 50%; background: #EFF6FF; color: #3B82F6;
+    width: 66px; height: 66px; border-radius: 50%; background: #EFF6FF;
     display: flex; align-items: center; justify-content: center; font-size: 24px;
     margin: 0 auto 16px; border: 2px solid rgba(59,130,246,0.2);
   }
@@ -381,30 +335,20 @@ const styles = `
     padding: 5px 14px; border-radius: 50px; margin-bottom: 16px;
   }
   .ap-gate-title {
-    font-size: 25px; font-weight: 900; color: #0A2540; line-height: 1.2;
-    margin: 0 0 12px;
+    font-size: 25px; font-weight: 900; color: #0A2540; line-height: 1.2; margin: 0 0 12px;
   }
   .ap-gate-title span { color: #3B82F6; }
-  .ap-gate-sub {
-    color: #64748B; font-size: 14px; line-height: 1.8; margin: 0 0 22px;
-  }
+  .ap-gate-sub { color: #64748B; font-size: 14px; line-height: 1.8; margin: 0 0 22px; }
   .ap-gate-perks {
     display: flex; flex-direction: column; gap: 9px;
     background: #F8FAFF; border-radius: 14px; padding: 18px 22px;
     margin-bottom: 22px; text-align: left; border: 1.5px solid rgba(59,130,246,0.08);
   }
-  .ap-perk {
-    display: flex; align-items: center; gap: 9px;
-    font-size: 13px; font-weight: 600; color: #334155;
-  }
+  .ap-perk { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; color: #334155; }
 
   /* Hero */
-  .ap-hero {
-    position: relative; height: 500px; overflow: hidden;
-  }
-  .ap-hero-img {
-    width: 100%; height: 100%; object-fit: cover;
-  }
+  .ap-hero { position: relative; height: 500px; overflow: hidden; }
+  .ap-hero-img { width: 100%; height: 100%; object-fit: cover; }
   .ap-hero-ph {
     width: 100%; height: 100%;
     background: linear-gradient(135deg, #0A2540, #1a3a6e);
@@ -412,8 +356,7 @@ const styles = `
   }
   .ap-hero-ph-icon {
     width: 90px; height: 90px; border-radius: 26px;
-    background: rgba(59,130,246,0.18);
-    border: 2px solid rgba(59,130,246,0.3);
+    background: rgba(59,130,246,0.18); border: 2px solid rgba(59,130,246,0.3);
     color: #60A5FA; display: flex; align-items: center;
     justify-content: center; font-size: 36px;
   }
@@ -423,59 +366,28 @@ const styles = `
   }
   .ap-hero-cnt {
     position: absolute; inset: 0; padding: 36px max(5%, 32px);
-    display: flex; flex-direction: column; justify-content: space-between;
-    color: white;
+    display: flex; flex-direction: column; justify-content: space-between; color: white;
   }
-  .ap-hero-top {
-    display: flex; align-items: center; justify-content: space-between;
-  }
+  .ap-hero-top { display: flex; align-items: center; justify-content: space-between; }
   .ap-back {
     display: inline-flex; align-items: center; gap: 8px;
-    color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px;
-    font-weight: 600; background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15); padding: 8px 16px;
-    border-radius: 8px; transition: all 0.2s;
+    color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; font-weight: 600;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px; border-radius: 8px; transition: all 0.2s;
   }
   .ap-back:hover { background: rgba(255,255,255,0.2); color: white; }
-  .ap-act-btn {
-    width: 38px; height: 38px; border-radius: 10px;
-    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-    color: white; cursor: pointer; display: flex; align-items: center;
-    justify-content: center; transition: all 0.2s;
-  }
-  .ap-act-btn:hover { background: rgba(255,255,255,0.22); }
-  .ap-act-saved { background: #F7B500 !important; border-color: #F7B500 !important; color: #0A2540 !important; }
-  .ap-share-dd {
-    position: absolute; top: calc(100% + 8px); right: 0;
-    background: white; border-radius: 12px; overflow: hidden; min-width: 155px;
-    z-index: 100; box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-    border: 1px solid rgba(0,0,0,0.07);
-  }
-  .ap-share-item {
-    display: flex; align-items: center; gap: 9px; padding: 10px 15px;
-    color: #0A2540; text-decoration: none; font-size: 13px; font-weight: 600;
-    transition: background 0.15s;
-  }
-  .ap-share-item:hover { background: #F8FAFC; }
-  .ap-cat-badge {
-    padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 800;
-    color: white;
-  }
+  .ap-cat-badge { padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 800; color: white; }
   .ap-priv-badge {
     background: rgba(255,255,255,0.15); color: white; padding: 4px 12px;
     border-radius: 99px; font-size: 11px; font-weight: 700;
     display: inline-flex; align-items: center; gap: 5px;
   }
   .ap-hero-title {
-    font-size: clamp(24px, 4.5vw, 46px);
-    font-weight: 900; line-height: 1.1; margin: 0; max-width: 820px;
+    font-size: clamp(24px, 4.5vw, 46px); font-weight: 900; line-height: 1.1;
+    margin: 0; max-width: 820px;
   }
-  .ap-meta {
-    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  }
-  .ap-author {
-    display: flex; align-items: center; gap: 10px;
-  }
+  .ap-meta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .ap-author { display: flex; align-items: center; gap: 10px; }
   .ap-avatar {
     width: 40px; height: 40px; border-radius: 11px; background: #F7B500;
     color: #0A2540; display: flex; align-items: center;
@@ -504,8 +416,23 @@ const styles = `
   }
   .ap-tag {
     background: #F1F5F9; color: #475569; padding: 4px 12px;
-    border-radius: 7px; font-size: 12px; font-weight: 600;
-    border: 1px solid #E2E8F0;
+    border-radius: 7px; font-size: 12px; font-weight: 600; border: 1px solid #E2E8F0;
+  }
+
+  /* ── DESCRIPTION SIMPLIFIÉE (pas de fond coloré ni guillemet) ── */
+  .ap-desc-simple {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+  }
+  .ap-desc-simple-text {
+    font-size: 16px;
+    line-height: 1.75;
+    color: #1e293b;
+    font-weight: 500;
+    margin: 0;
+    white-space: pre-line;
   }
 
   /* Prose */
@@ -526,14 +453,10 @@ const styles = `
     content: ''; display: inline-block; width: 4px; min-height: 20px;
     background: #3B82F6; border-radius: 2px;
   }
-  .ap-prose h3 {
-    font-size: 17px; font-weight: 800; color: #0A2540;
-    margin: 1.5em 0 0.55em;
-  }
+  .ap-prose h3 { font-size: 17px; font-weight: 800; color: #0A2540; margin: 1.5em 0 0.55em; }
   .ap-prose ul {
     margin: 0 0 1.4em; padding: 18px 22px; list-style: none;
-    background: #F8FAFF; border-radius: 13px;
-    border: 1.5px solid rgba(59,130,246,0.1);
+    background: #F8FAFF; border-radius: 13px; border: 1.5px solid rgba(59,130,246,0.1);
   }
   .ap-prose ul li {
     display: flex; align-items: flex-start; gap: 10px;
@@ -541,8 +464,7 @@ const styles = `
   }
   .ap-prose ul li::before {
     content: ''; display: inline-block; width: 7px; height: 7px;
-    border-radius: 50%; background: #3B82F6; margin-top: 7px;
-    flex-shrink: 0;
+    border-radius: 50%; background: #3B82F6; margin-top: 7px; flex-shrink: 0;
   }
   .ap-prose blockquote {
     margin: 1.8em 0; padding: 26px 30px; border-radius: 16px;
@@ -556,68 +478,42 @@ const styles = `
   }
   .ap-prose blockquote p,
   .ap-prose blockquote {
-    color: white; font-size: 16px; font-weight: 600;
-    line-height: 1.7; font-style: italic; margin: 0;
+    color: white; font-size: 16px; font-weight: 600; line-height: 1.7; font-style: italic; margin: 0;
   }
   .ap-prose a { color: #3B82F6; font-weight: 600; }
   .ap-prose strong { color: #0A2540; font-weight: 800; }
 
   /* PDF inline */
   .ap-pdf-inline {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; background: white; border-radius: 16px; padding: 20px 24px;
-    border: 1.5px solid rgba(59,130,246,0.15);
-    box-shadow: 0 2px 12px rgba(10,37,64,0.05);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    background: white; border-radius: 16px; padding: 20px 24px;
+    border: 1.5px solid rgba(59,130,246,0.15); box-shadow: 0 2px 12px rgba(10,37,64,0.05);
   }
-  .ap-pdf-inline-left {
-    display: flex; align-items: center; gap: 14px;
-  }
+  .ap-pdf-inline-left { display: flex; align-items: center; gap: 14px; }
   .ap-pdf-inline-icon {
     width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
     background: #EFF6FF; color: #3B82F6; display: flex;
     align-items: center; justify-content: center; font-size: 20px;
   }
-  .ap-pdf-inline-title {
-    font-size: 14px; font-weight: 800; color: #0A2540;
-    margin-bottom: 3px;
-  }
-  .ap-pdf-inline-sub {
-    font-size: 12px; color: #94A3B8; font-weight: 500;
-  }
+  .ap-pdf-inline-title { font-size: 14px; font-weight: 800; color: #0A2540; margin-bottom: 3px; }
+  .ap-pdf-inline-sub { font-size: 12px; color: #94A3B8; font-weight: 500; }
   .ap-pdf-dl-btn {
     display: inline-flex; align-items: center; gap: 8px;
     background: #0A2540; color: #F7B500; padding: 11px 22px;
-    border-radius: 10px; text-decoration: none; font-weight: 800;
-    font-size: 13px; white-space: nowrap; flex-shrink: 0;
-    transition: all 0.22s;
+    border-radius: 10px; text-decoration: none; font-weight: 800; font-size: 13px;
+    white-space: nowrap; flex-shrink: 0; transition: all 0.22s;
   }
-  .ap-pdf-dl-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(10,37,64,0.2);
-  }
+  .ap-pdf-dl-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(10,37,64,0.2); }
 
-  /* Sidebar (sans carte PDF) */
-  .ap-sidebar {
-    position: sticky; top: 80px; display: flex; flex-direction: column;
-    gap: 16px;
-  }
-
-  /* Sidebar newsletter */
+  /* Sidebar */
+  .ap-sidebar { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 16px; }
   .ap-sb-nl {
     background: white; border-radius: 18px; padding: 22px 20px;
     border: 1.5px solid rgba(10,37,64,0.07); text-align: center;
   }
   .ap-sb-nl-icon { font-size: 30px; margin-bottom: 9px; }
-  .ap-sb-nl-title {
-    font-size: 14px; font-weight: 900; color: #0A2540;
-    margin: 0 0 7px;
-  }
-  .ap-sb-nl-text {
-    font-size: 12.5px; color: #64748B; line-height: 1.65;
-    margin: 0 0 15px;
-  }
-
-  /* Sidebar meta */
+  .ap-sb-nl-title { font-size: 14px; font-weight: 900; color: #0A2540; margin: 0 0 7px; }
+  .ap-sb-nl-text { font-size: 12.5px; color: #64748B; line-height: 1.65; margin: 0 0 15px; }
   .ap-sb-meta {
     background: white; border-radius: 18px; padding: 20px;
     border: 1.5px solid rgba(10,37,64,0.07);
@@ -631,31 +527,21 @@ const styles = `
     padding: 8px 0; border-bottom: 1px solid #F1F5F9;
   }
   .ap-sb-meta-row:last-child { border-bottom: none; }
-  .ap-sb-meta-label {
-    font-size: 12px; color: #94A3B8; font-weight: 600;
-  }
-  .ap-sb-meta-val {
-    font-size: 12.5px; color: #334155; font-weight: 700;
-  }
+  .ap-sb-meta-label { font-size: 12px; color: #94A3B8; font-weight: 600; }
+  .ap-sb-meta-val { font-size: 12.5px; color: #334155; font-weight: 700; }
 
-  /* Common buttons */
+  /* Buttons */
   .ap-btn-dark {
     display: inline-flex; align-items: center; gap: 8px;
     background: #0A2540; color: #F7B500; padding: 12px 22px;
-    border-radius: 10px; text-decoration: none; font-weight: 700;
-    font-size: 14px;
+    border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 14px;
   }
   .ap-btn-gold {
-    display: block; text-align: center; background: #F7B500;
-    color: #0A2540; padding: 13px 24px; border-radius: 12px;
-    text-decoration: none; font-weight: 800; font-size: 14px;
-    box-shadow: 0 6px 18px rgba(247,181,0,0.28);
-    transition: all 0.22s;
+    display: block; text-align: center; background: #F7B500; color: #0A2540;
+    padding: 13px 24px; border-radius: 12px; text-decoration: none; font-weight: 800;
+    font-size: 14px; box-shadow: 0 6px 18px rgba(247,181,0,0.28); transition: all 0.22s;
   }
-  .ap-btn-gold:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(247,181,0,0.38);
-  }
+  .ap-btn-gold:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(247,181,0,0.38); }
   .ap-btn-gold-sm {
     display: inline-block; background: #F7B500; color: #0A2540;
     padding: 10px 20px; border-radius: 9px; text-decoration: none;
@@ -663,11 +549,9 @@ const styles = `
   }
   .ap-btn-gold-sm:hover { transform: translateY(-2px); }
   .ap-btn-outline {
-    display: block; text-align: center; background: white;
-    color: #0A2540; padding: 12px 24px; border-radius: 12px;
-    text-decoration: none; font-weight: 700; font-size: 14px;
-    border: 2px solid rgba(10,37,64,0.12);
-    transition: all 0.2s;
+    display: block; text-align: center; background: white; color: #0A2540;
+    padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700;
+    font-size: 14px; border: 2px solid rgba(10,37,64,0.12); transition: all 0.2s;
   }
   .ap-btn-outline:hover { border-color: #3B82F6; color: #3B82F6; }
 

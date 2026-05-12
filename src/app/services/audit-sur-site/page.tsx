@@ -1,12 +1,15 @@
 "use client";
+
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   FaSearchPlus, FaArrowRight, FaArrowLeft,
   FaChartLine, FaHandsHelping, FaGraduationCap, FaDesktop,
   FaExclamationTriangle, FaUsers, FaTrophy, FaClock, FaShieldAlt,
-  FaCheck, FaLayerGroup,
+  FaCheck, FaLayerGroup, FaStar,
 } from "react-icons/fa";
+
+const BASE = "http://localhost:3001";
 
 function useInView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -63,6 +66,46 @@ const NAV = [
 export default function AuditPage() {
   const [open, setOpen] = useState(false);
   const [expandedP, setExpandedP] = useState<number | null>(null);
+  
+  // ==================== TAUX DE SATISFACTION DEPUIS L'ADMIN (TABLE HISTOIRE) ====================
+  const [tauxSatisfaction, setTauxSatisfaction] = useState<number>(94);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${BASE}/histoire`);
+        if (res.ok) {
+          const data = await res.json();
+          // Utiliser le même champ que la page Consulting
+          setTauxSatisfaction(data.taux_satisfaction || 94);
+        }
+      } catch (error) {
+        console.error("Erreur chargement stats:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Calculer la note en étoiles
+  const renderStars = () => {
+    const note = tauxSatisfaction / 20;
+    return (
+      <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+        {[1, 2, 3, 4, 5].map((s) => (
+          <FaStar
+            key={s}
+            style={{
+              color: s <= Math.round(note) ? "#F7B500" : "rgba(255,255,255,.3)",
+              fontSize: 10,
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", color: "#374151", background: "#fff" }}>
@@ -75,6 +118,7 @@ export default function AuditPage() {
         @keyframes slideInLeft{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:translateX(0)}}
         @keyframes slideInRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
         @keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
         .diamond-float{animation:floatY 7s ease-in-out infinite;position:absolute;pointer-events:none;}
         .h1{animation:heroIn .8s cubic-bezier(.22,1,.36,1) .08s both}
         .h2{animation:heroIn .8s cubic-bezier(.22,1,.36,1) .2s both}
@@ -95,7 +139,6 @@ export default function AuditPage() {
         .pb-detail{overflow:hidden;transition:max-height .35s cubic-bezier(.22,1,.36,1),opacity .3s;max-height:0;opacity:0;}
         .pb-detail.open{max-height:60px;opacity:1;}
         .meth-step{position:relative;display:flex;gap:20px;align-items:flex-start;margin-bottom:0;}
-        .meth-line{position:absolute;left:21px;top:44px;bottom:-32px;width:2px;background:linear-gradient(#8B5CF6,#22C55E);opacity:.25;}
         .meth-dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2.5px solid;}
         .meth-body{background:#F8FAFC;border:1px solid #E8EEF6;border-radius:14px;padding:18px 20px;flex:1;transition:all .3s;}
         .meth-body:hover{background:#fff;box-shadow:0 8px 28px rgba(139,92,246,.12);border-color:rgba(139,92,246,.25);transform:translateX(4px);}
@@ -103,9 +146,11 @@ export default function AuditPage() {
         .stat-card:hover{transform:translateY(-4px);background:rgba(255,255,255,.12);}
         .nav-link-w{color:#0A2540;text-decoration:none;font-size:15px;font-weight:500;transition:color .2s;}
         .nav-link-w:hover{color:#F7B500;}
+        .stat-number{font-size:28px;font-weight:900;color:#fff;line-height:1;margin-bottom:6px}
+        .stat-loading{width:30px;height:30px;border:3px solid #F7B500;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
       `}</style>
 
-      {/* ══ HEADER ══ */}
+      {/* HEADER */}
       <header style={{ background: "#fff", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.07)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none" }}>
@@ -135,12 +180,12 @@ export default function AuditPage() {
           </nav>
           <div style={{ display: "flex", gap: 10 }}>
             <Link href="/connexion"><button className="btn-conn">Connexion</button></Link>
-            <Link href="/inscription"><button className="btn-insc">{"S'inscrire"}</button></Link>
+            <Link href="/inscription-startup"><button className="btn-insc">{"S'inscrire"}</button></Link>
           </div>
         </div>
       </header>
 
-      {/* ══ HERO ══ */}
+      {/* HERO */}
       <section style={{ background: "linear-gradient(135deg,#0A2540 0%,#2d1b5e 60%,#1a0d3d 100%)", padding: "80px 24px 100px", position: "relative", overflow: "hidden", color: "#fff" }}>
         <div className="diamond-float" style={{ width: 420, height: 420, right: -80, top: "50%", background: "rgba(139,92,246,.08)", border: "1px solid rgba(139,92,246,.14)", borderRadius: 24, animationDelay: "0s" }} />
         <div className="diamond-float" style={{ width: 250, height: 250, right: 110, top: "50%", background: "rgba(139,92,246,.05)", border: "1px solid rgba(139,92,246,.1)", borderRadius: 16, animationDelay: "-1.5s" }} />
@@ -168,7 +213,7 @@ export default function AuditPage() {
                 </p>
               </div>
               <div className="h4" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <Link href="/inscription" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F7B500", color: "#0A2540", padding: "14px 30px", borderRadius: 99, fontWeight: 800, fontSize: 15, textDecoration: "none", transition: "all .25s" }}
+                <Link href="/inscription-startup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F7B500", color: "#0A2540", padding: "14px 30px", borderRadius: 99, fontWeight: 800, fontSize: 15, textDecoration: "none", transition: "all .25s" }}
                   onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 8px 24px rgba(247,181,0,.4)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; }}>
                   Demander un audit <FaArrowRight size={13} />
@@ -181,26 +226,34 @@ export default function AuditPage() {
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {[
-                
-                { icon: <FaTrophy />, val: "98%", label: "Clients satisfaits", c: "#F7B500" },
-                { icon: <FaClock />, val: "5 jours", label: "Délai de rapport", c: "#22C55E" },
-              ].map((s, i) => (
-                <div key={i} className="stat-card" style={{ animationDelay: `${0.2 + i * 0.1}s` }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 12, background: `${s.c}25`, color: s.c, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 16 }}>{s.icon}</div>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", lineHeight: 1, marginBottom: 6 }}>{s.val}</div>
-                  <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>{s.label}</div>
+              {/* TAUX DE SATISFACTION - MAINTENANT DYNAMIQUE DEPUIS L'ADMIN */}
+              <div className="stat-card" style={{ animationDelay: "0.2s" }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F7B50025", color: "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 16 }}>
+                  <FaTrophy />
                 </div>
-              ))}
+                <div className="stat-number">
+                  {loadingStats ? <div className="stat-loading" /> : `${tauxSatisfaction}%`}
+                </div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Clients satisfaits</div>
+                {!loadingStats && renderStars()}
+              </div>
+              {/* Délai de rapport - statique */}
+              <div className="stat-card" style={{ animationDelay: "0.3s" }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: "#22C55E25", color: "#22C55E", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 16 }}>
+                  <FaClock />
+                </div>
+                <div className="stat-number">5 jours</div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Délai de rapport</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ══ CORPS ══ */}
+      {/* CORPS - Identique à l'original */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
 
-        {/* ── Problèmes ── */}
+        {/* Problèmes */}
         <section style={{ padding: "72px 0", borderBottom: "1px solid #F1F5F9" }}>
           <FadeUp>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
@@ -217,9 +270,8 @@ export default function AuditPage() {
                 <div>
                   <div
                     className={`pb-card${expandedP === i ? " active" : ""}`}
-                    style={{ animationDelay: `${i * 0.08}s` }}
                     onClick={() => setExpandedP(expandedP === i ? null : i)}>
-                    <div style={{ width: 42, height: 42, borderRadius: 12, background: expandedP === i ? "rgba(139,92,246,.12)" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, transition: "all .25s" }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 12, background: expandedP === i ? "rgba(139,92,246,.12)" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
                       {p.icon}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -236,7 +288,7 @@ export default function AuditPage() {
           </div>
         </section>
 
-        {/* ── Méthodologie ── */}
+        {/* Méthodologie */}
         <section style={{ padding: "72px 0", borderBottom: "1px solid #F1F5F9" }}>
           <FadeUp>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
@@ -261,7 +313,7 @@ export default function AuditPage() {
                     <div className="meth-body">
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                         <span style={{ fontWeight: 800, fontSize: 15, color: "#0A2540" }}>{m.title}</span>
-                        <span style={{ background: `${m.color}15`, color: m.color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99, letterSpacing: "0.5px" }}>{m.tag}</span>
+                        <span style={{ background: `${m.color}15`, color: m.color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99 }}>{m.tag}</span>
                       </div>
                       <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.7, margin: 0 }}>{m.desc}</p>
                     </div>
@@ -271,13 +323,11 @@ export default function AuditPage() {
             </div>
             <FadeUp delay={0.2}>
               <div style={{ background: "linear-gradient(135deg,#0A2540,#2d1b5e)", borderRadius: 24, padding: 36, color: "#fff", height: "fit-content", position: "sticky", top: 100 }}>
-                <div style={{ fontSize: 36, marginBottom: 16 }}></div>
                 <h3 style={{ fontWeight: 900, fontSize: 22, marginBottom: 14, lineHeight: 1.2 }}>
                   Résultats attendus<br /><span style={{ color: "#A78BFA" }}>après l'audit</span>
                 </h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {[
-                    
                     ["Identification de tous les écarts critiques", "#A78BFA"],
                     ["Plan d'action priorisé et chiffré", "#F7B500"],
                     ["Recommandations normes ISO si applicable", "#60A5FA"],
@@ -291,9 +341,7 @@ export default function AuditPage() {
                     </div>
                   ))}
                 </div>
-                <Link href="/inscription" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F7B500", color: "#0A2540", padding: "13px 26px", borderRadius: 12, fontWeight: 800, fontSize: 14, textDecoration: "none", marginTop: 24, width: "100%", justifyContent: "center", transition: "all .2s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#e6a800"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#F7B500"; }}>
+                <Link href="/inscription-startup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F7B500", color: "#0A2540", padding: "13px 26px", borderRadius: 12, fontWeight: 800, fontSize: 14, textDecoration: "none", marginTop: 24, width: "100%", justifyContent: "center" }}>
                   Demander un audit <FaArrowRight size={12} />
                 </Link>
               </div>
@@ -301,7 +349,7 @@ export default function AuditPage() {
           </div>
         </section>
 
-        {/* ── CTA ── */}
+        {/* CTA */}
         <FadeUp>
           <section style={{ padding: "72px 0", borderBottom: "1px solid #F1F5F9" }}>
             <div style={{ background: "linear-gradient(135deg,#0A2540 0%,#2d1b5e 100%)", borderRadius: 28, padding: "60px 52px", textAlign: "center", position: "relative", overflow: "hidden" }}>
@@ -314,9 +362,7 @@ export default function AuditPage() {
                 <p style={{ color: "rgba(255,255,255,.65)", fontSize: 15, lineHeight: 1.8, maxWidth: 520, margin: "0 auto 32px" }}>
                   Contactez-nous pour un diagnostic personnalisé de vos processus terrain.
                 </p>
-                <Link href="/inscription" style={{ display: "inline-flex", alignItems: "center", gap: 12, background: "#F7B500", color: "#0A2540", fontWeight: 800, fontSize: 16, borderRadius: 99, padding: "16px 48px", textDecoration: "none", boxShadow: "0 12px 32px rgba(247,181,0,.35)", transition: "transform .2s" }}
-                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.transform = "scale(1.04)"}
-                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.transform = "scale(1)"}>
+                <Link href="/inscription-startup" style={{ display: "inline-flex", alignItems: "center", gap: 12, background: "#F7B500", color: "#0A2540", fontWeight: 800, fontSize: 16, borderRadius: 99, padding: "16px 48px", textDecoration: "none", boxShadow: "0 12px 32px rgba(247,181,0,.35)" }}>
                   Demander un audit <FaArrowRight size={13} />
                 </Link>
               </div>
@@ -324,7 +370,7 @@ export default function AuditPage() {
           </section>
         </FadeUp>
 
-        {/* ── Autres services ── */}
+        {/* Autres services */}
         <FadeUp>
           <section style={{ paddingBottom: "80px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>

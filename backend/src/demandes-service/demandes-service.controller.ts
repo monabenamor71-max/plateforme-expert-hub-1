@@ -1,4 +1,3 @@
-// src/demandes-service/demandes-service.controller.ts
 import {
   Controller, Get, Post, Patch, Put, Delete,
   Body, Param, UseGuards, Req, ValidationPipe, ParseIntPipe, BadRequestException,
@@ -11,7 +10,12 @@ import { CreateDemandeDto } from './dto/create-demande.dto';
 import { UpdateDemandeDto } from './dto/update-demande.dto';
 import { UpdateStatutDto } from './dto/update-statut.dto';
 import { NotifierExpertsDto } from './dto/notifier-experts.dto';
-import { AssignerExpertDto } from './dto/assigner-expert.dto';
+import { SoumettreDevisDto } from './dto/soumettre-devis.dto';
+import type { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: { id: number };
+}
 
 @Controller('demandes-service')
 export class DemandesServiceController {
@@ -64,22 +68,6 @@ export class DemandesServiceController {
     return this.service.getExpertsAcceptes(id);
   }
 
-  // ⚠️ Cette route d'assignation directe par l'admin est conservée pour compatibilité,
-  // mais elle n'est plus utilisée dans le nouveau workflow (le client choisit l'expert).
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Patch(':id/assigner')
-  async assignerExpert(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: any,
-  ) {
-    const dto: AssignerExpertDto = {
-      expert_id: body.expert_id,
-      commentaire: body.commentaire,
-    };
-    return this.service.assignerExpert(id, dto);
-  }
-
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Patch('formation/:demandeId/accept')
@@ -94,31 +82,16 @@ export class DemandesServiceController {
     return this.service.rejectFormationDemande(demandeId);
   }
 
-  // ⚠️ Route de sélection d'un devis existant (gardée au cas où)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Patch(':id/choisir-devis')
-  async choisirDevis(
-    @Param('id', ParseIntPipe) demandeId: number,
-    @Body() body: any,
-  ) {
-    const { devis_id, expert_id } = body;
-    if (!devis_id || !expert_id) {
-      throw new BadRequestException('devis_id et expert_id sont requis');
-    }
-    return this.service.choisirDevis(demandeId, devis_id, expert_id);
-  }
-
   // ==================== STARTUPS ====================
   @UseGuards(JwtAuthGuard)
   @Get('mes-demandes')
-  getMesDemandes(@Req() req: any) {
+  getMesDemandes(@Req() req: RequestWithUser) {
     return this.service.getMesDemandes(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body(ValidationPipe) dto: CreateDemandeDto, @Req() req: any) {
+  create(@Body(ValidationPipe) dto: CreateDemandeDto, @Req() req: RequestWithUser) {
     return this.service.create(req.user.id, dto);
   }
 
@@ -126,7 +99,7 @@ export class DemandesServiceController {
   @Post('formation/:formationId')
   createFormationDemande(
     @Param('formationId', ParseIntPipe) formationId: number,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ) {
     return this.service.createFormationDemande(req.user.id, formationId);
   }
@@ -136,53 +109,74 @@ export class DemandesServiceController {
   updateDemande(
     @Param('id', ParseIntPipe) id: number,
     @Body(ValidationPipe) dto: UpdateDemandeDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ) {
     return this.service.updateDemande(id, req.user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('client/:id')
-  deleteDemande(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  deleteDemande(@Param('id', ParseIntPipe) id: number, @Req() req: RequestWithUser) {
     return this.service.deleteDemande(id, req.user.id);
   }
 
-  // NOUVEAU : endpoint pour qu'une startup choisisse l'expert et le montant
+  // Client accepte un devis
   @UseGuards(JwtAuthGuard)
-  @Patch(':id/choisir-expert')
-  async choisirExpert(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: { expert_id: number; montant: number },
-    @Req() req: any,
+  @Roles('startup')
+  @Patch(':demandeId/accepter-devis/:devisId')
+  async accepterDevis(
+    @Param('devisId', ParseIntPipe) devisId: number,
+    @Req() req: RequestWithUser,
   ) {
-    if (!body.expert_id || body.montant === undefined) {
-      throw new BadRequestException('expert_id et montant sont requis');
-    }
-    return this.service.choisirExpert(id, body.expert_id, body.montant, req.user.id);
+    return this.service.accepterDevis(req.user.id, devisId);
   }
 
   // ==================== EXPERTS ====================
   @UseGuards(JwtAuthGuard)
+  @Roles('expert')
   @Get('expert/assignees')
-  async getDemandesAssignees(@Req() req: any) {
+  async getDemandesAssignees(@Req() req: RequestWithUser) {
     return this.service.getDemandesAssignees(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
+  @Roles('expert')
   @Get('expert/notifications')
-  async getNotifications(@Req() req: any) {
+  async getNotifications(@Req() req: RequestWithUser) {
     return this.service.getNotificationsForExpert(req.user.id);
   }
 
+  // ✅ NOUVEAU ENDPOINT : Pour que l'expert voie ses demandes visibles (utilisé par le frontend)
   @UseGuards(JwtAuthGuard)
+  @Roles('expert')
+  @Get('expert/visible')
+  async getVisibleDemandes(@Req() req: RequestWithUser) {
+    return this.service.getVisibleDemandesForExpert(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles('expert')
   @Put(':id/accepter')
-  async accepterMission(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  async accepterMission(@Param('id', ParseIntPipe) id: number, @Req() req: RequestWithUser) {
     return this.service.accepterMission(id, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
+  @Roles('expert')
   @Put(':id/refuser')
-  async refuserMission(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  async refuserMission(@Param('id', ParseIntPipe) id: number, @Req() req: RequestWithUser) {
     return this.service.refuserMission(id, req.user.id);
+  }
+
+  // Expert soumet un devis
+  @UseGuards(JwtAuthGuard)
+  @Roles('expert')
+  @Post(':id/soumettre-devis')
+  async soumettreDevis(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(ValidationPipe) dto: SoumettreDevisDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.service.soumettreDevis(req.user.id, id, dto);
   }
 }

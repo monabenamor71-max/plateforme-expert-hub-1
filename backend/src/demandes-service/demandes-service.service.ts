@@ -1,9 +1,5 @@
-// src/demandes-service/demandes-service.service.ts
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
+  Injectable, NotFoundException, BadRequestException, UnauthorizedException, Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -16,7 +12,7 @@ import { CreateDemandeDto } from './dto/create-demande.dto';
 import { UpdateDemandeDto } from './dto/update-demande.dto';
 import { UpdateStatutDto } from './dto/update-statut.dto';
 import { NotifierExpertsDto } from './dto/notifier-experts.dto';
-import { AssignerExpertDto } from './dto/assigner-expert.dto';
+import { SoumettreDevisDto } from './dto/soumettre-devis.dto';
 
 @Injectable()
 export class DemandesServiceService {
@@ -35,17 +31,12 @@ export class DemandesServiceService {
   ) {}
 
   // ==================== ADMIN ====================
-
   async getAll() {
     const demandes = await this.repo.find({
       relations: ['user', 'formation', 'expert_assigne', 'expert_assigne.user'],
       order: { createdAt: 'DESC' },
     });
-    return demandes.map(d => ({
-      ...d,
-      experts_notifies: Array.isArray(d.experts_notifies) ? d.experts_notifies : [],
-      experts_acceptes: Array.isArray(d.experts_acceptes) ? d.experts_acceptes : [],
-    }));
+    return demandes;
   }
 
   async updateStatut(id: number, dto: UpdateStatutDto) {
@@ -76,6 +67,9 @@ export class DemandesServiceService {
     if (nouveaux.length === 0) return { message: 'Aucun nouvel expert à notifier' };
 
     demande.experts_notifies = [...actuels, ...nouveaux];
+    if (demande.statut === 'en_attente') {
+      demande.statut = 'notifie_experts';
+    }
     const saved = await this.repo.save(demande);
     if (!saved) throw new BadRequestException('Erreur lors de la notification des experts');
     this.logger.log(`Experts notifiés pour demande ${demandeId} : ${nouveaux.join(',')}`);
@@ -88,82 +82,6 @@ export class DemandesServiceService {
     const acceptesIds = demande.experts_acceptes || [];
     if (acceptesIds.length === 0) return [];
     return this.expertRepo.find({ where: { id: In(acceptesIds) }, relations: ['user'] });
-  }
-
-  async assignerExpert(demandeId: number, dto: AssignerExpertDto) {
-    const demande = await this.repo.findOne({ where: { id: demandeId } });
-    if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
-
-    const acceptes = Array.isArray(demande.experts_acceptes) ? demande.experts_acceptes : [];
-    if (!acceptes.includes(dto.expert_id))
-      throw new BadRequestException(`L'expert ${dto.expert_id} n'a pas accepté la mission`);
-    if (demande.expert_assigne_id)
-      throw new BadRequestException('Un expert est déjà assigné');
-
-    demande.expert_assigne_id = dto.expert_id;
-    demande.statut = 'acceptee';
-    if (dto.commentaire) demande.commentaire_admin = dto.commentaire;
-    const saved = await this.repo.save(demande);
-    if (!saved) throw new BadRequestException('Erreur lors de l’assignation de l’expert');
-    this.logger.log(`Expert ${dto.expert_id} assigné à la demande ${demandeId}`);
-    return { message: 'Expert assigné avec succès' };
-  }
-
-  async choisirDevis(demandeId: number, devisId: number, expertId: number) {
-    const demande = await this.repo.findOne({ where: { id: demandeId } });
-    if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
-
-    const acceptes = Array.isArray(demande.experts_acceptes) ? demande.experts_acceptes : [];
-    if (!acceptes.includes(expertId)) {
-      throw new BadRequestException("Cet expert n'a pas accepté la mission");
-    }
-
-    demande.expert_assigne_id = expertId;
-    demande.statut = 'acceptee';
-    const saved = await this.repo.save(demande);
-    if (!saved) throw new BadRequestException('Erreur lors de l’assignation de l’expert');
-
-    await this.devisRepo.update(devisId, { statut: 'accepte' });
-
-    this.logger.log(`Devis ${devisId} choisi pour demande ${demandeId}, expert ${expertId} assigné`);
-    return { message: 'Devis choisi et expert assigné avec succès' };
-  }
-
-  // NOUVEAU : Le client choisit directement l'expert et son montant (sans devis préalable)
-  async choisirExpert(demandeId: number, expertId: number, montant: number, userId: number) {
-    const demande = await this.repo.findOne({
-      where: { id: demandeId, user_id: userId },
-      relations: ['user'],
-    });
-    if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée ou accès refusé`);
-    if (demande.statut !== 'en_attente')
-      throw new BadRequestException('Seules les demandes en attente peuvent être traitées');
-
-    const acceptes = Array.isArray(demande.experts_acceptes) ? demande.experts_acceptes : [];
-    if (!acceptes.includes(expertId))
-      throw new BadRequestException("Cet expert n'a pas accepté la mission");
-
-    if (demande.expert_assigne_id)
-      throw new BadRequestException('Un expert a déjà été choisi pour cette demande');
-
-    demande.expert_assigne_id = expertId;
-    demande.devis_montant = montant;
-    demande.statut = 'acceptee';
-    const saved = await this.repo.save(demande);
-    if (!saved) throw new BadRequestException('Erreur lors du choix de l’expert');
-
-    // Optionnel : Créer un devis associé à la demande
-    const devis = this.devisRepo.create({
-      demande_id: demande.id,
-      expert_id: expertId,
-      montant: montant,
-      description: `Devis pour la mission ${demande.service}`,
-      statut: 'accepte',
-    });
-    await this.devisRepo.save(devis);
-
-    this.logger.log(`Client ${userId} a choisi expert ${expertId} pour demande ${demandeId} au montant ${montant} DT`);
-    return { message: 'Expert choisi avec succès, mission acceptée' };
   }
 
   async acceptFormationDemande(demandeId: number) {
@@ -216,7 +134,6 @@ export class DemandesServiceService {
   }
 
   // ==================== STARTUPS ====================
-
   async getMesDemandes(userId: number) {
     return this.repo.find({
       where: { user_id: userId },
@@ -226,7 +143,7 @@ export class DemandesServiceService {
   }
 
   async create(userId: number, dto: CreateDemandeDto) {
-    const data = { user_id: userId, ...dto };
+    const data = { user_id: userId, ...dto, statut: 'en_attente' };
     const demande = this.repo.create(data);
     const saved = await this.repo.save(demande);
     if (!saved) throw new BadRequestException('Erreur lors de la création de la demande');
@@ -285,7 +202,6 @@ export class DemandesServiceService {
   }
 
   // ==================== EXPERTS ====================
-
   private async getExpertByUserId(userId: number): Promise<Expert> {
     const expert = await this.expertRepo.findOne({ where: { user_id: userId } });
     if (!expert) throw new NotFoundException('Expert non trouvé pour cet utilisateur');
@@ -304,40 +220,103 @@ export class DemandesServiceService {
   async getNotificationsForExpert(userId: number) {
     const expert = await this.expertRepo.findOne({ where: { user_id: userId } });
     if (!expert) return [];
-    this.logger.log(`Expert trouvé : id=${expert.id}`);
 
     const demandes = await this.repo.find({
-      where: { statut: 'en_attente' },
-      relations: ['user', 'formation'],
+      where: [
+        { statut: 'en_attente' },
+        { statut: 'notifie_experts' },
+        { statut: 'devis_envoye' },
+      ],
+      relations: ['user', 'formation', 'expert_assigne'],
     });
+
     const notifications = demandes.filter(d => {
-      const notifies = Array.isArray(d.experts_notifies) ? d.experts_notifies : [];
-      return notifies.includes(expert.id);
+      let notifies = Array.isArray(d.experts_notifies) ? d.experts_notifies : [];
+      let acceptes = Array.isArray(d.experts_acceptes) ? d.experts_acceptes : [];
+      
+      // Gérer le cas où ce sont des objets
+      if (notifies.length > 0 && typeof notifies[0] === 'object') {
+        notifies = notifies.map((n: any) => n.expert_id || n.id);
+      }
+      if (acceptes.length > 0 && typeof acceptes[0] === 'object') {
+        acceptes = acceptes.map((a: any) => a.expert_id || a.id);
+      }
+      
+      const isNotified = notifies.includes(expert.id);
+      const isDirectlyAssigned = d.expert_assigne_id === expert.id;
+      
+      return (isNotified || isDirectlyAssigned) && !acceptes.includes(expert.id);
     });
-    this.logger.log(`Notifications trouvées : ${notifications.length}`);
+
+    this.logger.log(`Notifications pour expert ${expert.id} : ${notifications.length}`);
     return notifications;
   }
 
-  async accepterMission(demandeId: number, userId: number) {
+  // ✅ NOUVEAU : Endpoint pour que l'expert voie ses demandes visibles
+  async getVisibleDemandesForExpert(userId: number) {
     const expert = await this.getExpertByUserId(userId);
-    const demande = await this.repo.findOne({ where: { id: demandeId } });
-    if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
-
-    const notifies = Array.isArray(demande.experts_notifies) ? demande.experts_notifies : [];
-    if (!notifies.includes(expert.id))
-      throw new BadRequestException("Vous n'avez pas été notifié pour cette mission");
-    if (demande.expert_assigne_id)
-      throw new BadRequestException('Un expert est déjà assigné à cette mission');
-
-    const acceptes = Array.isArray(demande.experts_acceptes) ? demande.experts_acceptes : [];
-    if (acceptes.includes(expert.id)) return { message: 'Vous avez déjà accepté' };
-
-    demande.experts_acceptes = [...acceptes, expert.id];
-    const saved = await this.repo.save(demande);
-    if (!saved) throw new BadRequestException('Erreur lors de l’enregistrement de l’acceptation');
-    this.logger.log(`Expert ${expert.id} a accepté la mission ${demandeId}`);
-    return { message: 'Acceptation enregistrée, en attente de choix du client' };
+    
+    const demandes = await this.repo.find({
+      relations: ['user', 'formation', 'expert_assigne', 'expert_assigne.user'],
+      order: { createdAt: 'DESC' },
+    });
+    
+    const visible = demandes.filter(d => {
+      let notifies = d.experts_notifies || [];
+      let acceptes = d.experts_acceptes || [];
+      
+      // Gérer les formats
+      if (notifies.length > 0 && typeof notifies[0] === 'object') {
+        notifies = notifies.map((n: any) => n.expert_id || n.id);
+      }
+      if (acceptes.length > 0 && typeof acceptes[0] === 'object') {
+        acceptes = acceptes.map((a: any) => a.expert_id || a.id);
+      }
+      
+      const isNotified = notifies.includes(expert.id);
+      const isDirectlyAssigned = d.expert_assigne_id === expert.id;
+      const hasAlreadyAccepted = acceptes.includes(expert.id);
+      const assignedToOther = d.expert_assigne_id !== null && d.expert_assigne_id !== expert.id;
+      
+      // Ne pas montrer celles déjà acceptées ou assignées à un autre
+      return (isNotified || isDirectlyAssigned) && !hasAlreadyAccepted && !assignedToOther;
+    });
+    
+    this.logger.log(`Expert ${expert.id} - Demandes visibles: ${visible.length}`);
+    return visible;
   }
+
+ async accepterMission(demandeId: number, userId: number) {
+  const expert = await this.getExpertByUserId(userId);
+  const demande = await this.repo.findOne({ where: { id: demandeId } });
+  if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
+
+  let notifies = demande.experts_notifies || [];
+  if (notifies.length > 0 && typeof notifies[0] === 'object') {
+    notifies = notifies.map((n: any) => n.expert_id || n.id);
+  }
+  
+  if (!notifies.includes(expert.id))
+    throw new BadRequestException("Vous n'avez pas été notifié pour cette mission");
+  if (demande.expert_assigne_id)
+    throw new BadRequestException('Un expert est déjà assigné à cette mission');
+
+  let acceptes = demande.experts_acceptes || [];
+  if (acceptes.length > 0 && typeof acceptes[0] === 'object') {
+    acceptes = acceptes.map((a: any) => a.expert_id || a.id);
+  }
+  if (acceptes.includes(expert.id)) return { message: 'Vous avez déjà accepté' };
+
+  demande.experts_acceptes = [...acceptes, expert.id];
+  
+  // ✅ CORRECTION : Mettre le statut à "acceptee" car l'expert a accepté
+  demande.statut = 'acceptee';
+  
+  const saved = await this.repo.save(demande);
+  if (!saved) throw new BadRequestException('Erreur lors de l’enregistrement de l’acceptation');
+  this.logger.log(`Expert ${expert.id} a accepté la mission ${demandeId}`);
+  return { message: 'Acceptation enregistrée, vous pouvez maintenant soumettre un devis' };
+}
 
   async refuserMission(demandeId: number, userId: number) {
     const expert = await this.getExpertByUserId(userId);
@@ -345,5 +324,79 @@ export class DemandesServiceService {
     if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
     this.logger.log(`Expert ${expert.id} a refusé la mission ${demandeId}`);
     return { message: 'Refus enregistré' };
+  }
+
+  // ==================== GESTION DES DEVIS ====================
+
+  async soumettreDevis(userId: number, demandeId: number, dto: SoumettreDevisDto) {
+    const expert = await this.expertRepo.findOne({ where: { user_id: userId } });
+    if (!expert) throw new NotFoundException('Expert non trouvé');
+
+    const demande = await this.repo.findOne({ where: { id: demandeId } });
+    if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
+
+    let acceptes = demande.experts_acceptes || [];
+    if (acceptes.length > 0 && typeof acceptes[0] === 'object') {
+      acceptes = acceptes.map((a: any) => a.expert_id || a.id);
+    }
+    
+    if (!acceptes.includes(expert.id)) {
+      throw new BadRequestException("Vous devez d'abord accepter la mission via /accepter");
+    }
+
+    if (demande.statut === 'acceptee' || demande.expert_assigne_id) {
+      throw new BadRequestException('Cette mission a déjà été attribuée');
+    }
+
+    const devis = this.devisRepo.create({
+      demande_id: demande.id,
+      expert_id: expert.id,
+      montant: dto.montant,
+      description: dto.description,
+      delai: dto.delai,
+      statut: 'en_attente',
+    });
+    const savedDevis = await this.devisRepo.save(devis);
+    if (!savedDevis) throw new BadRequestException('Erreur lors de la création du devis');
+
+    demande.statut = 'devis_envoye';
+    await this.repo.save(demande);
+
+    this.logger.log(`Expert ${expert.id} a soumis un devis pour la demande ${demandeId}`);
+    return savedDevis;
+  }
+
+  async accepterDevis(clientUserId: number, devisId: number) {
+    const devis = await this.devisRepo.findOne({
+      where: { id: devisId },
+      relations: ['demande'],
+    });
+    if (!devis) throw new NotFoundException(`Devis ${devisId} non trouvé`);
+
+    const demande = devis.demande;
+    if (!demande) throw new NotFoundException('Demande associée introuvable');
+
+    if (demande.user_id !== clientUserId) {
+      throw new UnauthorizedException('Vous ne pouvez pas accepter ce devis');
+    }
+
+    if (demande.statut !== 'devis_envoye') {
+      throw new BadRequestException('Aucun devis en attente pour cette demande');
+    }
+
+    if (devis.statut !== 'en_attente') {
+      throw new BadRequestException('Ce devis a déjà été traité');
+    }
+
+    devis.statut = 'accepte';
+    await this.devisRepo.save(devis);
+
+    demande.statut = 'acceptee';
+    demande.expert_assigne_id = devis.expert_id;
+    demande.devis_montant = devis.montant;
+    await this.repo.save(demande);
+
+    this.logger.log(`Client ${clientUserId} a accepté le devis ${devisId} pour la demande ${demande.id}`);
+    return { message: 'Devis accepté, mission attribuée à l’expert' };
   }
 }

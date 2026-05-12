@@ -1,83 +1,87 @@
-// src/formations/formation.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
 @Entity("formations")
 export class Formation {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  titre: string;
+  titre!: string;
 
   @Column({ type: "text", nullable: true })
-  description: string;
+  description?: string;
 
   @Column({ nullable: true })
-  domaine: string;
+  domaine?: string;
 
+  // Champ existant pour compatibilité
   @Column({ nullable: true })
-  formateur: string;
+  formateur?: string;
+
+  // NOUVEAU : stocke les formateurs avec leurs photos (format JSON)
+  @Column({ type: "json", nullable: true })
+  formateur_details?: Array<{ nom: string; image: string }>;
 
   @Column({ default: "payant" })
-  type: string;
+  type!: string;
 
   @Column({ type: "int", nullable: true })
-  prix: number;
+  prix?: number;
 
   @Column({ default: false })
-  places_limitees: boolean;
+  places_limitees!: boolean;
 
   @Column({ nullable: true })
-  places_disponibles: number;
+  places_disponibles?: number;
 
   @Column({ nullable: true })
-  duree: string;
+  duree?: string;
 
   @Column({ default: "en_ligne" })
-  mode: string;
+  mode!: string;
 
   @Column({ nullable: true })
-  localisation: string;
+  localisation?: string;
 
   @Column({ default: false })
-  certifiante: boolean;
+  certifiante!: boolean;
 
   @Column({ nullable: true })
-  image: string;
+  image?: string;
 
   @Column({ default: "brouillon" })
-  statut: string;
+  statut!: string;
 
   @Column({ default: false })
-  a_la_une: boolean;
+  a_la_une!: boolean;
 
   @Column({ type: "date", nullable: true })
-  dateDebut: Date;
+  dateDebut?: Date;
 
   @Column({ type: "date", nullable: true })
-  dateFin: Date;
+  dateFin?: Date;
 
   @Column({ nullable: true })
-  expertId: number;
+  expertId?: number;
 
   @Column({ nullable: true })
-  lien_formation: string;
+  lien_formation?: string;
 
   @Column({ default: false })
-  gratuit: boolean;
+  gratuit!: boolean;
 
   @Column({ nullable: true })
-  niveau: string;
+  niveau?: string;
 
   @Column({ nullable: true })
-  categorie: string;
+  categorie?: string;
 
   @Column({ type: "text", nullable: true })
-  commentaire_admin: string;
+  commentaire_admin?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

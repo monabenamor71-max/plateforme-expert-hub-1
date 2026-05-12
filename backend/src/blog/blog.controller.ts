@@ -9,16 +9,17 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { BlogService, CreateArticleDto, UpdateArticleDto, UpdateStatutDto } from './blog.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Request } from 'express';
 
 const storage = diskStorage({
-  destination: (_req, file, cb) => {
+  destination: (req: Request, file: Express.Multer.File, cb) => {
     if (file.fieldname === 'image') {
       cb(null, './uploads/articles-img');
     } else {
       cb(null, './uploads/articles-pdf');
     }
   },
-  filename: (_req, file, cb) => {
+  filename: (req: Request, file: Express.Multer.File, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     if (file.fieldname === 'image') {
       cb(null, `article-${unique}${extname(file.originalname)}`);
@@ -59,6 +60,7 @@ export class BlogController {
     return this.blogService.findOne(id);
   }
 
+  // ✅ Route PUT complète (avec fichiers)
   @Put('admin/:id')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileFieldsInterceptor([
@@ -75,15 +77,21 @@ export class BlogController {
     return this.blogService.update(id, dto, imageFile, pdfFile);
   }
 
-  @Patch('admin/:id/statut')
+  // ✅ NOUVELLE ROUTE : PATCH générique pour mise à jour partielle (statut, titre, etc.)
+  @Patch('admin/:id')
   @UseGuards(JwtAuthGuard)
-  async updateStatut(
+  async patch(
     @Param('id', ParseIntPipe) id: number,
-    @Body(ValidationPipe) dto: UpdateStatutDto,
+    @Body(ValidationPipe) dto: UpdateArticleDto,
   ) {
-    return this.blogService.updateStatut(id, dto);
+    // Utilise la même méthode update sans fichiers
+    return this.blogService.update(id, dto);
   }
 
+  @Patch('admin/:id/statut')
+async updateStatut(@Param('id') id: number, @Body() dto: UpdateStatutDto) {
+  return this.blogService.updateStatut(id, dto);
+}
   @Delete('admin/:id')
   @UseGuards(JwtAuthGuard)
   async delete(@Param('id', ParseIntPipe) id: number) {

@@ -1,4 +1,3 @@
-// src/experts/experts.controller.ts
 import {
   Controller, Get, Put, Patch, Post, Body, Param, Request,
   UseGuards, UseInterceptors, UploadedFile, Query,
@@ -11,6 +10,12 @@ import { ExpertsService } from './experts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequestModificationDto } from './dto/request-modification.dto';
 import { UpdateProfilDto } from './dto/update-profil.dto';
+import type { Request as ExpressRequest } from 'express';
+
+// Interface pour typer la requête avec l'utilisateur
+interface RequestWithUser extends ExpressRequest {
+  user: { id: number };
+}
 
 @Controller('experts')
 export class ExpertsController {
@@ -23,7 +28,7 @@ export class ExpertsController {
 
   @Get('moi')
   @UseGuards(JwtAuthGuard)
-  getMoi(@Request() req: any) {
+  getMoi(@Request() req: RequestWithUser) {
     return this.expertsService.getMoi(req.user.id);
   }
 
@@ -41,11 +46,10 @@ export class ExpertsController {
 
   @Put('profil')
   @UseGuards(JwtAuthGuard)
-  updateProfil(@Request() req: any, @Body() body: any) {
+  updateProfil(@Request() req: RequestWithUser, @Body() body: any) {
     return this.expertsService.updateProfil(req.user.id, body);
   }
 
-  // Route pour l'admin (modification directe avec validation normale)
   @Put('admin/:id')
   @UseGuards(JwtAuthGuard)
   async updateExpertByAdmin(
@@ -60,19 +64,18 @@ export class ExpertsController {
   @UseInterceptors(FileInterceptor('photo', {
     storage: diskStorage({
       destination: path.join(process.cwd(), 'uploads', 'photos'),
-      filename: (req, file, cb) => {
+      filename: (req: ExpressRequest, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
         cb(null, `${Date.now()}-${file.originalname}`);
       },
     }),
-    fileFilter: (req, file, cb) => {
+    fileFilter: (req: ExpressRequest, file: Express.Multer.File, cb: (error: Error | null, accept: boolean) => void) => {
       if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
         return cb(new BadRequestException('Format d\'image non supporté'), false);
       }
       cb(null, true);
     },
   }))
-  async uploadPhoto(@Request() req: any, @UploadedFile() file: Express.Multer.File) {
-    // ✅ La photo devient optionnelle (plus d'obligation)
+  async uploadPhoto(@Request() req: RequestWithUser, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
       return { message: 'Aucune photo fournie, profil non modifié' };
     }

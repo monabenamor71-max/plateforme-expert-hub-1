@@ -1,10 +1,9 @@
-// src/formations/dto/create-formation.dto.ts
 import { IsString, IsOptional, IsBoolean, IsInt, Min, IsDateString, IsEnum, IsUrl } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateFormationDto {
   @IsString()
-  titre: string;
+  titre!: string;
 
   @IsString()
   @IsOptional()
@@ -18,6 +17,21 @@ export class CreateFormationDto {
   @IsOptional()
   formateur?: string;
 
+  // Pas de validation stricte, on va parser manuellement dans le service
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch { return []; }
+    }
+    return Array.isArray(value) ? value : [];
+  })
+  formateur_details?: any[];
+
+  // ... tous les autres champs (prix, places_limitees, etc.) avec les transformations existantes
   @IsEnum(['gratuit', 'payant'])
   @IsOptional()
   type?: string;
@@ -86,8 +100,9 @@ export class CreateFormationDto {
   @IsOptional()
   dateFin?: string;
 
-  @IsUrl()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsOptional()
+  @IsUrl()
   lien_formation?: string;
 
   @Transform(({ value }) => {

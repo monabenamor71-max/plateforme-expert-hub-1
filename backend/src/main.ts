@@ -51,14 +51,16 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger: winstonLogger });
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  // 🚀 Augmentation de la limite pour accepter les vidéos MP4 jusqu'à 200 Mo
+  app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+
   app.enableCors({ origin: 'http://localhost:3000', credentials: true });
   app.use(cookieParser());
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: false,   // ← Tolérant
+    forbidNonWhitelisted: false,
     transform: true,
     disableErrorMessages: process.env.NODE_ENV === 'production',
   }));

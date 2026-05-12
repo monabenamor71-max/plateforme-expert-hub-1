@@ -2,49 +2,36 @@ import {
   Controller,
   Get,
   Post,
-  Delete,
   Body,
-  Param,
   UseGuards,
   ValidationPipe,
-  BadRequestException,
+  Request,
 } from '@nestjs/common';
-import { NewsletterService, UnsubscribeDto, SendNewsletterDto } from './newsletter.service';
+import { NewsletterService } from './newsletter.service';
 import { SubscribeNewsletterDto } from './dto/subscribe-newsletter.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('newsletter')
 export class NewsletterController {
-  constructor(private readonly svc: NewsletterService) {}
+  constructor(private readonly newsletterService: NewsletterService) {}
 
   @Post('subscribe')
   subscribe(@Body(ValidationPipe) dto: SubscribeNewsletterDto) {
-    return this.svc.subscribe(dto);
-  }
-
-  @Post('unsubscribe')
-  unsubscribe(@Body(ValidationPipe) dto: UnsubscribeDto) {
-    return this.svc.unsubscribe(dto);
+    return this.newsletterService.subscribe(dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('admin/all')
   getAll() {
-    return this.svc.getAll();
+    return this.newsletterService.getAll();
   }
 
+  // Vérifier si l'utilisateur connecté (expert ou startup) est abonné
   @UseGuards(JwtAuthGuard)
-  @Post('admin/send')
-  sendNewsletter(@Body(ValidationPipe) dto: SendNewsletterDto) {
-    return this.svc.sendNewsletter(dto);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('admin/:email')
-  async remove(@Param('email') email: string) {
-    if (!email || !email.includes('@')) {
-      throw new BadRequestException('Email invalide');
-    }
-    return this.svc.removeByEmail(email);
+  @Get('check')
+  async checkSubscription(@Request() req: any) {
+    const userId = req.user.id;
+    const isSubscribed = await this.newsletterService.isSubscribedByUserId(userId);
+    return { subscribed: isSubscribed };
   }
 }

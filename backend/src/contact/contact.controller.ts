@@ -1,4 +1,3 @@
-// src/contact/contact.controller.ts
 import { Controller, Get, Post, Body, Put, Param, Delete, Patch, UseGuards } from '@nestjs/common';
 import { ContactService } from './contact.service';
 import { CreateContactMessageDto } from './dto/create-contact-message.dto';
@@ -24,10 +23,12 @@ export class ContactController {
   async sendMessage(@Body() dto: CreateContactMessageDto) {
     return this.contactService.saveContactMessage(dto);
   }
-@Get('messages')
-async getAllMessages() {
-  return this.contactService.getAllMessages();
-}
+
+  @Get('messages')
+  async getAllMessages() {
+    return this.contactService.getAllMessages();
+  }
+
   // @UseGuards(JwtAuthGuard)
   @Patch('messages/:id/lu')
   async markAsRead(@Param('id') id: string) {

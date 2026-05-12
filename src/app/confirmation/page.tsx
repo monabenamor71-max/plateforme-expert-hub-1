@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<"success" | "error" | null>(null);
@@ -16,7 +17,6 @@ export default function ConfirmationPage() {
     if (s === "success") {
       setStatus("success");
       setMessage(msg || "Votre adresse email a été confirmée avec succès.");
-      // Redirection automatique vers la page d'attente après 5 secondes
       setTimeout(() => {
         router.push("/attente-validation");
       }, 5000);
@@ -77,5 +77,13 @@ export default function ConfirmationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Chargement...</div>}>
+      <ConfirmationContent />
+    </Suspense>
   );
 }

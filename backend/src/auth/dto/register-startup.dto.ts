@@ -5,23 +5,23 @@ export class RegisterStartupDto {
   @IsEmail({}, { message: 'Email invalide' })
   @IsNotEmpty()
   @Transform(({ value }) => value?.toLowerCase().trim())
-  email: string;
+  email!: string;
 
   @MinLength(6, { message: 'Mot de passe trop court (min 6 caractères)' })
   @IsNotEmpty()
-  password: string;
+  password!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   @Matches(/^[A-Za-zÀ-ÖØ-öø-ÿ\s\-']+$/, { message: 'Le prénom ne peut contenir que des lettres, espaces, tirets ou apostrophes' })
-  prenom: string;
+  prenom!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   @Matches(/^[A-Za-zÀ-ÖØ-öø-ÿ\s\-']+$/, { message: 'Le nom ne peut contenir que des lettres, espaces, tirets ou apostrophes' })
-  nom: string;
+  nom!: string;
 
   @IsString()
   @IsOptional()
@@ -32,7 +32,7 @@ export class RegisterStartupDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
-  nom_startup: string;
+  nom_startup!: string;
 
   @IsString()
   @IsOptional()

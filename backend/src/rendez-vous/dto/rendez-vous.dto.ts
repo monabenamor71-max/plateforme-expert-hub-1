@@ -3,22 +3,22 @@ import { IsInt, IsDateString, IsString, IsNotEmpty, MinLength, IsOptional } from
 export class CreateRendezVousDto {
   @IsInt()
   @IsNotEmpty()
-  expert_id: number;
+  expert_id!: number;
 
   @IsDateString()
   @IsNotEmpty()
-  date_rdv: string;
+  date_rdv!: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
-  sujet: string;
+  sujet!: string;
 }
 
 export class UpdateRendezVousDto {
   @IsDateString()
   @IsNotEmpty()
-  date_rdv: string;
+  date_rdv!: string;
 
   @IsOptional()
   @IsString()
@@ -26,9 +26,8 @@ export class UpdateRendezVousDto {
   sujet?: string;
 }
 
-// Classe spéciale pour l'acceptation d'une proposition
 export class AccepterPropositionDto {
   @IsDateString()
   @IsNotEmpty()
-  nouvelle_date: string;
+  nouvelle_date!: string;
 }

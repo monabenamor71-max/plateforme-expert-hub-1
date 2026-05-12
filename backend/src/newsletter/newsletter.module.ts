@@ -3,12 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { NewsletterService } from './newsletter.service';
 import { NewsletterController } from './newsletter.controller';
 import { Newsletter } from './newsletter.entity';
+import { User } from '../user/user.entity';
 import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Newsletter]),
-    MailModule,   // ← indispensable pour injecter MailService
+    TypeOrmModule.forFeature([Newsletter, User]),
+    MailModule,
   ],
   controllers: [NewsletterController],
   providers: [NewsletterService],

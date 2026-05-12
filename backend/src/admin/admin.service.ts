@@ -9,7 +9,6 @@ import { Blog } from '../blog/blog.entity';
 import { MailService } from '../mail/mail.service';
 import { MediaService } from '../media/media.service';
 import { PodcastService } from '../podcast/podcast.service';
-// ✅ Importer les DTOs depuis le fichier dédié (pas depuis le service)
 import { CreatePodcastDto, UpdatePodcastDto } from '../podcast/dto/podcast.dto';
 
 @Injectable()
@@ -119,6 +118,11 @@ export class AdminService {
       const expert = await queryRunner.manager.findOne(Expert, { where: { id }, relations: ['user'] });
       if (!expert) throw new NotFoundException('Expert non trouvé');
 
+      // Vérifier que l'utilisateur existe
+      if (!expert.user) {
+        throw new BadRequestException('Utilisateur associé à l\'expert introuvable');
+      }
+
       expert.statut = 'valide';
       const savedExpert = await queryRunner.manager.save(expert);
       if (!savedExpert) throw new BadRequestException('Erreur lors de la validation de l’expert');
@@ -126,7 +130,11 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, expert.user_id, { statut: 'actif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      await this.mailService.sendValidationEmail(expert.user.nom, expert.user.email);
+      // Envoyer l'email avec vérification que les champs existent
+      await this.mailService.sendValidationEmail(
+        expert.user.nom || '',
+        expert.user.email || ''
+      );
 
       await queryRunner.commitTransaction();
       this.logger.log(`Expert ${id} validé avec succès`);
@@ -149,6 +157,11 @@ export class AdminService {
       const expert = await queryRunner.manager.findOne(Expert, { where: { id }, relations: ['user'] });
       if (!expert) throw new NotFoundException('Expert non trouvé');
 
+      // Vérifier que l'utilisateur existe
+      if (!expert.user) {
+        throw new BadRequestException('Utilisateur associé à l\'expert introuvable');
+      }
+
       expert.statut = 'refuse';
       const savedExpert = await queryRunner.manager.save(expert);
       if (!savedExpert) throw new BadRequestException('Erreur lors du refus de l’expert');
@@ -156,7 +169,11 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, expert.user_id, { statut: 'inactif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      await this.mailService.sendRefusEmail(expert.user.nom, expert.user.email);
+      // Envoyer l'email avec vérification que les champs existent
+      await this.mailService.sendRefusEmail(
+        expert.user.nom || '',
+        expert.user.email || ''
+      );
 
       await queryRunner.commitTransaction();
       this.logger.log(`Expert ${id} refusé`);
@@ -188,6 +205,11 @@ export class AdminService {
       const startup = await queryRunner.manager.findOne(Startup, { where: { id }, relations: ['user'] });
       if (!startup) throw new NotFoundException('Startup non trouvée');
 
+      // Vérifier que l'utilisateur existe
+      if (!startup.user) {
+        throw new BadRequestException('Utilisateur associé à la startup introuvable');
+      }
+
       startup.statut = 'valide';
       const savedStartup = await queryRunner.manager.save(startup);
       if (!savedStartup) throw new BadRequestException('Erreur lors de la validation de la startup');
@@ -195,7 +217,11 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, startup.user_id, { statut: 'actif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      await this.mailService.sendValidationEmail(startup.user.nom, startup.user.email);
+      // Envoyer l'email avec vérification que les champs existent
+      await this.mailService.sendValidationEmail(
+        startup.user.nom || '',
+        startup.user.email || ''
+      );
 
       await queryRunner.commitTransaction();
       this.logger.log(`Startup ${id} validée`);
@@ -218,6 +244,11 @@ export class AdminService {
       const startup = await queryRunner.manager.findOne(Startup, { where: { id }, relations: ['user'] });
       if (!startup) throw new NotFoundException('Startup non trouvée');
 
+      // Vérifier que l'utilisateur existe
+      if (!startup.user) {
+        throw new BadRequestException('Utilisateur associé à la startup introuvable');
+      }
+
       startup.statut = 'refuse';
       const savedStartup = await queryRunner.manager.save(startup);
       if (!savedStartup) throw new BadRequestException('Erreur lors du refus de la startup');
@@ -225,7 +256,11 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, startup.user_id, { statut: 'inactif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      await this.mailService.sendRefusEmail(startup.user.nom, startup.user.email);
+      // Envoyer l'email avec vérification que les champs existent
+      await this.mailService.sendRefusEmail(
+        startup.user.nom || '',
+        startup.user.email || ''
+      );
 
       await queryRunner.commitTransaction();
       this.logger.log(`Startup ${id} refusée`);

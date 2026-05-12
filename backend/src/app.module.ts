@@ -21,6 +21,7 @@ import { NewsletterModule } from './newsletter/newsletter.module';
 import { BlogModule } from './blog/blog.module';
 import { MediaModule } from './media/media.module';
 import { PodcastModule } from './podcast/podcast.module';
+import { NewsModule } from './news/news.module';
 
 // Entities
 import { User } from './user/user.entity';
@@ -40,6 +41,7 @@ import { Devis } from './devis/devis.entity';
 import { Blog } from './blog/blog.entity';
 import { Media } from './media/media.entity';
 import { Podcast } from './podcast/podcast.entity';
+import { News } from './news/news.entity';
 
 @Module({
   imports: [
@@ -56,7 +58,7 @@ import { Podcast } from './podcast/podcast.entity';
         Message, Temoignage, Histoire, DemandeService,
         ServicePlateforme, ContactMessage, ContactConfig, Newsletter,
         Formation, Devis, Blog, Media, Podcast,
-        // Visit supprimée
+        News,
       ],
       synchronize: false,
       logging: process.env.NODE_ENV !== 'production',
@@ -79,7 +81,7 @@ import { Podcast } from './podcast/podcast.entity';
     BlogModule,
     MediaModule,
     PodcastModule,
-    // StatsModule supprimé
+    NewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

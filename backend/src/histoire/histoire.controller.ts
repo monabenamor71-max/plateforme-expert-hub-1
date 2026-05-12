@@ -1,7 +1,8 @@
-import { Controller, Get, Put, Body } from "@nestjs/common";
-import { HistoireService } from "./histoire.service";
+import { Controller, Get, Put, Body, ValidationPipe } from '@nestjs/common';
+import { HistoireService } from './histoire.service';
+import { UpdateHistoireDto } from './dto/histoire.dto';
 
-@Controller("histoire")
+@Controller('histoire')
 export class HistoireController {
   constructor(private readonly histoireService: HistoireService) {}
 
@@ -11,7 +12,7 @@ export class HistoireController {
   }
 
   @Put()
-  update(@Body() body: any) {
-    return this.histoireService.update(body);
+  update(@Body(ValidationPipe) updateDto: UpdateHistoireDto) {
+    return this.histoireService.update(updateDto);
   }
 }

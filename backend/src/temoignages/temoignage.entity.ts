@@ -4,25 +4,24 @@ import { User } from "../user/user.entity";
 @Entity("temoignages")
 export class Temoignage {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  user_id: number;
+  user_id!: number;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: "user_id" })
-  user: User;
+  user!: User;
 
   @Column({ type: "text" })
-  texte: string;
+  texte!: string;
 
-  // Nouvelle colonne pour la note (étoiles)
   @Column({ type: "int", default: 5, nullable: true })
-  note: number; // 1 à 5 étoiles
+  note!: number;
 
   @Column({ type: "enum", enum: ["en_attente","valide","refuse"], default: "en_attente" })
-  statut: string;
+  statut: string = "en_attente";
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 }

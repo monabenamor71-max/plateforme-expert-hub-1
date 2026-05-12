@@ -7,7 +7,7 @@ export class CreateDemandeDto {
 
   @IsString()
   @MinLength(10)
-  description: string;
+  description!: string;
 
   @IsString()
   @IsOptional()

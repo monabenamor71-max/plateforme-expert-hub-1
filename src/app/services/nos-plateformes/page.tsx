@@ -10,8 +10,10 @@ import {
   FaUserTie, FaChartBar, FaShieldAlt, FaComments,
   FaStore, FaBuilding, FaIndustry, FaEllipsisH,
   FaGlobe, FaLayerGroup, FaCode, FaDatabase,
-  FaLightbulb, FaHandshake, FaTrophy, FaHeadset,
+  FaLightbulb, FaHandshake, FaTrophy, FaHeadset, FaStar,
 } from "react-icons/fa";
+
+const BASE = "http://localhost:3001";
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 const NAV = [
@@ -33,7 +35,7 @@ const CODE_LINES = [
   { ln: "08", parts: [{ t: "op", v: "});" }] },
   { ln: "09", parts: [] },
   { ln: "10", parts: [{ t: "cm", v: "// Archivage automatique base clients" }] },
-  { ln: "11", parts: [{ t: "kw", v: "const" }, { t: "op", v: " " }, { t: "nm", v: "archive" }, { t: "op", v: " = " }, { t: "kw", v: "await" }, { t: "op", v: " " }, { t: "fn", v: "ClientArchive" }, { t: "op", v: "." }, { t: "fn", v: "sync" }, { t: "op", v: "({" }] },
+  { ln: "11", parts: [{ t: "kw", v: "const" }, { t: "op", v: " " }, { t: "nm", v: "archive" }, { t: "op", v: " = " }, { t: "kw", v: "await" }, { t: "op", v: " " }, { t: "fn", v: "ClientArchive" }, { t: "op", v: ".sync" }, { t: "op", v: "({" }] },
   { ln: "12", parts: [{ t: "op", v: "  " }, { t: "nm", v: "auto" }, { t: "op", v: ": " }, { t: "kw", v: "true" }, { t: "op", v: "," }] },
   { ln: "13", parts: [{ t: "op", v: "  " }, { t: "nm", v: "interval" }, { t: "op", v: ": " }, { t: "str", v: "'24h'" }] },
   { ln: "14", parts: [{ t: "op", v: "});" }] },
@@ -214,26 +216,60 @@ function useInView(threshold = 0.1) {
   }, []);
   return [ref, v] as const;
 }
-function FadeUp({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+
+function FadeUp({ children, delay = 0, className = "", style = {}, ...rest }: { children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties; [key: string]: any }) {
   const [ref, v] = useInView(0.07);
   return (
-    <div ref={ref} style={{ opacity: v ? 1 : 0, transform: v ? "translateY(0)" : "translateY(36px)", transition: `opacity .75s cubic-bezier(.22,1,.36,1) ${delay}s, transform .75s cubic-bezier(.22,1,.36,1) ${delay}s` }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: v ? 1 : 0,
+        transform: v ? "translateY(0)" : "translateY(36px)",
+        transition: `opacity .75s cubic-bezier(.22,1,.36,1) ${delay}s, transform .75s cubic-bezier(.22,1,.36,1) ${delay}s`,
+        ...style,
+      }}
+      {...rest}
+    >
       {children}
     </div>
   );
 }
-function SlideIn({ children, delay = 0, from = "left" }: { children: React.ReactNode; delay?: number; from?: "left"|"right" }) {
+
+function SlideIn({ children, delay = 0, from = "left", className = "", style = {}, ...rest }: { children: React.ReactNode; delay?: number; from?: "left"|"right"; className?: string; style?: React.CSSProperties; [key: string]: any }) {
   const [ref, v] = useInView(0.07);
+  const translateX = from === "left" ? "-48px" : "48px";
   return (
-    <div ref={ref} style={{ opacity: v ? 1 : 0, transform: v ? "translateX(0)" : `translateX(${from==="left"?"-48px":"48px"})`, transition: `opacity .75s cubic-bezier(.22,1,.36,1) ${delay}s, transform .75s cubic-bezier(.22,1,.36,1) ${delay}s` }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: v ? 1 : 0,
+        transform: v ? "translateX(0)" : `translateX(${translateX})`,
+        transition: `opacity .75s cubic-bezier(.22,1,.36,1) ${delay}s, transform .75s cubic-bezier(.22,1,.36,1) ${delay}s`,
+        ...style,
+      }}
+      {...rest}
+    >
       {children}
     </div>
   );
 }
-function ScaleIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+
+function ScaleIn({ children, delay = 0, className = "", style = {}, ...rest }: { children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties; [key: string]: any }) {
   const [ref, v] = useInView(0.07);
   return (
-    <div ref={ref} style={{ opacity: v ? 1 : 0, transform: v ? "scale(1)" : "scale(.88)", transition: `opacity .65s cubic-bezier(.22,1,.36,1) ${delay}s, transform .65s cubic-bezier(.22,1,.36,1) ${delay}s` }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: v ? 1 : 0,
+        transform: v ? "scale(1)" : "scale(.88)",
+        transition: `opacity .65s cubic-bezier(.22,1,.36,1) ${delay}s, transform .65s cubic-bezier(.22,1,.36,1) ${delay}s`,
+        ...style,
+      }}
+      {...rest}
+    >
       {children}
     </div>
   );
@@ -304,10 +340,10 @@ function PlatformBlock({ num, badge, badgeBg, badgeText, title, problems, result
           {results.map((r,i)=><div key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13, color:"#374151", marginBottom:6 }}><span style={{ color:"#10B981", fontWeight:700, flexShrink:0, marginTop:1 }}>✓</span>{r}</div>)}
         </div>
         <div style={{ display:"flex", gap:14 }}>
-          <Link href="/inscription?demo=1" style={{ flex:1 }}>
+          <Link href="/inscription-startup?demo=1" style={{ flex:1 }}>
             <button className="btn-plat-gold" style={{ width:"100%", background:"#F7B500", color:"#0A2540", border:"none", borderRadius:12, padding:"14px 0", fontWeight:800, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}><FaDesktop size={14}/> Réserver une démo</button>
           </Link>
-          <Link href="/inscription?essai=1" style={{ flex:1 }}>
+          <Link href="/inscription-startup?essai=1" style={{ flex:1 }}>
             <button className="btn-plat-dark" style={{ width:"100%", background:"#0A2540", color:"#fff", border:"1px solid rgba(247,181,0,0.3)", borderRadius:12, padding:"14px 0", fontWeight:800, fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}><FaGift size={14}/> Essai gratuit 7j</button>
           </Link>
         </div>
@@ -326,34 +362,54 @@ function PlatformBlock({ num, badge, badgeBg, badgeText, title, problems, result
   );
 }
 
-// ─── COMPOSANT COUNTER (count-up) ─────────────────────────────────────────────
-function CountUp({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [ref, inView] = useInView(0.3);
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0; const duration = 1800;
-    const step = Math.ceil(target / (duration / 16));
-    const iv = setInterval(() => {
-      start = Math.min(start + step, target);
-      setVal(start);
-      if (start >= target) clearInterval(iv);
-    }, 16);
-    return () => clearInterval(iv);
-  }, [inView, target]);
-  return <span ref={ref as any}>{val}{suffix}</span>;
-}
-
 // ─── PAGE PRINCIPALE ──────────────────────────────────────────────────────────
 export default function NosPlateformesPage() {
   const [navOpen, setNavOpen] = useState(false);
   const [codeOffset, setCodeOffset] = useState(0);
   const [activeStep, setActiveStep] = useState<number | null>(null);
 
+  // ==================== TAUX DE SATISFACTION DEPUIS L'ADMIN ====================
+  const [tauxSatisfaction, setTauxSatisfaction] = useState<number>(94);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${BASE}/histoire`);
+        if (res.ok) {
+          const data = await res.json();
+          setTauxSatisfaction(data.taux_satisfaction || 94);
+        }
+      } catch (error) {
+        console.error("Erreur chargement stats:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
   useEffect(() => {
     const iv = setInterval(() => setCodeOffset(p => (p + 1) % CODE_LINES.length), 350);
     return () => clearInterval(iv);
   }, []);
+
+  const renderStars = () => {
+    const note = tauxSatisfaction / 20;
+    return (
+      <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+        {[1, 2, 3, 4, 5].map((s) => (
+          <FaStar
+            key={s}
+            style={{
+              color: s <= Math.round(note) ? "#F7B500" : "rgba(255,255,255,.3)",
+              fontSize: 10,
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div style={{ fontFamily:"'Plus Jakarta Sans', sans-serif", color:"#374151", background:"#fff", minHeight:"100vh" }}>
@@ -368,6 +424,7 @@ export default function NosPlateformesPage() {
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
         @keyframes spin-slow{to{transform:rotate(360deg)}}
         @keyframes dash{to{stroke-dashoffset:0}}
+        @keyframes spin{to{transform:rotate(360deg)}}
         .diamond{animation:floatY 7s ease-in-out infinite;position:absolute;pointer-events:none;}
         .live-dot{width:8px;height:8px;border-radius:50%;background:#10B981;animation:pulse 1.5s ease-in-out infinite;display:inline-block;flex-shrink:0;}
         .code-font{font-family:'Fira Code',monospace;font-size:12px;line-height:1.9;}
@@ -399,9 +456,11 @@ export default function NosPlateformesPage() {
         .shimmer-badge{background:linear-gradient(90deg,#F7B500,#fff8,#F7B500);background-size:200% 100%;animation:shimmer 2.5s linear infinite;-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900;}
         .float-anim{animation:float 5s ease-in-out infinite;}
         .connector-line{stroke-dasharray:200;stroke-dashoffset:200;animation:dash 1.5s ease forwards;}
+        .stat-number{font-size:28px;font-weight:900;color:#fff;line-height:1;margin-bottom:6px}
+        .stat-loading{width:30px;height:30px;border:3px solid #F7B500;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
       `}</style>
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <header style={{ background:"#fff", position:"sticky", top:0, zIndex:100, borderBottom:"1px solid #E5E7EB", boxShadow:"0 2px 14px rgba(0,0,0,.04)" }}>
         <div style={{ maxWidth:1200, margin:"0 auto", padding:"0 24px", height:72, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <Link href="/" style={{ display:"flex", alignItems:"center", gap:10, textDecoration:"none" }}>
@@ -431,136 +490,126 @@ export default function NosPlateformesPage() {
           </nav>
           <div style={{ display:"flex", gap:10 }}>
             <Link href="/connexion"><button style={{ border:"1.5px solid #0A2540", color:"#0A2540", background:"transparent", padding:"8px 20px", borderRadius:10, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", transition:"all .2s" }}>Connexion</button></Link>
-            <Link href="/inscription"><button style={{ background:"#F7B500", color:"#0A2540", border:"none", padding:"8px 20px", borderRadius:10, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>S'inscrire</button></Link>
+            <Link href="/inscription-startup"><button style={{ background:"#F7B500", color:"#0A2540", border:"none", padding:"8px 20px", borderRadius:10, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>S'inscrire</button></Link>
           </div>
         </div>
       </header>
 
-   {/* ═══════════════════════════════════════════════════════════════════════
-    HERO (version réduite avec sous‑titre agrandi et gras)
-═══════════════════════════════════════════════════════════════════════ */}
-<section style={{
-  background: "linear-gradient(135deg,#0A1628 0%,#0d1f3c 55%,#0A1628 100%)",
-  padding: "84px 24px 104px",
-  position: "relative",
-  overflow: "hidden"
-}}>
-  {/* Éléments décoratifs flottants */}
-  <div className="diamond" style={{ width:520, height:520, right:-140, top:"50%", background:"rgba(247,181,0,.04)", border:"1px solid rgba(247,181,0,.08)", borderRadius:24 }} />
-  <div className="diamond" style={{ width:300, height:300, right:150, top:"25%", background:"rgba(16,185,129,.04)", border:"1px solid rgba(16,185,129,.08)", borderRadius:16, animationDelay:"-2s" }} />
-  <div className="diamond" style={{ width:160, height:160, left:-40, bottom:"20%", background:"rgba(59,130,246,.04)", border:"1px solid rgba(59,130,246,.08)", borderRadius:10, animationDelay:"-4s" }} />
-  <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px)", backgroundSize:"40px 40px", pointerEvents:"none" }} />
+      {/* HERO */}
+      <section style={{
+        background: "linear-gradient(135deg,#0A1628 0%,#0d1f3c 55%,#0A1628 100%)",
+        padding: "84px 24px 104px",
+        position: "relative",
+        overflow: "hidden"
+      }}>
+        <div className="diamond" style={{ width:520, height:520, right:-140, top:"50%", background:"rgba(247,181,0,.04)", border:"1px solid rgba(247,181,0,.08)", borderRadius:24 }} />
+        <div className="diamond" style={{ width:300, height:300, right:150, top:"25%", background:"rgba(16,185,129,.04)", border:"1px solid rgba(16,185,129,.08)", borderRadius:16, animationDelay:"-2s" }} />
+        <div className="diamond" style={{ width:160, height:160, left:-40, bottom:"20%", background:"rgba(59,130,246,.04)", border:"1px solid rgba(59,130,246,.08)", borderRadius:10, animationDelay:"-4s" }} />
+        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px)", backgroundSize:"40px 40px", pointerEvents:"none" }} />
 
-  <div style={{ maxWidth:1200, margin:"0 auto", position:"relative", zIndex:10 }}>
-    {/* Fil d’Ariane */}
-    <div style={{ fontSize:13, color:"rgba(226,232,240,.35)", marginBottom:28, display:"flex", alignItems:"center", gap:8 }}>
-      <Link href="/" style={{ color:"rgba(226,232,240,.35)", textDecoration:"none" }}>Accueil</Link><span>›</span>
-      <Link href="/services" style={{ color:"rgba(226,232,240,.35)", textDecoration:"none" }}>Services</Link><span>›</span>
-      <span style={{ color:"#F7B500", fontWeight:600 }}>Nos Plateformes</span>
-    </div>
-
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:64, alignItems:"center" }}>
-      {/* Colonne texte */}
-      <div>
-        <div style={{ animation:"heroIn .8s .08s both", display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
-          <div style={{ width:58, height:58, borderRadius:16, background:"rgba(247,181,0,.12)", border:"1px solid rgba(247,181,0,.28)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <FaDesktop color="#F7B500" size={24} />
+        <div style={{ maxWidth:1200, margin:"0 auto", position:"relative", zIndex:10 }}>
+          <div style={{ fontSize:13, color:"rgba(226,232,240,.35)", marginBottom:28, display:"flex", alignItems:"center", gap:8 }}>
+            <Link href="/" style={{ color:"rgba(226,232,240,.35)", textDecoration:"none" }}>Accueil</Link><span>›</span>
+            <Link href="/services" style={{ color:"rgba(226,232,240,.35)", textDecoration:"none" }}>Services</Link><span>›</span>
+            <span style={{ color:"#F7B500", fontWeight:600 }}>Nos Plateformes</span>
           </div>
-        </div>
-        <h1 style={{ animation:"heroIn .8s .18s both", fontWeight:900, fontSize:"clamp(20px,3vw,50px)", lineHeight:1.04, color:"#F1F5F9", margin:"0 0 20px" }}>
-          Plateformes<br/><span style={{ color:"#F7B500" }}>personnalisées</span>
-        </h1>
- 
-        <p style={{ animation:"heroIn .8s .32s both", fontSize:16.5, color:"rgba(226,232,240,.65)", lineHeight:1.88, marginBottom:36, maxWidth:500 }}>
-          Nos plateformes regroupent des solutions digitales pratiques et modernes. Elles sont conçues pour être faciles à utiliser, performantes et adaptées aux besoins des utilisateurs. Chaque projet vise à offrir une expérience fluide et efficace
-        </p>
-        <div style={{ animation:"heroIn .8s .46s both", display:"flex", gap:12, flexWrap:"wrap", marginBottom:32 }}>
-          <Link href="/inscription">
-            <button style={{ background:"#F7B500", color:"#0A2540", padding:"14px 28px", borderRadius:12, fontWeight:800, fontSize:15, border:"none", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:8 }}>
-              Réserver une démo <FaArrowRight size={13} />
-            </button>
-          </Link>
-          <Link href="/contact">
-            <button style={{ background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.16)", color:"#E2E8F0", padding:"14px 26px", borderRadius:12, fontWeight:700, fontSize:14, cursor:"pointer" }}>
-              Pack à partir de 50 HT/mois
-            </button>
-          </Link>
-        </div>
-        <div style={{ animation:"heroIn .8s .6s both", display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
-          {[["7j","Essai gratuit"],["94%","Satisfaction"],["24/7","Support"]].map(([v,l]) => (
-            <div key={l} className="stat-card" style={{ textAlign:"center", padding:"16px 8px", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:14 }}>
-              <div style={{ fontSize:20, fontWeight:900, color:"#F7B500" }}>{v}</div>
-              <div style={{ fontSize:10, color:"rgba(226,232,240,.6)", fontWeight:600, marginTop:5 }}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Colonne code animé */}
-      <div style={{ animation:"heroIn .9s .28s both" }}>
-        <div style={{ background:"#0D1A2D", border:"1px solid rgba(255,255,255,.1)", borderRadius:18, overflow:"hidden", boxShadow:"0 32px 80px rgba(0,0,0,.4)" }}>
-          <div style={{ background:"#0A1929", padding:"12px 16px", display:"flex", alignItems:"center", gap:8, borderBottom:"1px solid rgba(255,255,255,.07)" }}>
-            {["#FF5F57","#FFBC2E","#28C840"].map(c => <div key={c} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
-            <span style={{ fontFamily:"'Fira Code',monospace", fontSize:11, color:"rgba(255,255,255,.3)" }}>dashboard.js — BEH Platform</span>
-          </div>
-          <div className="code-font" style={{ padding:18, height:248, overflow:"hidden", position:"relative" }}>
-            {CODE_LINES.slice(codeOffset, codeOffset+9).concat(CODE_LINES.slice(0, Math.max(0,9-(CODE_LINES.length-codeOffset)))).map((line,i) => (
-              <div key={i} style={{ marginBottom:2, opacity: i === 0 || i === 8 ? 0.3 : 1 }}>
-                <span style={{ color:"rgba(255,255,255,.18)", marginRight:14, display:"inline-block", minWidth:20, textAlign:"right" }}>{line.ln}</span>
-                {line.parts.map((p,pi) => <span key={pi} style={{ color: COLOR_MAP[p.t] || "#ABB2BF" }}>{p.v}</span>)}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:64, alignItems:"center" }}>
+            <div>
+              <div style={{ animation:"heroIn .8s .08s both", display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
+                <div style={{ width:58, height:58, borderRadius:16, background:"rgba(247,181,0,.12)", border:"1px solid rgba(247,181,0,.28)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <FaDesktop color="#F7B500" size={24} />
+                </div>
               </div>
-            ))}
-            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"linear-gradient(transparent,#0D1A2D)", pointerEvents:"none" }} />
+              <h1 style={{ animation:"heroIn .8s .18s both", fontWeight:900, fontSize:"clamp(20px,3vw,50px)", lineHeight:1.04, color:"#F1F5F9", margin:"0 0 20px" }}>
+                Plateformes<br/><span style={{ color:"#F7B500" }}>personnalisées</span>
+              </h1>
+              <p style={{ animation:"heroIn .8s .32s both", fontSize:16.5, color:"rgba(226,232,240,.65)", lineHeight:1.88, marginBottom:36, maxWidth:500 }}>
+                Nos plateformes regroupent des solutions digitales pratiques et modernes. Elles sont conçues pour être faciles à utiliser, performantes et adaptées aux besoins des utilisateurs.
+              </p>
+              <div style={{ animation:"heroIn .8s .46s both", display:"flex", gap:12, flexWrap:"wrap", marginBottom:32 }}>
+                <Link href="/inscription-startup">
+                  <button style={{ background:"#F7B500", color:"#0A2540", padding:"14px 28px", borderRadius:12, fontWeight:800, fontSize:15, border:"none", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:8 }}>
+                    Réserver une démo <FaArrowRight size={13} />
+                  </button>
+                </Link>
+                <Link href="/contact">
+                  <button style={{ background:"rgba(255,255,255,.07)", border:"1px solid rgba(255,255,255,.16)", color:"#E2E8F0", padding:"14px 26px", borderRadius:12, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+                    Pack à partir de 50 HT/mois
+                  </button>
+                </Link>
+              </div>
+              <div style={{ animation:"heroIn .8s .6s both", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+                {[["7j","Essai gratuit"],[loadingStats ? "..." : `${tauxSatisfaction}%`,"Satisfaction"],["24/7","Support"]].map(([v,l]) => (
+                  <div key={l} className="stat-card" style={{ textAlign:"center", padding:"16px 8px", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.1)", borderRadius:14 }}>
+                    <div className="stat-number" style={{ fontSize:20 }}>
+                      {loadingStats && l === "Satisfaction" ? <div className="stat-loading" style={{ width:20, height:20 }} /> : v}
+                    </div>
+                    <div style={{ fontSize:10, color:"rgba(226,232,240,.6)", fontWeight:600, marginTop:5 }}>{l}</div>
+                    {l === "Satisfaction" && !loadingStats && (
+                      <div style={{ display:"flex", justifyContent:"center", marginTop:4 }}>{renderStars()}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ animation:"heroIn .9s .28s both" }}>
+              <div style={{ background:"#0D1A2D", border:"1px solid rgba(255,255,255,.1)", borderRadius:18, overflow:"hidden", boxShadow:"0 32px 80px rgba(0,0,0,.4)" }}>
+                <div style={{ background:"#0A1929", padding:"12px 16px", display:"flex", alignItems:"center", gap:8, borderBottom:"1px solid rgba(255,255,255,.07)" }}>
+                  {["#FF5F57","#FFBC2E","#28C840"].map(c => <div key={c} style={{ width:10, height:10, borderRadius:"50%", background:c }} />)}
+                  <span style={{ fontFamily:"'Fira Code',monospace", fontSize:11, color:"rgba(255,255,255,.3)" }}>dashboard.js — BEH Platform</span>
+                </div>
+                <div className="code-font" style={{ padding:18, height:248, overflow:"hidden", position:"relative" }}>
+                  {CODE_LINES.slice(codeOffset, codeOffset+9).concat(CODE_LINES.slice(0, Math.max(0,9-(CODE_LINES.length-codeOffset)))).map((line,i) => (
+                    <div key={i} style={{ marginBottom:2, opacity: i === 0 || i === 8 ? 0.3 : 1 }}>
+                      <span style={{ color:"rgba(255,255,255,.18)", marginRight:14, display:"inline-block", minWidth:20, textAlign:"right" }}>{line.ln}</span>
+                      {line.parts.map((p,pi) => <span key={pi} style={{ color: COLOR_MAP[p.t] || "#ABB2BF" }}>{p.v}</span>)}
+                    </div>
+                  ))}
+                  <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"linear-gradient(transparent,#0D1A2D)", pointerEvents:"none" }} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
-    {/* ═══════════════════════════════════════════════════════════════════════
-    NOS SERVICES - fond #F8FAFC + sous-titre (version modifiée)
-═══════════════════════════════════════════════════════════════════════ */}
-<section style={{ background:"#F8FAFC", padding:"96px 24px" }}>
-  <div style={{ maxWidth:1200, margin:"0 auto" }}>
-    <FadeUp>
-      <div style={{ textAlign:"center", marginBottom:64 }}>
-        <h2 style={{ fontWeight:900, fontSize:"clamp(28px,4vw,42px)", color:"#0A2540", lineHeight:1.15, marginBottom:16 }}>
-          Nos <span style={{ color:"#F7B500" }}>services</span>
-        </h2>
-        {/* Nouveau sous‑titre avec animation, blanc et gras */}
-    <p
-  style={{ animation: "heroIn .8s .32s both" }}
-  className="text-base font-normal text-gray-900 leading-relaxed tracking-tight mb-9 max-w-[720px] mx-auto text-center"
->
-  Des solutions digitales performantes, intuitives et parfaitement adaptées à vos besoins
-</p>
-      </div>
-    </FadeUp>
-
-    {/* Cartes des services (inchangées) */}
-    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:28 }}>
-      {[
-        { icon:<FaDesktop size={32}/>, color:"#F7B500", bg:"#FEF3C7", title:"Développement Web", desc:"Des applications web pour les entreprises." },
-        { icon:<FaMobileAlt size={32}/>, color:"#3B82F6", bg:"#DBEAFE", title:"Applications Mobiles", desc:"Des applications mobiles incluses sur tous les supports." },
-        { icon:<FaCogs size={32}/>, color:"#10B981", bg:"#D1FAE5", title:"Solutions Personnalisées", desc:"Des solutions sur mesure pour répondre à vos besoins spécifiques." },
-      ].map((card,i)=>(
-        <ScaleIn key={i} delay={i*.12}>
-          <div className="svc-card">
-            <div style={{ width:76, height:76, borderRadius:"50%", background:card.bg, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px", color:card.color }}>
-              <span className="svc-icon">{card.icon}</span>
+      {/* NOS SERVICES */}
+      <section style={{ background:"#F8FAFC", padding:"96px 24px" }}>
+        <div style={{ maxWidth:1200, margin:"0 auto" }}>
+          <FadeUp>
+            <div style={{ textAlign:"center", marginBottom:64 }}>
+              <h2 style={{ fontWeight:900, fontSize:"clamp(28px,4vw,42px)", color:"#0A2540", lineHeight:1.15, marginBottom:16 }}>
+                Nos <span style={{ color:"#F7B500" }}>services</span>
+              </h2>
+              <p style={{ fontSize:16, color:"#64748B", maxWidth:720, margin:"0 auto", lineHeight:1.7 }}>
+                Des solutions digitales performantes, intuitives et parfaitement adaptées à vos besoins
+              </p>
             </div>
-            <h3 style={{ fontSize:22, fontWeight:800, color:"#0A2540", marginBottom:14 }}>{card.title}</h3>
-            <p style={{ color:"#6B7280", fontSize:14, lineHeight:1.7 }}>{card.desc}</p>
+          </FadeUp>
+
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:28 }}>
+            {[
+              { icon:<FaDesktop size={32}/>, color:"#F7B500", bg:"#FEF3C7", title:"Développement Web", desc:"Des applications web pour les entreprises." },
+              { icon:<FaMobileAlt size={32}/>, color:"#3B82F6", bg:"#DBEAFE", title:"Applications Mobiles", desc:"Des applications mobiles incluses sur tous les supports." },
+              { icon:<FaCogs size={32}/>, color:"#10B981", bg:"#D1FAE5", title:"Solutions Personnalisées", desc:"Des solutions sur mesure pour répondre à vos besoins spécifiques." },
+            ].map((card,i)=>(
+              <ScaleIn key={i} delay={i*.12}>
+                <div className="svc-card">
+                  <div style={{ width:76, height:76, borderRadius:"50%", background:card.bg, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px", color:card.color }}>
+                    <span className="svc-icon">{card.icon}</span>
+                  </div>
+                  <h3 style={{ fontSize:22, fontWeight:800, color:"#0A2540", marginBottom:14 }}>{card.title}</h3>
+                  <p style={{ color:"#6B7280", fontSize:14, lineHeight:1.7 }}>{card.desc}</p>
+                </div>
+              </ScaleIn>
+            ))}
           </div>
-        </ScaleIn>
-      ))}
-    </div>
-  </div>
-</section>
-      {/* ═══════════════════════════════════════════════════════════════════════
-          NOS PLATEFORMES (ERP / CRM / PROJETS)
-      ════════════════════════════════════════════════════════════════════════ */}
+        </div>
+      </section>
+
+      {/* NOS PLATEFORMES */}
       <section style={{ background:"#fff", padding:"80px 0 0" }}>
         <FadeUp>
           <div style={{ textAlign:"center", padding:"0 24px 52px" }}>
@@ -593,9 +642,7 @@ export default function NosPlateformesPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          POURQUOI NOUS CHOISIR ?
-      ════════════════════════════════════════════════════════════════════════ */}
+      {/* POURQUOI NOUS CHOISIR */}
       <section style={{ background:"#0A2540", padding:"100px 24px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(247,181,0,.035) 1px,transparent 1px)", backgroundSize:"36px 36px", pointerEvents:"none" }}/>
         <div className="diamond" style={{ width:400, height:400, right:-80, top:"50%", background:"rgba(247,181,0,.04)", border:"1px solid rgba(247,181,0,.07)", borderRadius:20, animationDelay:"-1s" }}/>
@@ -612,10 +659,10 @@ export default function NosPlateformesPage() {
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:40 }}>
             {[
-              { icon:<FaUserTie size={24}/>, color:"#F7B500", bg:"rgba(247,181,0,.15)", title:"Équipes qualifiées et certifiées", desc:"Une équipe expérimentée dans chaque domaine métier, certifiée et réactive. Chaque projet est suivi par un chef de projet dédié et un développeur senior.",  delay:0 },
-              { icon:<FaChartBar size={24}/>, color:"#3B82F6", bg:"rgba(59,130,246,.15)", title:"Études personnalisées et indépendantes", desc:"Des études indépendantes basées sur des données terrain précises. Aucune solution standard : nous partons toujours de votre contexte spécifique.", delay:.08 },
-              { icon:<FaShieldAlt size={24}/>, color:"#10B981", bg:"rgba(16,185,129,.15)", title:"Audit rigoureux à chaque phase", desc:"Un audit rigoureux à chaque phase : conception, déploiement et maintenance. Sécurité, performance et conformité sont nos priorités absolues.",  delay:.16 },
-              { icon:<FaHeadset size={24}/>, color:"#8B5CF6", bg:"rgba(139,92,246,.15)", title:"Support et communication dédiés", desc:"Échangez avec nos équipes en temps réel via un canal dédié. Ticketing, chat et suivi de projet centralisés dans votre espace client.",delay:.24 },
+              { icon:<FaUserTie size={24}/>, color:"#F7B500", bg:"rgba(247,181,0,.15)", title:"Équipes qualifiées et certifiées", desc:"Une équipe expérimentée dans chaque domaine métier, certifiée et réactive.", stat:"42+", statLbl:"experts", delay:0 },
+              { icon:<FaChartBar size={24}/>, color:"#3B82F6", bg:"rgba(59,130,246,.15)", title:"Études personnalisées et indépendantes", desc:"Des études indépendantes basées sur des données terrain précises.", stat:"98%", statLbl:"clients satisfaits", delay:.08 },
+              { icon:<FaShieldAlt size={24}/>, color:"#10B981", bg:"rgba(16,185,129,.15)", title:"Audit rigoureux à chaque phase", desc:"Un audit rigoureux à chaque phase : conception, déploiement et maintenance.", stat:"100%", statLbl:"conformité", delay:.16 },
+              { icon:<FaHeadset size={24}/>, color:"#8B5CF6", bg:"rgba(139,92,246,.15)", title:"Support et communication dédiés", desc:"Échangez avec nos équipes en temps réel via un canal dédié.", stat:"24/7", statLbl:"support", delay:.24 },
             ].map((item,i)=>(
               <SlideIn key={i} delay={item.delay} from={i%2===0?"left":"right"}>
                 <div className="why-card" style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)" }}>
@@ -623,7 +670,7 @@ export default function NosPlateformesPage() {
                     {item.icon}
                   </div>
                   <div style={{ flex:1 }}>
-                    <h3 style={{ fontWeight:800, fontSize:17, color:"#fff", marginBottom:10, lineHeight:1.25 }}>{item.title}</h3>
+                    <h3 style={{ fontWeight:800, fontSize:17, color:"#fff", marginBottom:10 }}>{item.title}</h3>
                     <p style={{ color:"rgba(255,255,255,.5)", fontSize:13.5, lineHeight:1.7, marginBottom:14 }}>{item.desc}</p>
                     <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:`${item.color}15`, border:`1px solid ${item.color}30`, borderRadius:99, padding:"5px 14px" }}>
                       <span style={{ fontWeight:900, fontSize:17, color:item.color }}>{item.stat}</span>
@@ -637,9 +684,7 @@ export default function NosPlateformesPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          COMMENT ÇA MARCHE ?
-      ════════════════════════════════════════════════════════════════════════ */}
+      {/* COMMENT ÇA MARCHE */}
       <section style={{ background:"linear-gradient(180deg,#F8FAFC 0%,#fff 100%)", padding:"100px 24px" }}>
         <div style={{ maxWidth:1200, margin:"0 auto" }}>
           <FadeUp>
@@ -654,7 +699,7 @@ export default function NosPlateformesPage() {
             </FadeUp>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:20, position:"relative", zIndex:1 }}>
               {[
-                { step:1, icon:"", color:"#F7B500", title:"Demande initiale", desc:"Remplissez notre formulaire de demande de devis en quelques minutes avec vos besoins.", delay:0 },
+                { step:1, icon:"", color:"#F7B500", title:"Demande initiale", desc:"Remplissez notre formulaire de demande de devis en quelques minutes.", delay:0 },
                 { step:2, icon:"", color:"#3B82F6", title:"Analyse par notre équipe", desc:"Nos experts étudient votre projet, vos contraintes et vous proposent une architecture adaptée.", delay:.1 },
                 { step:3, icon:"", color:"#10B981", title:"Proposition & devis", desc:"Vous recevez un plan détaillé, les prévisionnels de délais et un devis transparent.", delay:.2 },
                 { step:4, icon:"", color:"#0A2540", title:"Lancement du projet", desc:"Après validation, nous lançons votre projet en mode agile avec des livraisons régulières.", delay:.3 },
@@ -668,8 +713,7 @@ export default function NosPlateformesPage() {
                     <div style={{ width:52, height:52, background:s.step===1?"#F7B500":s.step===2?"#EFF6FF":s.step===3?"#ECFDF5":"#0A2540", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:`3px solid ${s.color}`, boxShadow:`0 0 0 4px ${s.color}18` }}>
                       <span style={{ fontWeight:900, fontSize:18, color:s.step===1?"#0A2540":s.step===4?"#F7B500":s.color }}>{s.step}</span>
                     </div>
-                    <div style={{ fontSize:34, marginBottom:14 }}>{s.icon}</div>
-                    <h3 style={{ fontWeight:800, fontSize:16, color:"#0A2540", marginBottom:10, lineHeight:1.3 }}>{s.title}</h3>
+                    <h3 style={{ fontWeight:800, fontSize:16, color:"#0A2540", marginBottom:10 }}>{s.title}</h3>
                     <p style={{ color:"#6B7280", fontSize:13, lineHeight:1.65 }}>{s.desc}</p>
                     {activeStep === s.step && (
                       <div style={{ marginTop:16, background:`${s.color}10`, border:`1px solid ${s.color}30`, borderRadius:10, padding:"10px 12px", fontSize:12, color:s.color, fontWeight:600 }}>
@@ -687,16 +731,13 @@ export default function NosPlateformesPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          AUTRES SERVICES
-      ════════════════════════════════════════════════════════════════════════ */}
+      {/* AUTRES SERVICES */}
       <section style={{ background:"#fff", padding:"0 24px 80px" }}>
         <div style={{ maxWidth:1200, margin:"0 auto" }}>
           <FadeUp>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, paddingTop:60 }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <div className="acc-bar" style={{ height:28 }}/>
-             
               </div>
               <Link href="/services" style={{ display:"flex", alignItems:"center", gap:6, fontWeight:700, fontSize:13.5, color:"#F7B500", textDecoration:"none" }}>
                 <FaArrowLeft size={10}/> Tous les services
@@ -704,9 +745,9 @@ export default function NosPlateformesPage() {
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:20 }}>
               {[
-                { slug:"audit-sur-site", icon:<FaSearchPlus/>, color:"#3B82F6", title:"Audit sur site", badge:"Terrain", desc:"Diagnostic complet de vos processus directement sur site par nos experts terrain." },
+                { slug:"audit-sur-site", icon:<FaSearchPlus/>, color:"#3B82F6", title:"Audit sur site", badge:"Terrain", desc:"Diagnostic complet de vos processus directement sur site." },
                 { slug:"consulting",     icon:<FaChartLine/>,   color:"#8B5CF6", title:"Consulting",    badge:"Stratégie", desc:"Structurez, optimisez et accélérez la croissance de votre entreprise." },
-                { slug:"formations",     icon:<FaGraduationCap/>, color:"#F7B500", title:"Formations", badge:"Certif.", desc:"Montez en compétence avec nos formations certifiantes et podcasts exclusifs." },
+                { slug:"formations",     icon:<FaGraduationCap/>, color:"#F7B500", title:"Formations", badge:"Certif.", desc:"Montez en compétence avec nos formations certifiantes." },
               ].map((s,i)=>(
                 <Link key={i} href={`/services/${s.slug}`} className="oc">
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
@@ -723,10 +764,9 @@ export default function NosPlateformesPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <footer style={{ background:"#0A2540", color:"#fff", padding:"32px", textAlign:"center", borderTop:"1px solid rgba(255,255,255,.08)" }}>
         <p style={{ margin:"0 0 6px", fontSize:13, color:"rgba(255,255,255,.65)" }}>© 2026 Business Expert Hub</p>
-     
       </footer>
     </div>
   );

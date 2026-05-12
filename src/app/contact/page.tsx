@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   FaEnvelope, FaPhone, FaMapMarkerAlt, FaClock,
   FaChevronDown, FaGlobe, FaCheck, FaPaperPlane,
-  FaCheckCircle, FaArrowRight,
+  FaCheckCircle, FaArrowRight, FaFacebookF, FaInstagram, FaLinkedinIn,
 } from "react-icons/fa";
 
 // ==================== TRADUCTIONS ====================
@@ -29,6 +29,7 @@ const T: Record<Lang, Record<string, any>> = {
     form_prenom: "Prénom",
     form_email: "Adresse e-mail",
     form_phone: "Numéro de téléphone",
+    form_client_type: "Type de client",
     form_subject: "Sujet de votre demande",
     form_message: "Message",
     form_message_placeholder: "Décrivez votre projet ou votre demande...",
@@ -36,33 +37,38 @@ const T: Record<Lang, Record<string, any>> = {
     form_sending: "Envoi en cours...",
     form_success: "Message envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.",
     form_error: "Une erreur est survenue. Veuillez réessayer.",
+    client_type_options: [
+      { value: "", label: "— Choisissez un type —" },
+      { value: "startup", label: "Startup" },
+      { value: "expert", label: "Expert" },
+      { value: "autre", label: "Autre" },
+    ],
     subject_options: [
       { value: "", label: "— Sélectionnez un sujet —" },
-      { value: "diagnostic_gratuit", label: "🔍 Diagnostic gratuit" },
-      { value: "audit_sur_site", label: "📋 Audit sur site" },
-      { value: "demo_plateforme", label: "💻 Démo plateforme" },
-      { value: "conseil", label: "💡 Conseil" },
-      { value: "reclamation", label: "⚠️ Réclamation" },
-      { value: "formation", label: "🎓 Formation" },
-      { value: "contact_expert", label: "⭐ Contact avec un expert" },
+      { value: "diagnostic_gratuit", label: "Diagnostic gratuit" },
+      { value: "audit_sur_site", label: "Audit sur site" },
+      { value: "demo_plateforme", label: "Démo plateforme" },
+      { value: "conseil", label: "Conseil" },
+      { value: "reclamation", label: "Réclamation" },
+      { value: "formation", label: "Formation" },
+      { value: "contact_expert", label: "Contact avec un expert" },
     ],
     info_title: "Informations de contact",
     info_email: "contact@beh.com",
-    info_phone: "+216 00 000 000",
+    info_phone: "+216 29 524 360",
     info_address: "Tunis, Tunisie",
     info_hours: "Lun - Ven : 9h00 - 18h00",
     cta_title: "Vous êtes expert ou startup ?",
     cta_desc: "Rejoignez notre écosystème et bénéficiez d'un accompagnement sur mesure.",
     cta_btn_expert: "Devenir expert",
     cta_btn_startup: "Inscrire ma startup",
-    footer_desc: "Plateforme de mise en relation entre startups ambitieuses et experts certifiés.",
-    footer_nav: "Navigation",
-    footer_services: "Services",
-    footer_about: "À propos",
-    footer_legal: "Mentions légales",
-    footer_privacy: "Confidentialité",
-    footer_cgu: "CGU",
-    footer_copy: "© 2026 Business Expert Hub · Tous droits réservés",
+    foot_desc: "Plateforme de mise en relation entre startups ambitieuses et experts certifiés.",
+    foot_nav: "Navigation",
+    foot_services: "Services",
+    foot_contact: "Contact",
+    foot_legal: "Mentions légales",
+    foot_privacy: "Confidentialité",
+    foot_copy: "© 2026 Business Expert Hub · Tous droits réservés",
   },
   en: {
     nav_home: "Home",
@@ -80,6 +86,7 @@ const T: Record<Lang, Record<string, any>> = {
     form_prenom: "First name",
     form_email: "Email address",
     form_phone: "Phone number",
+    form_client_type: "Client type",
     form_subject: "Subject of your request",
     form_message: "Message",
     form_message_placeholder: "Describe your project or request...",
@@ -87,33 +94,38 @@ const T: Record<Lang, Record<string, any>> = {
     form_sending: "Sending...",
     form_success: "Message sent successfully! We will get back to you shortly.",
     form_error: "An error occurred. Please try again.",
+    client_type_options: [
+      { value: "", label: "— Select a type —" },
+      { value: "startup", label: "Startup" },
+      { value: "expert", label: "Expert" },
+      { value: "autre", label: "Other" },
+    ],
     subject_options: [
       { value: "", label: "— Select a subject —" },
-      { value: "diagnostic_gratuit", label: "🔍 Free diagnostic" },
-      { value: "audit_sur_site", label: "📋 On-site audit" },
-      { value: "demo_plateforme", label: "💻 Platform demo" },
-      { value: "conseil", label: "💡 Advice" },
-      { value: "reclamation", label: "⚠️ Complaint" },
-      { value: "formation", label: "🎓 Training" },
-      { value: "contact_expert", label: "⭐ Contact an expert" },
+      { value: "diagnostic_gratuit", label: "Free diagnostic" },
+      { value: "audit_sur_site", label: "On-site audit" },
+      { value: "demo_plateforme", label: "Platform demo" },
+      { value: "conseil", label: "Advice" },
+      { value: "reclamation", label: "Complaint" },
+      { value: "formation", label: "Training" },
+      { value: "contact_expert", label: "Contact an expert" },
     ],
     info_title: "Contact information",
     info_email: "contact@beh.com",
-    info_phone: "+216 00 000 000",
+    info_phone: "+216 29 524 360",
     info_address: "Tunis, Tunisia",
     info_hours: "Mon - Fri: 9:00 AM - 6:00 PM",
     cta_title: "Are you an expert or a startup?",
     cta_desc: "Join our ecosystem and benefit from personalized support.",
     cta_btn_expert: "Become an expert",
     cta_btn_startup: "Register my startup",
-    footer_desc: "Matching platform connecting ambitious startups with certified experts.",
-    footer_nav: "Navigation",
-    footer_services: "Services",
-    footer_about: "About",
-    footer_legal: "Legal notice",
-    footer_privacy: "Privacy policy",
-    footer_cgu: "Terms of use",
-    footer_copy: "© 2026 Business Expert Hub · All rights reserved",
+    foot_desc: "Matching platform connecting ambitious startups with certified experts.",
+    foot_nav: "Navigation",
+    foot_services: "Services",
+    foot_contact: "Contact",
+    foot_legal: "Legal notice",
+    foot_privacy: "Privacy policy",
+    foot_copy: "© 2026 Business Expert Hub · All rights reserved",
   },
 };
 
@@ -208,17 +220,18 @@ function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => voi
 const SERVICES = [
   { label: "Consulting", slug: "consulting" },
   { label: "Audit sur site", slug: "audit-sur-site" },
-  { label: "Accompagnement", slug: "accompagnement" },
+  { label: "Nos Plateformes", slug: "nos-plateformes" },
   { label: "Formations", slug: "formations" },
 ];
 
-// Interface du config sans réseaux sociaux
 interface IContactConfig {
   email?: string;
   telephone?: string;
   adresse?: string;
   horaires?: string;
   description_hero?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -234,6 +247,7 @@ export default function ContactPage() {
     prenom: "",
     email: "",
     phone: "",
+    client_type: "",
     subject: "",
     message: "",
   });
@@ -280,11 +294,20 @@ export default function ContactPage() {
         body: JSON.stringify({
           ...formData,
           name: `${formData.prenom} ${formData.nom}`,
+          client_type: formData.client_type,
         }),
       });
       if (response.ok) {
         setStatus("success");
-        setFormData({ nom: "", prenom: "", email: "", phone: "", subject: "", message: "" });
+        setFormData({
+          nom: "",
+          prenom: "",
+          email: "",
+          phone: "",
+          client_type: "",
+          subject: "",
+          message: "",
+        });
         setTimeout(() => setStatus("idle"), 5000);
       } else {
         setStatus("error");
@@ -301,6 +324,8 @@ export default function ContactPage() {
   const displayAddress = contactConfig?.adresse || tr.info_address;
   const displayHours = contactConfig?.horaires || tr.info_hours;
   const heroDescription = contactConfig?.description_hero || tr.hero_desc;
+  const displayLatitude = contactConfig?.latitude || "36.8065";
+  const displayLongitude = contactConfig?.longitude || "10.1815";
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#F8FAFC", minHeight: "100vh" }}>
@@ -437,6 +462,19 @@ export default function ContactPage() {
         .field-icon-wrap .form-select {
           padding-left: 38px;
         }
+
+        .map-container {
+          margin-top: 24px;
+          border-radius: 20px;
+          overflow: hidden;
+          border: 1px solid #E5E7EB;
+          box-shadow: 0 4px 16px rgba(10,37,64,.08);
+          transition: transform .3s, box-shadow .3s;
+        }
+        .map-container:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 12px 32px rgba(10,37,64,.12);
+        }
       `}</style>
 
       {/* HEADER */}
@@ -494,7 +532,7 @@ export default function ContactPage() {
       {/* MAIN CONTENT */}
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "60px 28px 80px", display: "grid", gridTemplateColumns: "1fr 380px", gap: 48 }}>
 
-        {/* FORMULAIRE */}
+        {/* FORMULAIRE + CARTE */}
         <div>
           <div style={{ background: "#fff", borderRadius: 24, border: "1px solid #E5E7EB", padding: "32px 36px", boxShadow: "0 4px 20px rgba(10,37,64,.04)" }}>
             <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 800, color: "#0A2540", marginBottom: 8 }}>{tr.form_title}</h2>
@@ -581,31 +619,55 @@ export default function ContactPage() {
                 </div>
               </div>
 
+              {/* TYPE DE CLIENT - SANS ICÔNES */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 6, display: "block" }}>
+                  {tr.form_client_type} *
+                </label>
+                <select
+                  name="client_type"
+                  value={formData.client_type}
+                  onChange={handleChange}
+                  required
+                  className="form-select"
+                  style={{ color: formData.client_type === "" ? "#B0B8C4" : "#374151" }}
+                >
+                  {tr.client_type_options.map((opt: { value: string; label: string }) => (
+                    <option
+                      key={opt.value}
+                      value={opt.value}
+                      disabled={opt.value === ""}
+                      style={{ color: opt.value === "" ? "#B0B8C4" : "#374151" }}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ marginBottom: 18 }}>
                 <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 6, display: "block" }}>
                   {tr.form_subject} *
                 </label>
-                <div className="select-wrapper">
-                  <select
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    required
-                    className="form-select"
-                    style={{ color: formData.subject === "" ? "#B0B8C4" : "#374151" }}
-                  >
-                    {tr.subject_options.map((opt: { value: string; label: string }) => (
-                      <option
-                        key={opt.value}
-                        value={opt.value}
-                        disabled={opt.value === ""}
-                        style={{ color: opt.value === "" ? "#B0B8C4" : "#374151" }}
-                      >
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleChange}
+                  required
+                  className="form-select"
+                  style={{ color: formData.subject === "" ? "#B0B8C4" : "#374151" }}
+                >
+                  {tr.subject_options.map((opt: { value: string; label: string }) => (
+                    <option
+                      key={opt.value}
+                      value={opt.value}
+                      disabled={opt.value === ""}
+                      style={{ color: opt.value === "" ? "#B0B8C4" : "#374151" }}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div style={{ marginBottom: 24 }}>
@@ -634,10 +696,24 @@ export default function ContactPage() {
                 }
               </button>
             </form>
+
+            {/* CARTE GOOGLE MAPS */}
+            <div className="map-container">
+              <iframe
+                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${displayLatitude},${displayLongitude}&zoom=15`}
+                width="100%"
+                height="280"
+                style={{ border: 0, display: "block" }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Google Maps - Business Expert Hub"
+              />
+            </div>
           </div>
         </div>
 
-        {/* SIDEBAR INFOS (sans réseaux sociaux) */}
+        {/* SIDEBAR INFOS */}
         <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="info-card">
             <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(247,181,0,.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 20, color: "#F7B500" }}>
@@ -678,18 +754,6 @@ export default function ContactPage() {
             <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0A2540", marginBottom: 6 }}>Horaires</h3>
             <p style={{ color: "#6B7280", fontSize: 14, margin: 0 }}>{displayHours}</p>
           </div>
-
-          {/* Encart info rapide */}
-          <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3a6e)", borderRadius: 20, padding: "20px", border: "1px solid rgba(247,181,0,.2)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#F7B500", marginBottom: 10, textTransform: "uppercase", letterSpacing: "1px" }}>
-              ⚡ Réponse rapide
-            </div>
-            <p style={{ color: "rgba(255,255,255,.7)", fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-              {lang === "fr"
-                ? "Pour un diagnostic gratuit ou une démo, notre équipe vous répond sous 24h."
-                : "For a free diagnostic or a demo, our team responds within 24 hours."}
-            </p>
-          </div>
         </aside>
       </main>
 
@@ -704,12 +768,12 @@ export default function ContactPage() {
             {tr.cta_desc}
           </p>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/inscription?type=expert">
+            <Link href="/inscription-expert">
               <button className="btn-primary" style={{ background: "#F7B500", color: "#0A2540" }}>
                 {tr.cta_btn_expert} <FaArrowRight size={12} />
               </button>
             </Link>
-            <Link href="/inscription?type=startup">
+            <Link href="/inscription-startup">
               <button className="btn-outline" style={{ borderColor: "#F7B500", color: "#F7B500" }}>
                 {tr.cta_btn_startup} <FaArrowRight size={12} />
               </button>
@@ -718,65 +782,120 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{ background: "#05101E", padding: "48px 28px 24px" }}>
+      {/* ══ FOOTER — VERSION RÉDUITE (comme page d'accueil) ══ */}
+      <footer style={{ background: "#05101E", color: "#fff", padding: "24px 28px 0" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 40, marginBottom: 40 }}>
+
+          {/* Ligne principale — une seule rangée compacte */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1.2fr", gap: 20, paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+
+            {/* Marque */}
             <div>
-              <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 16 }}>
-                <div style={{ width: 36, height: 36, background: "#0A2540", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Arial,sans-serif", fontWeight: 900, fontSize: 12, color: "#F7B500" }}>BEH</div>
-                <span style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 800, fontSize: 15, color: "#fff" }}>Business <span style={{ color: "#F7B500" }}>Expert</span> Hub</span>
+              <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", marginBottom: 10 }}>
+                <svg width="24" height="24" viewBox="0 0 46 46" fill="none">
+                  <rect width="46" height="46" rx="10" fill="#0A2540"/>
+                  <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="#F7B500" fontSize="12" fontWeight="900" fontFamily="Arial">BEH</text>
+                </svg>
+                <span style={{ fontWeight: 700, fontSize: 13, color: "#fff" }}>Business <span style={{ color: "#F7B500" }}>Expert</span> Hub</span>
               </Link>
-              <p style={{ color: "rgba(255,255,255,.3)", fontSize: 13, lineHeight: 1.78 }}>{tr.footer_desc}</p>
-            </div>
-            {[
-              {
-                title: tr.footer_nav,
-                links: [
-                  [tr.nav_home, "/"],
-                  [tr.nav_about, "/a-propos"],
-                  [tr.nav_services, "/services"],
-                  [tr.nav_experts, "/experts"],
-                  [tr.nav_blog, "/blog"],
-                  [tr.nav_contact, "/contact"],
-                ],
-              },
-              {
-                title: tr.footer_services,
-                links: SERVICES.map(s => [s.label, `/services/${s.slug}`]),
-              },
-              {
-                title: tr.footer_about,
-                links: [
-                  ["Qui sommes-nous ?", "/a-propos"],
-                  ["Notre mission", "/a-propos#mission"],
-                  ["Carrières", "#"],
-                  ["Presse", "#"],
-                ],
-              },
-            ].map(col => (
-              <div key={col.title}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.28)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 18 }}>{col.title}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                  {col.links.map(([label, href]) => (
-                    <Link key={label} href={href} style={{ color: "rgba(255,255,255,.38)", fontSize: 13.5, textDecoration: "none", transition: "color .2s" }}
-                      onMouseEnter={e => (e.currentTarget.style.color = "#F7B500")}
-                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,.38)")}>
-                      {label}
-                    </Link>
-                  ))}
-                </div>
+              <p style={{ color: "rgba(255,255,255,.22)", fontSize: 11, lineHeight: 1.6, marginBottom: 12, maxWidth: 220 }}>{tr.foot_desc}</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[
+                  { Icon: FaFacebookF, href: "https://facebook.com", bg: "#1877F2" },
+                  { Icon: FaInstagram, href: "https://instagram.com", bg: "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" },
+                  { Icon: FaLinkedinIn, href: "https://linkedin.com", bg: "#0A66C2" }
+                ].map((s, i) => (
+                  <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
+                    style={{ width: 28, height: 28, borderRadius: 7, background: s.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", transition: "all .2s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 6px 16px rgba(0,0,0,.3)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "none"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; }}>
+                    <s.Icon style={{ fontSize: 10 }} />
+                  </a>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Navigation */}
+            <div>
+              <h4 style={{ color: "rgba(255,255,255,.3)", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>{tr.foot_nav}</h4>
+              <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                {[
+                  { l: tr.nav_home, h: "/" },
+                  { l: tr.nav_about, h: "/a-propos" },
+                  { l: tr.nav_services, h: "/services" },
+                  { l: tr.nav_experts, h: "/experts" },
+                  { l: tr.nav_blog, h: "/blog" },
+                  { l: tr.nav_contact, h: "/contact" }
+                ].map(({ l, h }) => (
+                  <li key={l}>
+                    <Link href={h}
+                      style={{ color: "rgba(255,255,255,.25)", fontSize: 11.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color .2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.25)"}>
+                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(247,181,0,.3)", flexShrink: 0 }} />{l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Services */}
+            <div>
+              <h4 style={{ color: "rgba(255,255,255,.3)", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>{tr.foot_services}</h4>
+              <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                {SERVICES.map(s => (
+                  <li key={s.slug}>
+                    <Link href={`/services/${s.slug}`}
+                      style={{ color: "rgba(255,255,255,.25)", fontSize: 11.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color .2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.25)"}>
+                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(247,181,0,.3)", flexShrink: 0 }} />{s.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 style={{ color: "rgba(255,255,255,.3)", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>{tr.foot_contact}</h4>
+              <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+                {[
+                  { Icon: FaEnvelope, text: displayEmail, href: `mailto:${displayEmail}` },
+                  { Icon: FaPhone, text: displayPhone, href: `tel:${displayPhone.replace(/\s/g, "")}` },
+                  { Icon: FaMapMarkerAlt, text: displayAddress, href: "#" }
+                ].map((item, i) => (
+                  <li key={i}>
+                    <a href={item.href}
+                      style={{ color: "rgba(255,255,255,.25)", fontSize: 11.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 7, transition: "color .2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.25)"}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, background: "rgba(255,255,255,.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 10 }}>
+                        <item.Icon />
+                      </div>
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,.06)", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-            <p style={{ color: "rgba(255,255,255,.2)", fontSize: 13 }}>{tr.footer_copy}</p>
-            <div style={{ display: "flex", gap: 22 }}>
-              {[tr.footer_legal, tr.footer_privacy, tr.footer_cgu].map((item: string) => (
-                <Link key={item} href="#" style={{ color: "rgba(255,255,255,.2)", fontSize: 12.5, textDecoration: "none" }}>{item}</Link>
+
+          {/* Bas du footer — copyright minimaliste */}
+          <div style={{ padding: "10px 0 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+            <p style={{ margin: 0, color: "rgba(255,255,255,.14)", fontSize: 10 }}>{tr.foot_copy}</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              {[tr.foot_legal, tr.foot_privacy].map(l => (
+                <Link key={l} href="#"
+                  style={{ color: "rgba(255,255,255,.14)", fontSize: 10, textDecoration: "none", transition: "color .2s" }}
+                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.14)"}>
+                  {l}
+                </Link>
               ))}
             </div>
           </div>
+
         </div>
       </footer>
     </div>

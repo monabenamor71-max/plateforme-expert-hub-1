@@ -33,6 +33,10 @@ export class AuthService {
     return this.userRepo.findOne({ where: { id } });
   }
 
+  async findUserByEmail(email: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { email } });
+  }
+
   async registerExpert(
     dto: RegisterExpertDto,
     photoPath?: string,
@@ -42,17 +46,13 @@ export class AuthService {
     const { email, password, nom, prenom, telephone, domaine, annee_debut_experience, localisation, description } = dto;
     this.logger.log(`Tentative d'inscription expert: ${email}`);
 
-    // Vérifier si l'email existe déjà
     const existing = await this.userRepo.findOne({ where: { email } });
     if (existing) {
       this.logger.warn(`Tentative d'inscription avec email déjà existant: ${email}`);
       throw new BadRequestException('Email déjà utilisé');
     }
 
-    // Hachage du mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Création de l'utilisateur
     const user = this.userRepo.create({
       email,
       password: hashedPassword,
@@ -70,21 +70,18 @@ export class AuthService {
       throw new BadRequestException('Erreur lors de la création de l’utilisateur');
     }
 
-    // Création du profil expert
     const expert = this.expertRepo.create({
       user_id: savedUser.id,
       domaine: domaine || '',
-      annee_debut_experience: annee_debut_experience, // déjà un nombre grâce au DTO
+      annee_debut_experience: annee_debut_experience,
       localisation: localisation || '',
       description: description || '',
       statut: 'en_attente',
       cv: this.extractFileName(cvPath),
       portfolio: this.extractFileName(portfolioPath),
-      // photo de l'expert ? elle est déjà dans user.photo (mais on peut aussi la mettre dans expert.photo si besoin)
     });
     await this.expertRepo.save(expert);
 
-    // Génération du token de confirmation
     const confirmationToken = this.jwtService.sign(
       { id: savedUser.id, email },
       { expiresIn: '24h' }
@@ -93,7 +90,6 @@ export class AuthService {
     savedUser.email_verified = false;
     await this.userRepo.save(savedUser);
 
-    // Envoi des emails
     await this.mailService.sendConfirmationEmail(email, confirmationToken);
     await this.mailService.sendAdminNotification(`${prenom} ${nom}`, 'expert', email);
 
@@ -178,7 +174,12 @@ export class AuthService {
       throw new BadRequestException('Veuillez confirmer votre adresse email avant de vous connecter');
     }
 
-    const token = this.jwtService.sign({ id: user.id, email: user.email, role: user.role });
+    // ✅ CORRECTION : ajout de l'expiration du token (1 heure ici)
+    const token = this.jwtService.sign(
+      { id: user.id, email: user.email, role: user.role },
+      { expiresIn: '1h' }   // ← durée de validité du token de connexion
+    );
+
     this.logger.log(`Connexion réussie: ${email} (rôle ${user.role})`);
     return {
       access_token: token,
@@ -269,7 +270,6 @@ export class AuthService {
     return { message: 'Mot de passe réinitialisé avec succès.' };
   }
 
-  // Méthode obsolète conservée pour compatibilité (non utilisée)
   async resetPassword(token: string, newPassword: string) {
     this.logger.warn(`Appel de la méthode obsolète resetPassword`);
     throw new BadRequestException('Utilisez la méthode avec code à 6 chiffres');

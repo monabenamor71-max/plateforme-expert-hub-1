@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
@@ -8,6 +9,8 @@ import {
   FaHourglassHalf, FaBullseye, FaChartBar, FaShieldAlt,
   FaUsers, FaTrophy, FaClock, FaStar,
 } from "react-icons/fa";
+
+const BASE = "http://localhost:3001";
 
 function useInView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -70,6 +73,65 @@ const NAV = [
 export default function ConsultingPage() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  
+  // ==================== STATS RÉELLES DEPUIS LA BASE DE DONNÉES ====================
+  const [startupsCount, setStartupsCount] = useState<number | null>(null);
+  const [tauxSatisfaction, setTauxSatisfaction] = useState<number | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [temoignages, setTemoignages] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Récupérer le nombre réel de startups validées
+        const startupsRes = await fetch(`${BASE}/startups/liste`);
+        if (startupsRes.ok) {
+          const startups = await startupsRes.json();
+          const startupsValides = Array.isArray(startups) ? startups.filter((s: any) => s.statut === "valide").length : 0;
+          setStartupsCount(startupsValides);
+        }
+
+        // Récupérer les témoignages pour calculer le taux de satisfaction
+        const temoignagesRes = await fetch(`${BASE}/temoignages/publics`);
+        if (temoignagesRes.ok) {
+          const data = await temoignagesRes.json();
+          setTemoignages(data);
+          if (data.length > 0) {
+            const totalNotes = data.reduce((sum: number, t: any) => sum + (t.note || 5), 0);
+            const moyenne = totalNotes / data.length;
+            const satisfaction = Math.round((moyenne / 5) * 100);
+            setTauxSatisfaction(satisfaction);
+          } else {
+            setTauxSatisfaction(94);
+          }
+        }
+      } catch (error) {
+        console.error("Erreur chargement stats:", error);
+        setStartupsCount(150);
+        setTauxSatisfaction(94);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const renderStars = (note: number) => {
+    return (
+      <div style={{ display: "flex", gap: 3 }}>
+        {[1, 2, 3, 4, 5].map((s) => (
+          <FaStar
+            key={s}
+            style={{
+              color: s <= Math.round(note) ? "#F7B500" : "#E2E8F0",
+              fontSize: 13,
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", color: "#374151", background: "#fff" }}>
@@ -79,6 +141,7 @@ export default function ConsultingPage() {
         @keyframes floatY{0%,100%{transform:translateY(-50%) rotate(45deg)}50%{transform:translateY(calc(-50% - 14px)) rotate(45deg)}}
         @keyframes fadeSlideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes heroIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
         .diamond-float{animation:floatY 7s ease-in-out infinite;position:absolute;pointer-events:none;}
         .h1{animation:heroIn .8s cubic-bezier(.22,1,.36,1) .08s both}
         .h2{animation:heroIn .8s cubic-bezier(.22,1,.36,1) .2s both}
@@ -106,9 +169,11 @@ export default function ConsultingPage() {
         .res-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(10,37,64,.1);}
         .nav-link-w{color:#0A2540;text-decoration:none;font-size:15px;font-weight:500;transition:color .2s;}
         .nav-link-w:hover{color:#F7B500;}
+        .stat-number{font-size:42px;font-weight:900;color:#F7B500;line-height:1;margin-bottom:4px}
+        .stat-loading{width:36px;height:36px;border:3px solid #F7B500;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
       `}</style>
 
-      {/* ══ HEADER ══ */}
+      {/* HEADER */}
       <header style={{ background: "#fff", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.07)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none" }}>
@@ -138,12 +203,12 @@ export default function ConsultingPage() {
           </nav>
           <div style={{ display: "flex", gap: 10 }}>
             <Link href="/connexion"><button className="btn-conn">Connexion</button></Link>
-            <Link href="/inscription"><button className="btn-insc">{"S'inscrire"}</button></Link>
+            <Link href="/inscription-startup"><button className="btn-insc">{"S'inscrire"}</button></Link>
           </div>
         </div>
       </header>
 
-      {/* ══ HERO ══ */}
+      {/* HERO */}
       <section style={{ background: "linear-gradient(135deg,#0A2540 0%,#1a3a6e 60%,#0d2850 100%)", padding: "80px 24px 100px", position: "relative", overflow: "hidden", color: "#fff" }}>
         <div className="diamond-float" style={{ width: 420, height: 420, right: -80, top: "50%", background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.13)", borderRadius: 24, animationDelay: "0s" }} />
         <div className="diamond-float" style={{ width: 250, height: 250, right: 110, top: "50%", background: "rgba(59,130,246,0.04)", border: "1px solid rgba(59,130,246,0.08)", borderRadius: 16, animationDelay: "-1.5s" }} />
@@ -163,10 +228,10 @@ export default function ConsultingPage() {
                 Consulting
               </h1>
               <p className="h3" style={{ fontSize: 17, color: "rgba(255,255,255,.7)", lineHeight: 1.85, marginBottom: 36, maxWidth: 500 }}>
-             Structurez et organisez votre entreprise pour prendre de meilleures décisions <strong style={{ color: "#F7B500" }}>le consulting</strong>le consulting est la solution adaptée.
+                Structurez et organisez votre entreprise pour prendre de meilleures décisions : <strong style={{ color: "#F7B500" }}>le consulting</strong> est la solution adaptée.
               </p>
               <div className="h4" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <Link href="/inscription" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F7B500", color: "#0A2540", padding: "14px 28px", borderRadius: 12, fontWeight: 800, fontSize: 15, textDecoration: "none" }}>
+                <Link href="/inscription-startup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#F7B500", color: "#0A2540", padding: "14px 28px", borderRadius: 12, fontWeight: 800, fontSize: 15, textDecoration: "none" }}>
                   Demander une consultation <FaArrowRight size={13} />
                 </Link>
                 <Link href="/contact" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.08)", border: "2px solid rgba(255,255,255,.22)", color: "#fff", padding: "14px 28px", borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
@@ -174,36 +239,46 @@ export default function ConsultingPage() {
                 </Link>
               </div>
             </div>
+            {/* STATS RÉELLES SANS LE SIGNE + */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              {[
-                { icon: <FaUsers />, val: "150+", label: "Startups accompagnées", c: "#3B82F6" },
-                { icon: <FaTrophy />, val: "94%", label: "Taux de satisfaction", c: "#F7B500" },
-               
-              ].map((s, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 18, padding: 20 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: `${s.c}25`, color: s.c, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, fontSize: 14 }}>{s.icon}</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: "#fff", lineHeight: 1, marginBottom: 4 }}>{s.val}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>{s.label}</div>
+              {/* Nombre réel de startups validées */}
+              <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 18, padding: 20 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "#3B82F625", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, fontSize: 14 }}><FaUsers /></div>
+                <div className="stat-number">
+                  {loadingStats ? <div className="stat-loading" /> : startupsCount !== null ? startupsCount : 0}
                 </div>
-              ))}
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>Startups accompagnées</div>
+              </div>
+
+              {/* Taux de satisfaction */}
+              <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 18, padding: 20 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "#F7B50025", color: "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, fontSize: 14 }}><FaTrophy /></div>
+                <div className="stat-number">
+                  {loadingStats ? <div className="stat-loading" /> : tauxSatisfaction !== null ? tauxSatisfaction : 94}%
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>Taux de satisfaction</div>
+                {temoignages.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {renderStars(temoignages.reduce((sum, t) => sum + (t.note || 5), 0) / temoignages.length)}
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", marginTop: 4 }}>({temoignages.length} avis)</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ══ CORPS ══ */}
+      {/* CORPS */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-
-        {/* ── Défis ── */}
+        {/* Défis */}
         <section style={{ padding: "64px 0", borderBottom: "1px solid #F1F5F9" }}>
           <FadeUp>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
               <div className="bar" style={{ height: 28 }} />
               <h2 style={{ fontWeight: 800, color: "#0A2540", fontSize: 24 }}>Nos clients rencontrent souvent ces défis :</h2>
             </div>
-            <p style={{ color: "#64748B", fontSize: 14.5, marginBottom: 32, paddingLeft: 16 }}>
-              Chaque structure est unique, mais certains blocages reviennent systématiquement.
-            </p>
+            <p style={{ color: "#64748B", fontSize: 14.5, marginBottom: 32, paddingLeft: 16 }}>Chaque structure est unique, mais certains blocages reviennent systématiquement.</p>
           </FadeUp>
           <div>
             {DEFIS.map((d, i) => (
@@ -221,7 +296,7 @@ export default function ConsultingPage() {
           </div>
         </section>
 
-        {/* ── Approche ── */}
+        {/* Approche */}
         <section style={{ padding: "64px 0", borderBottom: "1px solid #F1F5F9" }}>
           <FadeUp>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -242,7 +317,7 @@ export default function ConsultingPage() {
           </FadeUp>
         </section>
 
-        {/* ── Résultats ── */}
+        {/* Résultats */}
         <section style={{ padding: "64px 0", borderBottom: "1px solid #F1F5F9" }}>
           <FadeUp>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -266,7 +341,55 @@ export default function ConsultingPage() {
           </div>
         </section>
 
-        {/* ── CTA Banner ── */}
+        {/* Témoignages */}
+        {temoignages.length > 0 && (
+          <section style={{ padding: "64px 0", borderBottom: "1px solid #F1F5F9" }}>
+            <FadeUp>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <div className="bar" style={{ height: 28, background: "#F7B500" }} />
+                <h2 style={{ fontWeight: 800, color: "#0A2540", fontSize: 24 }}>Ce que disent nos clients</h2>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 32, paddingLeft: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 32, fontWeight: 900, color: "#F7B500" }}>{(temoignages.reduce((sum, t) => sum + (t.note || 5), 0) / temoignages.length).toFixed(1)}</span>
+                  <div>
+                    {renderStars(temoignages.reduce((sum, t) => sum + (t.note || 5), 0) / temoignages.length)}
+                    <span style={{ fontSize: 11, color: "#64748B" }}>sur 5</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: 13, color: "#64748B" }}>Basé sur {temoignages.length} avis clients</span>
+              </div>
+            </FadeUp>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 20 }}>
+              {temoignages.slice(0, 4).map((t, i) => (
+                <FadeUp key={t.id} delay={i * 0.05}>
+                  <div style={{ background: "#F8FAFC", borderRadius: 16, padding: 20, border: "1px solid #E8EEF6" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#0A2540,#1a3a6e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#F7B500", fontWeight: 700 }}>
+                        {t.user?.prenom?.[0]}{t.user?.nom?.[0]}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: "#0A2540" }}>{t.user?.prenom} {t.user?.nom}</div>
+                        <div style={{ fontSize: 11, color: "#64748B" }}>{t.startup?.nom_startup || "Client BEH"}</div>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>{renderStars(t.note || 5)}</div>
+                    <p style={{ fontSize: 13.5, color: "#475569", lineHeight: 1.7, fontStyle: "italic" }}>"{t.texte.slice(0, 120)}..."</p>
+                  </div>
+                </FadeUp>
+              ))}
+            </div>
+            {temoignages.length > 4 && (
+              <div style={{ textAlign: "center", marginTop: 24 }}>
+                <Link href="/temoignages" style={{ color: COLOR, fontWeight: 600, textDecoration: "none" }}>
+                  Voir tous les témoignages <FaArrowRight style={{ display: "inline", marginLeft: 6 }} size={12} />
+                </Link>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* CTA Banner */}
         <FadeUp>
           <section style={{ padding: "64px 0", borderBottom: "1px solid #F1F5F9" }}>
             <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3a6e)", borderRadius: 28, padding: "56px 60px", position: "relative", overflow: "hidden" }}>
@@ -282,7 +405,7 @@ export default function ConsultingPage() {
                   </p>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
-                  <Link href="/inscription" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#F7B500", color: "#0A2540", fontWeight: 800, fontSize: 15, borderRadius: 13, padding: "15px 32px", textDecoration: "none", whiteSpace: "nowrap" }}>
+                  <Link href="/inscription-startup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#F7B500", color: "#0A2540", fontWeight: 800, fontSize: 15, borderRadius: 13, padding: "15px 32px", textDecoration: "none", whiteSpace: "nowrap" }}>
                     Demander une consultation <FaArrowRight size={13} />
                   </Link>
                   <Link href="/contact" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,.07)", border: "1.5px solid rgba(255,255,255,.2)", color: "#fff", fontWeight: 700, fontSize: 14, borderRadius: 13, padding: "14px 28px", textDecoration: "none", whiteSpace: "nowrap" }}>
@@ -294,7 +417,7 @@ export default function ConsultingPage() {
           </section>
         </FadeUp>
 
-        {/* ── Autres services ── */}
+        {/* Autres services */}
         <FadeUp>
           <section style={{ padding: "52px 0" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
@@ -303,7 +426,7 @@ export default function ConsultingPage() {
                 <h2 style={{ fontWeight: 800, color: "#0A2540", margin: 0, fontSize: 22 }}>Autres services</h2>
               </div>
               <Link href="/services" style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 14, color: COLOR, textDecoration: "none" }}>
-                <FaArrowLeft size={11} /> Tous les services
+                Tous les services <FaArrowRight size={11} />
               </Link>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { FaLock, FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -85,7 +86,6 @@ export default function ResetPasswordPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#0A2540,#0f3460)", padding: 20 }}>
       <div style={{ background: "#fff", borderRadius: 24, padding: "48px 40px", maxWidth: 480, width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,.2)" }}>
-
         {success ? (
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
@@ -213,5 +213,13 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Chargement...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

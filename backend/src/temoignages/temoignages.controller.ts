@@ -1,6 +1,11 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Request, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Request as NestRequest, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { TemoignagesService } from './temoignages.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { Request as ExpressRequest } from 'express';
+
+interface RequestWithUser extends ExpressRequest {
+  user: { id: number };
+}
 
 @Controller('temoignages')
 export class TemoignagesController {
@@ -8,7 +13,7 @@ export class TemoignagesController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async create(@Body() body: { texte: string }, @Request() req: any) {
+  async create(@Body() body: { texte: string }, @NestRequest() req: RequestWithUser) {
     const dto = { user_id: req.user.id, texte: body.texte };
     return this.temoignagesService.create(dto);
   }
@@ -20,7 +25,7 @@ export class TemoignagesController {
 
   @Get('mes-temoignages')
   @UseGuards(JwtAuthGuard)
-  async getMesTemoignages(@Request() req: any) {
+  async getMesTemoignages(@NestRequest() req: RequestWithUser) {
     return this.temoignagesService.getMesTemoignages(req.user.id);
   }
 

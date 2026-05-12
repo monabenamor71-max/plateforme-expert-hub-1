@@ -11,6 +11,7 @@ import {
   UseGuards,
   Query,
   ParseIntPipe,
+  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -19,10 +20,14 @@ import { MediaService } from './media.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CreateMediaDto, UpdateMediaDto } from './dto/media.dto';
+import type { Request } from 'express';
 
 const storage = diskStorage({
-  destination: (_req, file, cb) => cb(null, './uploads/videos-miniatures'),
-  filename: (_req, file, cb) => {
+  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+    cb(null, './uploads/videos-miniatures');
+  },
+  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `miniature-${unique}${extname(file.originalname)}`);
   },
@@ -37,8 +42,11 @@ export class MediaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @UseInterceptors(FileInterceptor('miniature_file', { storage }))
-  async create(@Body() body: any, @UploadedFile() miniatureFile: Express.Multer.File) {
-    return this.mediaService.create(body, miniatureFile);
+  async create(
+    @Body(ValidationPipe) createDto: CreateMediaDto,
+    @UploadedFile() miniatureFile: Express.Multer.File,
+  ) {
+    return this.mediaService.create(createDto, miniatureFile);
   }
 
   @Get('videos/admin/all')
@@ -61,10 +69,10 @@ export class MediaController {
   @UseInterceptors(FileInterceptor('miniature_file', { storage }))
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: any,
+    @Body(ValidationPipe) updateDto: UpdateMediaDto,
     @UploadedFile() miniatureFile: Express.Multer.File,
   ) {
-    return this.mediaService.update(id, body, miniatureFile);
+    return this.mediaService.update(id, updateDto, miniatureFile);
   }
 
   @Delete('videos/:id')

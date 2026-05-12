@@ -1,63 +1,54 @@
-// src/entities/expert.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('experts')
 export class Expert {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ name: 'user_id' })
-  user_id: number;
+  user_id!: number;
 
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
-  domaine: string;
+  domaine?: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  cv: string; // chemin du fichier CV
+  cv?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  portfolio: string; // chemin du fichier portfolio
+  portfolio?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  photo: string; // chemin de la photo de profil
+  photo?: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
-  experience: string; // champ calculé ou texte libre
+  experience?: string;
 
   @Column({ type: 'int', nullable: true })
-  annee_debut_experience: number | null;
+  annee_debut_experience?: number | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
-  localisation: string;
+  localisation?: string;
 
   @Column({ type: 'enum', enum: ['en_attente', 'valide', 'refuse'], default: 'en_attente' })
-  statut: string;
+  statut: string = 'en_attente';
 
   @Column({ default: false })
-  modification_demandee: boolean;
+  modification_demandee!: boolean;
 
   @Column({ type: 'text', nullable: true })
-  modifications_en_attente: string; // stocke les modifications proposées par l'expert
+  modifications_en_attente?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

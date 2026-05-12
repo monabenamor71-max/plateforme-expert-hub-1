@@ -7,7 +7,7 @@ import {
   FaArrowRight, FaClock, FaEye,
   FaLock, FaChevronDown,
   FaTimes, FaCalendarAlt, FaSearch,
-  FaTag, FaGlobe, FaCheck,
+  FaTag, FaGlobe, FaCheck, FaFacebookF, FaInstagram, FaLinkedinIn, FaEnvelope, FaPhone, FaMapMarkerAlt,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
@@ -47,18 +47,13 @@ const T: Record<Lang, Record<string, string>> = {
     newsletter_placeholder: "Votre email...",
     newsletter_btn: "S'abonner",
     // Footer
-    footer_desc: "Plateforme de mise en relation entre startups ambitieuses et experts certifiés.",
-    footer_nav: "Navigation",
-    footer_services: "Services",
-    footer_about: "À propos",
-    footer_about_us: "Qui sommes-nous ?",
-    footer_mission: "Notre mission",
-    footer_careers: "Carrières",
-    footer_press: "Presse",
-    footer_legal: "Mentions légales",
-    footer_privacy: "Confidentialité",
-    footer_cgu: "CGU",
-    footer_copy: "© 2026 Business Expert Hub · Tous droits réservés",
+    foot_desc: "Plateforme de mise en relation entre startups ambitieuses et experts certifiés.",
+    foot_nav: "Navigation",
+    foot_services: "Services",
+    foot_contact: "Contact",
+    foot_legal: "Mentions légales",
+    foot_privacy: "Confidentialité",
+    foot_copy: "© 2026 Business Expert Hub · Tous droits réservés",
     // Modal
     modal_title: "Contenu réservé aux membres",
     modal_desc_prefix: "«",
@@ -99,18 +94,13 @@ const T: Record<Lang, Record<string, string>> = {
     newsletter_placeholder: "Your email...",
     newsletter_btn: "Subscribe",
     // Footer
-    footer_desc: "Matching platform connecting ambitious startups with certified experts.",
-    footer_nav: "Navigation",
-    footer_services: "Services",
-    footer_about: "About",
-    footer_about_us: "Who are we?",
-    footer_mission: "Our mission",
-    footer_careers: "Careers",
-    footer_press: "Press",
-    footer_legal: "Legal notice",
-    footer_privacy: "Privacy",
-    footer_cgu: "Terms of use",
-    footer_copy: "© 2026 Business Expert Hub · All rights reserved",
+    foot_desc: "Matching platform connecting ambitious startups with certified experts.",
+    foot_nav: "Navigation",
+    foot_services: "Services",
+    foot_contact: "Contact",
+    foot_legal: "Legal notice",
+    foot_privacy: "Privacy policy",
+    foot_copy: "© 2026 Business Expert Hub · All rights reserved",
     // Modal
     modal_title: "Members-only content",
     modal_desc_prefix: "«",
@@ -231,10 +221,10 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const SERVICES = [
-  { label: "Consulting",     slug: "consulting"     },
+  { label: "Consulting", slug: "consulting" },
   { label: "Audit sur site", slug: "audit-sur-site" },
-  { label: "Accompagnement", slug: "accompagnement" },
-  { label: "Formations",     slug: "formations"     },
+  { label: "Nos Plateformes", slug: "nos-plateformes" },
+  { label: "Formations", slug: "formations" },
 ];
 
 export default function BlogPage() {
@@ -257,6 +247,8 @@ export default function BlogPage() {
   const [isLoggedIn, setIsLoggedIn]      = useState(false);
   const [navOpen, setNavOpen]            = useState(false);
   const [categoriesWithCount, setCategoriesWithCount] = useState<{name: string; count: number}[]>([]);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
 
   // Charger tous les articles
   useEffect(() => {
@@ -307,6 +299,30 @@ export default function BlogPage() {
       return;
     }
     router.push(`/blog/${article.id}`);
+  }
+
+  async function handleNewsletter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+    setNewsletterStatus("sending");
+    try {
+      const res = await fetch(`${BASE}/newsletter/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newsletterEmail, nom: "Blog Subscriber" }),
+      });
+      if (res.ok) {
+        setNewsletterStatus("success");
+        setNewsletterEmail("");
+        setTimeout(() => setNewsletterStatus("idle"), 3000);
+      } else {
+        setNewsletterStatus("error");
+        setTimeout(() => setNewsletterStatus("idle"), 3000);
+      }
+    } catch {
+      setNewsletterStatus("error");
+      setTimeout(() => setNewsletterStatus("idle"), 3000);
+    }
   }
 
   // Helper pour formater la date selon la langue
@@ -511,15 +527,6 @@ export default function BlogPage() {
                   </span>
                 </div>
               ))}
-              {categoriesWithCount.length === 0 && DEFAULT_CATEGORIES.map(cat => (
-                <div key={cat} className={`cat-row${selectedCat === cat ? " active" : ""}`} onClick={() => setSelectedCat(cat)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <FaTag size={10} style={{ color: selectedCat === cat ? "#F7B500" : "#9CA3AF", flexShrink: 0 }} />
-                    <span className="cat-name">{cat}</span>
-                  </div>
-                  <span className="cat-cnt" style={{ background: "#E5E7EB", color: "#6B7280", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 700 }}>0</span>
-                </div>
-              ))}
             </div>
           </div>
 
@@ -532,51 +539,143 @@ export default function BlogPage() {
               <p style={{ fontSize: 13, color: "rgba(255,255,255,.55)", lineHeight: 1.72, marginBottom: 16 }}>
                 {tr.newsletter_desc}
               </p>
-              <input className="sub-inp" placeholder={tr.newsletter_placeholder} style={{ marginBottom: 10 }} />
-              <button className="sub-btn">{tr.newsletter_btn}</button>
+              <form onSubmit={handleNewsletter}>
+                <input
+                  className="sub-inp"
+                  placeholder={tr.newsletter_placeholder}
+                  value={newsletterEmail}
+                  onChange={e => setNewsletterEmail(e.target.value)}
+                  style={{ marginBottom: 10, background: "#fff" }}
+                />
+                <button type="submit" className="sub-btn" disabled={newsletterStatus === "sending"}>
+                  {newsletterStatus === "sending" ? "Envoi..." : tr.newsletter_btn}
+                </button>
+                {newsletterStatus === "success" && (
+                  <p style={{ fontSize: 11, color: "#4ADE80", textAlign: "center", marginTop: 8 }}>✅ Inscription réussie !</p>
+                )}
+                {newsletterStatus === "error" && (
+                  <p style={{ fontSize: 11, color: "#F87171", textAlign: "center", marginTop: 8 }}>❌ Erreur, réessayez</p>
+                )}
+              </form>
             </div>
           </div>
         </aside>
       </main>
 
-      {/* FOOTER */}
-      <footer style={{ background: "#05101E", padding: "48px 28px 24px" }}>
+      {/* ══ FOOTER — VERSION RÉDUITE (comme page d'accueil) ══ */}
+      <footer style={{ background: "#05101E", color: "#fff", padding: "24px 28px 0" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 40, marginBottom: 40 }}>
+
+          {/* Ligne principale — une seule rangée compacte */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1.2fr", gap: 20, paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+
+            {/* Marque */}
             <div>
-              <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 16 }}>
-                <div style={{ width: 36, height: 36, background: "#0A2540", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Arial,sans-serif", fontWeight: 900, fontSize: 12, color: "#F7B500" }}>BEH</div>
-                <span style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 800, fontSize: 15, color: "#fff" }}>Business <span style={{ color: "#F7B500" }}>Expert</span> Hub</span>
+              <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", marginBottom: 10 }}>
+                <svg width="24" height="24" viewBox="0 0 46 46" fill="none">
+                  <rect width="46" height="46" rx="10" fill="#0A2540"/>
+                  <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="#F7B500" fontSize="12" fontWeight="900" fontFamily="Arial">BEH</text>
+                </svg>
+                <span style={{ fontWeight: 700, fontSize: 13, color: "#fff" }}>Business <span style={{ color: "#F7B500" }}>Expert</span> Hub</span>
               </Link>
-              <p style={{ color: "rgba(255,255,255,.3)", fontSize: 13, lineHeight: 1.78 }}>{tr.footer_desc}</p>
-            </div>
-            {[
-              { title: tr.footer_nav, links: [[tr.nav_home, "/"],[tr.nav_about, "/a-propos"],[tr.nav_services, "/services"],[tr.nav_experts, "/experts"],[tr.nav_blog, "/blog"],[tr.nav_contact, "/contact"]] },
-              { title: tr.footer_services, links: SERVICES.map(s => [s.label, `/services/${s.slug}`]) },
-              { title: tr.footer_about, links: [[tr.footer_about_us, "/a-propos"],[tr.footer_mission, "/a-propos#mission"],[tr.footer_careers, "#"],[tr.footer_press, "#"]] },
-            ].map(col => (
-              <div key={col.title}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.28)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 18 }}>{col.title}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                  {col.links.map(([label, href]) => (
-                    <Link key={label} href={href} style={{ color: "rgba(255,255,255,.38)", fontSize: 13.5, textDecoration: "none", transition: "color .2s" }}
-                      onMouseEnter={e => (e.target as HTMLElement).style.color = "#F7B500"}
-                      onMouseLeave={e => (e.target as HTMLElement).style.color = "rgba(255,255,255,.38)"}>
-                      {label}
-                    </Link>
-                  ))}
-                </div>
+              <p style={{ color: "rgba(255,255,255,.22)", fontSize: 11, lineHeight: 1.6, marginBottom: 12, maxWidth: 220 }}>{tr.foot_desc}</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[
+                  { Icon: FaFacebookF, href: "https://facebook.com", bg: "#1877F2" },
+                  { Icon: FaInstagram, href: "https://instagram.com", bg: "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" },
+                  { Icon: FaLinkedinIn, href: "https://linkedin.com", bg: "#0A66C2" }
+                ].map((s, i) => (
+                  <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
+                    style={{ width: 28, height: 28, borderRadius: 7, background: s.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", transition: "all .2s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 6px 16px rgba(0,0,0,.3)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = "none"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; }}>
+                    <s.Icon style={{ fontSize: 10 }} />
+                  </a>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Navigation */}
+            <div>
+              <h4 style={{ color: "rgba(255,255,255,.3)", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>{tr.foot_nav}</h4>
+              <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                {[
+                  { l: tr.nav_home, h: "/" },
+                  { l: tr.nav_about, h: "/a-propos" },
+                  { l: tr.nav_services, h: "/services" },
+                  { l: tr.nav_experts, h: "/experts" },
+                  { l: tr.nav_blog, h: "/blog" },
+                  { l: tr.nav_contact, h: "/contact" }
+                ].map(({ l, h }) => (
+                  <li key={l}>
+                    <Link href={h}
+                      style={{ color: "rgba(255,255,255,.25)", fontSize: 11.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color .2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.25)"}>
+                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(247,181,0,.3)", flexShrink: 0 }} />{l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Services */}
+            <div>
+              <h4 style={{ color: "rgba(255,255,255,.3)", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>{tr.foot_services}</h4>
+              <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                {SERVICES.map(s => (
+                  <li key={s.slug}>
+                    <Link href={`/services/${s.slug}`}
+                      style={{ color: "rgba(255,255,255,.25)", fontSize: 11.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color .2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.25)"}>
+                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(247,181,0,.3)", flexShrink: 0 }} />{s.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 style={{ color: "rgba(255,255,255,.3)", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>{tr.foot_contact}</h4>
+              <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+                {[
+                  { Icon: FaEnvelope, text: "contact@beh.com", href: "mailto:contact@beh.com" },
+                  { Icon: FaPhone, text: "+216 29 524 360", href: "tel:+21629524360" },
+                  { Icon: FaMapMarkerAlt, text: "Tunis, Tunisie", href: "#" }
+                ].map((item, i) => (
+                  <li key={i}>
+                    <a href={item.href}
+                      style={{ color: "rgba(255,255,255,.25)", fontSize: 11.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 7, transition: "color .2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.25)"}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, background: "rgba(255,255,255,.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 10 }}>
+                        <item.Icon />
+                      </div>
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,.06)", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-            <p style={{ color: "rgba(255,255,255,.2)", fontSize: 13 }}>{tr.footer_copy}</p>
-            <div style={{ display: "flex", gap: 22 }}>
-              {[tr.footer_legal, tr.footer_privacy, tr.footer_cgu].map(item => (
-                <Link key={item} href="#" style={{ color: "rgba(255,255,255,.2)", fontSize: 12.5, textDecoration: "none" }}>{item}</Link>
+
+          {/* Bas du footer — copyright minimaliste */}
+          <div style={{ padding: "10px 0 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+            <p style={{ margin: 0, color: "rgba(255,255,255,.14)", fontSize: 10 }}>{tr.foot_copy}</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              {[tr.foot_legal, tr.foot_privacy].map(l => (
+                <Link key={l} href="#"
+                  style={{ color: "rgba(255,255,255,.14)", fontSize: 10, textDecoration: "none", transition: "color .2s" }}
+                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#F7B500"}
+                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,.14)"}>
+                  {l}
+                </Link>
               ))}
             </div>
           </div>
+
         </div>
       </footer>
     </div>

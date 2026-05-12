@@ -22,8 +22,6 @@ export class FormationsService {
     return formation;
   }
 
-  // ==================== EXPERTS ====================
-
   async createFromExpert(dto: CreateFormationDto, imageFile: Express.Multer.File | undefined, expertId: number): Promise<Formation> {
     const formation = this.formationRepo.create({
       titre: dto.titre,
@@ -32,17 +30,17 @@ export class FormationsService {
       formateur: dto.formateur,
       type: dto.type,
       prix: dto.prix,
-      places_limitees: dto.places_limitees,
+      places_limitees: dto.places_limitees || false,
       places_disponibles: dto.places_limitees ? (dto.places_disponibles || 0) : undefined,
       duree: dto.duree,
-      mode: dto.mode,
+      mode: dto.mode || 'en_ligne',
       localisation: dto.localisation,
-      certifiante: dto.certifiante,
+      certifiante: dto.certifiante || false,
       a_la_une: dto.a_la_une ?? false,
       dateDebut: dto.dateDebut ? new Date(dto.dateDebut) : undefined,
       dateFin: dto.dateFin ? new Date(dto.dateFin) : undefined,
       lien_formation: dto.lien_formation,
-      gratuit: dto.gratuit,
+      gratuit: dto.gratuit || false,
       niveau: dto.niveau,
       categorie: dto.categorie,
       statut: 'en_attente',
@@ -50,10 +48,6 @@ export class FormationsService {
       image: imageFile?.filename || '',
     });
     const saved = await this.formationRepo.save(formation);
-    if (!saved || !saved.id) {
-      throw new BadRequestException('Erreur lors de la création de la formation');
-    }
-    this.logger.log(`Expert ${expertId} a proposé la formation ${saved.id}`);
     return saved;
   }
 
@@ -64,37 +58,59 @@ export class FormationsService {
     });
   }
 
-  // ==================== ADMIN ====================
+  async create(dto: CreateFormationDto, imageFile: Express.Multer.File | undefined, formateurImages: Express.Multer.File[] = []): Promise<Formation> {
+    // Construire le tableau des formateurs enrichi
+    let formateurDetails: Array<any> = [];
 
-  async create(dto: CreateFormationDto, imageFile: Express.Multer.File | undefined): Promise<Formation> {
+    if (dto.formateur_details && Array.isArray(dto.formateur_details)) {
+      formateurDetails = dto.formateur_details.map((item, idx) => {
+        const imageFileItem = formateurImages[idx];
+        return {
+          prenom: item.prenom || '',
+          nom: item.nom || '',
+          domaine: item.domaine || '',
+          image: imageFileItem ? imageFileItem.filename : (item.image || ''),
+          bio: item.bio || '',
+        };
+      });
+    } else if (dto.formateur && dto.formateur.trim()) {
+      // Rétrocompatibilité : un seul formateur texte (sans détails)
+      formateurDetails = [{
+        prenom: '',
+        nom: dto.formateur.trim(),
+        domaine: dto.domaine || '',
+        image: formateurImages[0]?.filename || '',
+        bio: '',
+      }];
+    }
+
     const formation = this.formationRepo.create({
       titre: dto.titre,
       description: dto.description,
       domaine: dto.domaine,
       formateur: dto.formateur,
+      formateur_details: formateurDetails,
       type: dto.type,
       prix: dto.prix,
-      places_limitees: dto.places_limitees,
+      places_limitees: dto.places_limitees || false,
       places_disponibles: dto.places_limitees ? (dto.places_disponibles || 0) : undefined,
       duree: dto.duree,
-      mode: dto.mode,
+      mode: dto.mode || 'en_ligne',
       localisation: dto.localisation,
-      certifiante: dto.certifiante,
+      certifiante: dto.certifiante || false,
       a_la_une: dto.a_la_une ?? false,
       dateDebut: dto.dateDebut ? new Date(dto.dateDebut) : undefined,
       dateFin: dto.dateFin ? new Date(dto.dateFin) : undefined,
       lien_formation: dto.lien_formation,
-      gratuit: dto.gratuit,
+      gratuit: dto.gratuit || false,
       niveau: dto.niveau,
       categorie: dto.categorie,
       statut: dto.statut || 'brouillon',
       image: imageFile?.filename || '',
     });
+
     const saved = await this.formationRepo.save(formation);
-    if (!saved || !saved.id) {
-      throw new BadRequestException('Erreur lors de la création de la formation');
-    }
-    this.logger.log(`Admin a créé la formation ${saved.id}`);
+    this.logger.log(`Admin a créé la formation ${saved.id} avec ${formateurDetails.length} formateur(s)`);
     return saved;
   }
 
@@ -109,6 +125,7 @@ export class FormationsService {
     if (dto.description !== undefined) formation.description = dto.description;
     if (dto.domaine !== undefined) formation.domaine = dto.domaine;
     if (dto.formateur !== undefined) formation.formateur = dto.formateur;
+    // La mise à jour des formateur_details n'est pas gérée ici (simplifié)
     if (dto.type !== undefined) formation.type = dto.type;
     if (dto.prix !== undefined) formation.prix = dto.prix;
     if (dto.places_limitees !== undefined) formation.places_limitees = dto.places_limitees;
@@ -126,10 +143,6 @@ export class FormationsService {
     if (dto.categorie !== undefined) formation.categorie = dto.categorie;
     if (dto.statut !== undefined) formation.statut = dto.statut;
     const updated = await this.formationRepo.save(formation);
-    if (!updated) {
-      throw new BadRequestException('Erreur lors de la mise à jour de la formation');
-    }
-    this.logger.log(`Formation ${id} mise à jour`);
     return updated;
   }
 
@@ -137,52 +150,32 @@ export class FormationsService {
     const formation = await this.findOneOrFail(id);
     formation.statut = dto.statut;
     if (dto.commentaire) formation.commentaire_admin = dto.commentaire;
-    const updated = await this.formationRepo.save(formation);
-    if (!updated) {
-      throw new BadRequestException('Erreur lors de la mise à jour du statut');
-    }
-    this.logger.log(`Formation ${id} : statut changé à ${dto.statut}`);
-    return updated;
+    return this.formationRepo.save(formation);
   }
 
   async delete(id: number): Promise<{ success: boolean }> {
     const formation = await this.findOneOrFail(id);
-    const result = await this.formationRepo.remove(formation);
-    if (!result) {
-      throw new BadRequestException('Erreur lors de la suppression de la formation');
-    }
-    this.logger.log(`Formation ${id} supprimée`);
+    await this.formationRepo.remove(formation);
     return { success: true };
   }
 
   async decrementPlaces(formationId: number): Promise<void> {
     const formation = await this.findOneOrFail(formationId);
     if (formation.places_limitees) {
-      if (formation.places_disponibles <= 0) {
-        throw new BadRequestException('Plus de places disponibles pour cette formation');
-      }
-      formation.places_disponibles -= 1;
-      const saved = await this.formationRepo.save(formation);
-      if (!saved) {
-        throw new BadRequestException('Erreur lors de la mise à jour des places');
-      }
-      this.logger.log(`Formation ${formationId} : places restantes = ${formation.places_disponibles}`);
+      const currentPlaces = formation.places_disponibles ?? 0;
+      if (currentPlaces <= 0) throw new BadRequestException('Plus de places disponibles');
+      formation.places_disponibles = currentPlaces - 1;
+      await this.formationRepo.save(formation);
     }
   }
 
   async incrementPlaces(formationId: number): Promise<void> {
     const formation = await this.findOneOrFail(formationId);
     if (formation.places_limitees) {
-      formation.places_disponibles = (formation.places_disponibles || 0) + 1;
-      const saved = await this.formationRepo.save(formation);
-      if (!saved) {
-        throw new BadRequestException('Erreur lors de la restitution des places');
-      }
-      this.logger.log(`Formation ${formationId} : places restituées → ${formation.places_disponibles}`);
+      formation.places_disponibles = (formation.places_disponibles ?? 0) + 1;
+      await this.formationRepo.save(formation);
     }
   }
-
-  // ==================== PUBLIQUES ====================
 
   async findPublished(): Promise<Formation[]> {
     return this.formationRepo.find({

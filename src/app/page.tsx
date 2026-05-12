@@ -31,7 +31,7 @@ const T: Record<Lang, Record<string, string>> = {
     partners_title:"Nos",partners_title2:"Partenaires",
     temo_badge:"Témoignages",temo_title:"Ce que disent nos",temo_title2:"clients",temo_empty:"Aucun témoignage pour l'instant",temo_empty_sub:"Les témoignages apparaîtront ici après validation.",
     nl_badge:"Newsletter",nl_title:"Restez",nl_title2:"informé",nl_p:"Recevez nos actualités et ressources exclusives pour accélérer la croissance de votre startup.",
-    nl_placeholder:"Votre adresse e-mail",nl_btn:"S'inscrire",nl_loading:"⏳ Inscription...",nl_success:"✅ Vous êtes inscrit avec succès !",
+    nl_placeholder:"Votre adresse e-mail",nl_btn:"S'inscrire",nl_loading:"⏳ Inscription...",nl_success:"✅ Vous êtes inscrit avec succès !",nl_not_registered:"⚠️ Cet email n'est pas enregistré sur BEH. Créez un compte pour vous abonner.",
     art_badge:"Actualités",art_title:"Nos derniers",art_title2:"articles",art_all:"Voir tous les articles",art_empty:"Aucun article pour le moment",art_read:"Lire l'article",art_members:"Membres",
     foot_nav:"Navigation",foot_services:"Services",foot_contact:"Contact",foot_social:"Réseaux sociaux",foot_legal:"Mentions légales",foot_privacy:"Confidentialité",
     foot_copy:"© 2026 Business Expert Hub. Tous droits réservés.",foot_desc:"Plateforme premium de mise en relation entre startups ambitieuses et experts certifiés.",
@@ -62,7 +62,7 @@ const T: Record<Lang, Record<string, string>> = {
     partners_title:"Our",partners_title2:"Partners",
     temo_badge:"Testimonials",temo_title:"What our",temo_title2:"clients say",temo_empty:"No testimonials yet",temo_empty_sub:"Testimonials will appear here after validation.",
     nl_badge:"Newsletter",nl_title:"Stay",nl_title2:"informed",nl_p:"Receive our exclusive news and resources to accelerate your startup's growth.",
-    nl_placeholder:"Your email address",nl_btn:"Subscribe",nl_loading:"⏳ Subscribing...",nl_success:"✅ Successfully subscribed!",
+    nl_placeholder:"Your email address",nl_btn:"Subscribe",nl_loading:"⏳ Subscribing...",nl_success:"✅ Successfully subscribed!",nl_not_registered:"⚠️ This email is not registered on BEH. Please create an account first.",
     art_badge:"News",art_title:"Our latest",art_title2:"articles",art_all:"See all articles",art_empty:"No articles yet",art_read:"Read article",art_members:"Members",
     foot_nav:"Navigation",foot_services:"Services",foot_contact:"Contact",foot_social:"Social media",foot_legal:"Legal notice",foot_privacy:"Privacy policy",
     foot_copy:"© 2026 Business Expert Hub. All rights reserved.",foot_desc:"Premium platform connecting ambitious startups with certified experts.",
@@ -229,12 +229,12 @@ export default function Home(){
   useEffect(()=>{if(typeof window==="undefined")return;const saved=localStorage.getItem("beh_lang") as Lang|null;if(saved==="fr"||saved==="en")setLang(saved);},[]);
   const tr=T[lang];
 
-  // Redirection si déjà connecté
   useEffect(()=>{if(typeof window==="undefined")return;const raw=localStorage.getItem("user");if(!raw)return;try{const user=JSON.parse(raw);const role=user?.role;if(role==="admin")router.replace("/dashboard/admin");else if(role==="expert")router.replace("/dashboard/expert");else if(role==="startup")router.replace("/dashboard/startup");else if(role==="client")router.replace("/dashboard/client");}catch{}},[router]);
 
   const[servOpen,setServOpen]=useState(false);
   const[tIdx,setTIdx]=useState(0);const[tAnim,setTAnim]=useState(false);
   const[mail,setMail]=useState("");const[sent,setSent]=useState(false);const[nlLoading,setNlLoading]=useState(false);
+  const[nlError,setNlError]=useState<string>("");
   const[modal,setModal]=useState(false);
   const[showDemo,setShowDemo]=useState(false);
   const[experts,setExperts]=useState<ExpertAPI[]>([]);const[loading,setLoading]=useState(true);
@@ -249,7 +249,27 @@ export default function Home(){
   useEffect(()=>{if(!temos.length)return;const t=setInterval(()=>{if(!tAnim)setTIdx(p=>(p+1)%temos.length);},5500);return()=>clearInterval(t);},[temos.length,tAnim]);
 
   function goT(i:number){if(tAnim||!temos.length)return;setTAnim(true);setTimeout(()=>{setTIdx(i);setTAnim(false);},280);}
-  async function handleNewsletter(e:React.FormEvent){e.preventDefault();if(!mail)return;setNlLoading(true);try{await fetch("http://localhost:3001/newsletter/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:mail})});}catch{}setSent(true);setMail("");setNlLoading(false);}
+
+  async function handleNewsletter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mail) return;
+    setNlLoading(true);
+    setNlError("");
+    try {
+      const checkRes = await fetch(`http://localhost:3001/auth/check-email?email=${encodeURIComponent(mail)}`);
+      if (!checkRes.ok) { setNlError(tr.nl_not_registered); setNlLoading(false); return; }
+      const data = await checkRes.json();
+      if (!data.exists) { setNlError(tr.nl_not_registered); setNlLoading(false); return; }
+      const subRes = await fetch("http://localhost:3001/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mail, nom: "Abonné newsletter" })
+      });
+      if (subRes.ok) { setSent(true); setMail(""); setNlError(""); }
+      else { const err = await subRes.text(); setNlError(err || "Erreur lors de l'abonnement"); }
+    } catch { setNlError("Erreur réseau. Vérifiez votre connexion."); }
+    finally { setNlLoading(false); }
+  }
 
   const curTemo=temos[tIdx%Math.max(temos.length,1)];const tInfo=curTemo?getTemoInfo(curTemo):null;
   const ADN_ITEMS=[{title:tr.adn0_title,body:tr.adn0_body},{title:tr.adn1_title,body:tr.adn1_body},{title:tr.adn2_title,body:tr.adn2_body}];
@@ -509,8 +529,9 @@ export default function Home(){
                 <p style={{color:"#64748B",fontSize:15,lineHeight:1.8,maxWidth:500,margin:"0 auto 32px"}}>{tr.nl_p}</p>
                 {sent?(<div style={{maxWidth:450,margin:"0 auto",borderRadius:14,padding:"20px 24px",color:"#059669",fontSize:16,fontWeight:700,background:"#ECFDF5",border:"1px solid #A7F3D0",textAlign:"center"}}><FaCheck style={{marginBottom:8,fontSize:22,display:"block",margin:"0 auto 8px"}}/> {tr.nl_success}</div>):(
                   <form onSubmit={handleNewsletter} style={{maxWidth:450,margin:"0 auto",display:"flex",flexDirection:"column",gap:12}}>
-                    <input type="email" value={mail} onChange={e=>setMail(e.target.value)} placeholder={tr.nl_placeholder} required style={{width:"100%",padding:"16px 20px",border:"1.5px solid #0A2540",borderRadius:14,fontSize:14,outline:"none",transition:"all .2s",backgroundColor:"#FFFFFF",fontFamily:"'Outfit',sans-serif"}} onFocus={e=>{e.currentTarget.style.borderColor="#F7B500";e.currentTarget.style.boxShadow="0 0 0 3px rgba(247,181,0,.1)";}} onBlur={e=>{e.currentTarget.style.borderColor="#0A2540";e.currentTarget.style.boxShadow="none";}}/>
+                    <input type="email" value={mail} onChange={e=>{setMail(e.target.value);setNlError("");}} placeholder={tr.nl_placeholder} required style={{width:"100%",padding:"16px 20px",border:"1.5px solid #0A2540",borderRadius:14,fontSize:14,outline:"none",transition:"all .2s",backgroundColor:"#FFFFFF",fontFamily:"'Outfit',sans-serif"}} onFocus={e=>{e.currentTarget.style.borderColor="#F7B500";e.currentTarget.style.boxShadow="0 0 0 3px rgba(247,181,0,.1)";}} onBlur={e=>{e.currentTarget.style.borderColor="#0A2540";e.currentTarget.style.boxShadow="none";}}/>
                     <button type="submit" disabled={nlLoading} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"16px",background:"#0A2540",color:"#F7B500",borderRadius:14,fontSize:14,fontWeight:600,cursor:nlLoading?"not-allowed":"pointer",border:"none",fontFamily:"'Outfit',sans-serif",transition:"all .2s",opacity:nlLoading?.7:1}} onMouseEnter={e=>{if(!nlLoading){e.currentTarget.style.background="#F7B500";e.currentTarget.style.color="#0A2540";}}} onMouseLeave={e=>{e.currentTarget.style.background="#0A2540";e.currentTarget.style.color="#F7B500";}}>{nlLoading?tr.nl_loading:<><span>{tr.nl_btn}</span><FaArrowRight size={12}/></>}</button>
+                    {nlError&&<div style={{marginTop:8,color:"#DC2626",fontSize:13,textAlign:"center"}}>{nlError}</div>}
                   </form>
                 )}
               </div>
@@ -523,12 +544,19 @@ export default function Home(){
       <section style={{padding:"88px 28px 100px",background:"#F8FAFC"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <Reveal>
-            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:52,flexWrap:"wrap",gap:16}}>
-              <div><span className="ey" style={{marginBottom:16}}>{tr.art_badge}</span><h2 style={{fontWeight:700,fontSize:"clamp(30px,4vw,48px)",color:"#0A2540"}}>{tr.art_title} <span style={{color:"#F7B500"}}>{tr.art_title2}</span></h2></div>
-              <Link href="/blog" className="bd" style={{marginBottom:8}}>{tr.art_all} <FaArrowRight size={12}/></Link>
+            <div style={{textAlign:"center",marginBottom:52}}>
+              <span className="ey" style={{justifyContent:"center",marginBottom:16}}>{tr.art_badge}</span>
+              <h2 style={{fontWeight:700,fontSize:"clamp(30px,4vw,48px)",color:"#0A2540"}}>
+                {tr.art_title} <span style={{color:"#F7B500"}}>{tr.art_title2}</span>
+              </h2>
             </div>
           </Reveal>
-          {articlesAccueil.length===0?(<div style={{textAlign:"center",padding:"60px 0"}}><div style={{fontSize:48,marginBottom:16}}>📝</div><div style={{fontWeight:700,fontSize:16,color:"#0A2540"}}>{tr.art_empty}</div></div>):(
+          {articlesAccueil.length===0?(
+            <div style={{textAlign:"center",padding:"60px 0"}}>
+              <div style={{fontSize:48,marginBottom:16}}>📝</div>
+              <div style={{fontWeight:700,fontSize:16,color:"#0A2540"}}>{tr.art_empty}</div>
+            </div>
+          ):(
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:28}}>
               {articlesAccueil.map((art,i)=>(
                 <Reveal key={art.id||i} delay={i*.12}>
@@ -537,10 +565,13 @@ export default function Home(){
                       {art.image?<img src={`http://localhost:3001/uploads/articles-img/${art.image}`} alt={art.titre} className="art-img" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{(e.currentTarget as HTMLImageElement).style.display="none";}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>📝</div>}
                       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(10,37,64,.6) 100%)"}}/>
                       <div style={{position:"absolute",top:16,left:16}}><span style={{background:art.couleur_point||"#3B82F6",color:"#fff",borderRadius:99,padding:"4px 12px",fontSize:11.5,fontWeight:700}}>{art.categorie||art.type||"Article"}</span></div>
-                      <div style={{position:"absolute",bottom:14,right:14,display:"flex",alignItems:"center",gap:5,background:"rgba(10,37,64,.75)",backdropFilter:"blur(8px)",borderRadius:99,padding:"3px 10px"}}><FaClock size={10} style={{color:"#F7B500"}}/><span style={{fontSize:11,color:"#fff",fontWeight:600}}>{art.duree_lecture||"5 min"}</span></div>
                     </div>
                     <div style={{padding:"22px 24px 24px",display:"flex",flexDirection:"column",flex:1}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><FaCalendarAlt size={11} style={{color:"#94A3B8"}}/><span style={{fontSize:12,color:"#94A3B8",fontWeight:500}}>{new Date(art.createdAt).toLocaleDateString(lang==="fr"?"fr-FR":"en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>{art.acces_prive&&<span style={{display:"flex",alignItems:"center",gap:3,background:"#FFF8E1",color:"#B45309",borderRadius:99,padding:"2px 8px",fontSize:10.5,fontWeight:700}}><FaLock size={8}/> {tr.art_members}</span>}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                        <FaCalendarAlt size={11} style={{color:"#94A3B8"}}/>
+                        <span style={{fontSize:12,color:"#94A3B8",fontWeight:500}}>{new Date(art.createdAt).toLocaleDateString(lang==="fr"?"fr-FR":"en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
+                        {art.acces_prive&&<span style={{display:"flex",alignItems:"center",gap:3,background:"#FFF8E1",color:"#B45309",borderRadius:99,padding:"2px 8px",fontSize:10.5,fontWeight:700}}><FaLock size={8}/> {tr.art_members}</span>}
+                      </div>
                       <h3 style={{fontWeight:700,color:"#0A2540",fontSize:19,lineHeight:1.35,marginBottom:12,flex:1}}>{art.titre}</h3>
                       <p style={{fontSize:13,color:"#64748B",lineHeight:1.78,marginBottom:20,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical" as any,overflow:"hidden"}}>{art.description}</p>
                       <div style={{display:"flex",alignItems:"center",gap:6,color:"#F7B500",fontSize:13,fontWeight:700}}>{tr.art_read} <FaArrowRight size={11}/></div>
@@ -551,26 +582,125 @@ export default function Home(){
               ))}
             </div>
           )}
+          <Reveal delay={.38}>
+            <div style={{textAlign:"center",marginTop:52}}>
+              <Link href="/blog" className="bd">{tr.art_all} <FaArrowRight size={12}/></Link>
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ══ FOOTER ══ */}
-      <footer style={{background:"#05101E",color:"#fff",padding:"64px 28px 0"}}>
+      {/* ══ FOOTER — VERSION RÉDUITE ══ */}
+      <footer style={{background:"#05101E",color:"#fff",padding:"24px 28px 0"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1.6fr 1fr 1fr 1.2fr",gap:48,paddingBottom:52,borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+
+          {/* Ligne principale — une seule rangée compacte */}
+          <div style={{display:"grid",gridTemplateColumns:"1.6fr 1fr 1fr 1.2fr",gap:20,paddingBottom:20,borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+
+            {/* Marque */}
             <div>
-              <Link href="/" style={{display:"flex",alignItems:"center",gap:11,textDecoration:"none",marginBottom:20}}><svg width="36" height="36" viewBox="0 0 46 46" fill="none"><rect width="46" height="46" rx="10" fill="#0A2540"/><text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="#F7B500" fontSize="14" fontWeight="900" fontFamily="Arial">BEH</text></svg><span style={{fontWeight:700,fontSize:16,color:"#fff"}}>Business <span style={{color:"#F7B500"}}>Expert</span> Hub</span></Link>
-              <p style={{color:"rgba(255,255,255,.28)",fontSize:13.5,lineHeight:1.9,marginBottom:28,maxWidth:280}}>{tr.foot_desc}</p>
-              <div><div style={{fontSize:10.5,fontWeight:700,color:"rgba(255,255,255,.3)",textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:14}}>{tr.foot_social}</div><div style={{display:"flex",gap:10}}>{[{Icon:FaFacebookF,href:"https://facebook.com",bg:"#1877F2"},{Icon:FaInstagram,href:"https://instagram.com",bg:"linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)"},{Icon:FaLinkedinIn,href:"https://linkedin.com",bg:"#0A66C2"}].map((s,i)=>(<a key={i} href={s.href} target="_blank" rel="noopener noreferrer" className="sb" style={{background:s.bg,color:"#fff"}}><s.Icon/></a>))}</div></div>
+              <Link href="/" style={{display:"flex",alignItems:"center",gap:9,textDecoration:"none",marginBottom:10}}>
+                <svg width="24" height="24" viewBox="0 0 46 46" fill="none"><rect width="46" height="46" rx="10" fill="#0A2540"/><text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="#F7B500" fontSize="12" fontWeight="900" fontFamily="Arial">BEH</text></svg>
+                <span style={{fontWeight:700,fontSize:13,color:"#fff"}}>Business <span style={{color:"#F7B500"}}>Expert</span> Hub</span>
+              </Link>
+              <p style={{color:"rgba(255,255,255,.22)",fontSize:11,lineHeight:1.6,marginBottom:12,maxWidth:220}}>{tr.foot_desc}</p>
+              <div style={{display:"flex",gap:6}}>
+                {[
+                  {Icon:FaFacebookF,href:"https://facebook.com",bg:"#1877F2"},
+                  {Icon:FaInstagram,href:"https://instagram.com",bg:"linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)"},
+                  {Icon:FaLinkedinIn,href:"https://linkedin.com",bg:"#0A66C2"}
+                ].map((s,i)=>(
+                  <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
+                    style={{width:28,height:28,borderRadius:7,background:s.bg,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",textDecoration:"none",transition:"all .2s"}}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.transform="translateY(-3px)";(e.currentTarget as HTMLAnchorElement).style.boxShadow="0 6px 16px rgba(0,0,0,.3)";}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.transform="none";(e.currentTarget as HTMLAnchorElement).style.boxShadow="none";}}>
+                    <s.Icon style={{fontSize:10}}/>
+                  </a>
+                ))}
+              </div>
             </div>
-            <div><h4 style={{color:"rgba(255,255,255,.4)",fontWeight:700,fontSize:10.5,textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:20}}>{tr.foot_nav}</h4><ul style={{listStyle:"none",padding:0,display:"flex",flexDirection:"column",gap:12}}>{[{l:tr.nav_home,h:"/"},{l:tr.nav_about,h:"/a-propos"},{l:tr.nav_services,h:"/services"},{l:tr.nav_experts,h:"/experts"},{l:tr.nav_blog,h:"/blog"},{l:tr.nav_contact,h:"/contact"}].map(({l,h})=>(<li key={l}><Link href={h} style={{color:"rgba(255,255,255,.32)",fontSize:14,textDecoration:"none",display:"flex",alignItems:"center",gap:8,transition:"color .2s"}} onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"} onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.32)"}><span style={{width:5,height:5,borderRadius:"50%",background:"rgba(247,181,0,.4)",flexShrink:0}}/>{l}</Link></li>))}</ul></div>
-            <div><h4 style={{color:"rgba(255,255,255,.4)",fontWeight:700,fontSize:10.5,textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:20}}>{tr.foot_services}</h4><ul style={{listStyle:"none",padding:0,display:"flex",flexDirection:"column",gap:12}}>{SERVICES.map(s=>(<li key={s.slug}><Link href={`/services/${s.slug}`} style={{color:"rgba(255,255,255,.32)",fontSize:14,textDecoration:"none",display:"flex",alignItems:"center",gap:8,transition:"color .2s"}} onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"} onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.32)"}><span style={{width:5,height:5,borderRadius:"50%",background:"rgba(247,181,0,.4)",flexShrink:0}}/>{s.label[lang]}</Link></li>))}</ul></div>
-            <div><h4 style={{color:"rgba(255,255,255,.4)",fontWeight:700,fontSize:10.5,textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:20}}>{tr.foot_contact}</h4><ul style={{listStyle:"none",padding:0,display:"flex",flexDirection:"column",gap:16}}>{[{Icon:FaEnvelope,text:"contact@beh.com",href:"mailto:contact@beh.com"},{Icon:FaPhone,text:"+216 00 000 000",href:"tel:+21600000000"},{Icon:FaMapMarkerAlt,text:"Tunis, Tunisie",href:"#"}].map((item,i)=>(<li key={i}><a href={item.href} style={{color:"rgba(255,255,255,.32)",fontSize:13.5,textDecoration:"none",display:"flex",alignItems:"center",gap:12,transition:"color .2s"}} onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"} onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.32)"}><div style={{width:34,height:34,borderRadius:9,background:"rgba(255,255,255,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}}><item.Icon/></div>{item.text}</a></li>))}</ul></div>
+
+            {/* Navigation */}
+            <div>
+              <h4 style={{color:"rgba(255,255,255,.3)",fontWeight:700,fontSize:9,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:10}}>{tr.foot_nav}</h4>
+              <ul style={{listStyle:"none",padding:0,display:"flex",flexDirection:"column",gap:5}}>
+                {[
+                  {l:tr.nav_home,h:"/"},
+                  {l:tr.nav_about,h:"/a-propos"},
+                  {l:tr.nav_services,h:"/services"},
+                  {l:tr.nav_experts,h:"/experts"},
+                  {l:tr.nav_blog,h:"/blog"},
+                  {l:tr.nav_contact,h:"/contact"}
+                ].map(({l,h})=>(
+                  <li key={l}>
+                    <Link href={h}
+                      style={{color:"rgba(255,255,255,.25)",fontSize:11.5,textDecoration:"none",display:"flex",alignItems:"center",gap:6,transition:"color .2s"}}
+                      onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"}
+                      onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.25)"}>
+                      <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(247,181,0,.3)",flexShrink:0}}/>{l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Services */}
+            <div>
+              <h4 style={{color:"rgba(255,255,255,.3)",fontWeight:700,fontSize:9,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:10}}>{tr.foot_services}</h4>
+              <ul style={{listStyle:"none",padding:0,display:"flex",flexDirection:"column",gap:5}}>
+                {SERVICES.map(s=>(
+                  <li key={s.slug}>
+                    <Link href={`/services/${s.slug}`}
+                      style={{color:"rgba(255,255,255,.25)",fontSize:11.5,textDecoration:"none",display:"flex",alignItems:"center",gap:6,transition:"color .2s"}}
+                      onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"}
+                      onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.25)"}>
+                      <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(247,181,0,.3)",flexShrink:0}}/>{s.label[lang]}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 style={{color:"rgba(255,255,255,.3)",fontWeight:700,fontSize:9,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:10}}>{tr.foot_contact}</h4>
+              <ul style={{listStyle:"none",padding:0,display:"flex",flexDirection:"column",gap:7}}>
+                {[
+                  {Icon:FaEnvelope,text:"contact@beh.com",href:"mailto:contact@beh.com"},
+                  {Icon:FaPhone,text:"+216 00 000 000",href:"tel:+21600000000"},
+                  {Icon:FaMapMarkerAlt,text:"Tunis, Tunisie",href:"#"}
+                ].map((item,i)=>(
+                  <li key={i}>
+                    <a href={item.href}
+                      style={{color:"rgba(255,255,255,.25)",fontSize:11.5,textDecoration:"none",display:"flex",alignItems:"center",gap:7,transition:"color .2s"}}
+                      onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"}
+                      onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.25)"}>
+                      <div style={{width:22,height:22,borderRadius:6,background:"rgba(255,255,255,.05)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:10}}>
+                        <item.Icon/>
+                      </div>
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <div style={{padding:"22px 0 28px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-            <p style={{margin:0,color:"rgba(255,255,255,.18)",fontSize:12.5}}>{tr.foot_copy}</p>
-            <div style={{display:"flex",gap:20}}>{[tr.foot_legal,tr.foot_privacy].map(l=>(<Link key={l} href="#" style={{color:"rgba(255,255,255,.18)",fontSize:12.5,textDecoration:"none",transition:"color .2s"}} onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"} onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.18)"}>{l}</Link>))}</div>
+
+          {/* Bas du footer — copyright minimaliste */}
+          <div style={{padding:"10px 0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+            <p style={{margin:0,color:"rgba(255,255,255,.14)",fontSize:10}}>{tr.foot_copy}</p>
+            <div style={{display:"flex",gap:12}}>
+              {[tr.foot_legal,tr.foot_privacy].map(l=>(
+                <Link key={l} href="#"
+                  style={{color:"rgba(255,255,255,.14)",fontSize:10,textDecoration:"none",transition:"color .2s"}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color="#F7B500"}
+                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color="rgba(255,255,255,.14)"}>
+                  {l}
+                </Link>
+              ))}
+            </div>
           </div>
+
         </div>
       </footer>
     </div>

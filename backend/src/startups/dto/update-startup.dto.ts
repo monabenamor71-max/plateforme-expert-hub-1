@@ -1,3 +1,4 @@
+// src/startups/dto/update-startup.dto.ts
 import { IsString, IsOptional, IsUrl, MinLength, MaxLength } from 'class-validator';
 
 export class UpdateStartupDto {

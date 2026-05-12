@@ -1,12 +1,14 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { getCsrfToken } from "@/lib/csrf";
 
 const BASE = "http://localhost:3001";
 
-export default function VerifyCodePage() {
+function VerifyCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email") || "";
@@ -42,10 +44,15 @@ export default function VerifyCodePage() {
     setLoading(true);
     setError("");
 
+    const csrfToken = getCsrfToken();
+
     try {
       const res = await fetch(`${BASE}/auth/verify-reset-code`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken || "",
+        },
         body: JSON.stringify({ email, code, newPassword }),
       });
       const data = await res.json();
@@ -178,5 +185,13 @@ export default function VerifyCodePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyCodePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Chargement...</div>}>
+      <VerifyCodeContent />
+    </Suspense>
   );
 }

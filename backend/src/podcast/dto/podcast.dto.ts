@@ -4,7 +4,7 @@ export class CreatePodcastDto {
   @IsString()
   @MinLength(3)
   @MaxLength(100)
-  titre: string;
+  titre!: string;
 
   @IsString()
   @IsOptional()

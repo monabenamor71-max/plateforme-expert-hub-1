@@ -1,4 +1,3 @@
-// src/podcast/podcast.service.ts
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -33,7 +32,7 @@ export class PodcastService {
 
   async create(
     dto: CreatePodcastDto,
-    audioFile?: Express.Multer.File,
+    videoFile?: Express.Multer.File,   // ← renommé
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
     const podcast = this.podcastRepo.create({
@@ -42,7 +41,7 @@ export class PodcastService {
       auteur: dto.auteur || '',
       domaine: dto.domaine || '',
       statut: dto.statut || 'en_attente',
-      url_audio: audioFile?.filename || '',
+      url_audio: videoFile?.filename || '',   // stocké dans url_audio (mais c'est une vidéo)
       image: imageFile?.filename || '',
     });
     const saved = await this.podcastRepo.save(podcast);
@@ -56,17 +55,17 @@ export class PodcastService {
   async update(
     id: number,
     dto: UpdatePodcastDto,
-    audioFile?: Express.Multer.File,
+    videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
     const podcast = await this.ensurePodcastExists(id);
 
-    if (audioFile) {
+    if (videoFile) {
       if (podcast.url_audio) {
         const oldPath = path.join(process.cwd(), 'uploads', 'podcasts-audio', podcast.url_audio);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      podcast.url_audio = audioFile.filename;
+      podcast.url_audio = videoFile.filename;
     }
     if (imageFile) {
       if (podcast.image) {
@@ -122,7 +121,7 @@ export class PodcastService {
   async createByExpert(
     dto: CreatePodcastDto,
     expertId: number,
-    audioFile?: Express.Multer.File,
+    videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
     const podcast = this.podcastRepo.create({
@@ -131,7 +130,7 @@ export class PodcastService {
       auteur: dto.auteur || '',
       domaine: dto.domaine || '',
       statut: 'en_attente',
-      url_audio: audioFile?.filename || '',
+      url_audio: videoFile?.filename || '',
       image: imageFile?.filename || '',
       expert_id: expertId,
     });
@@ -154,7 +153,7 @@ export class PodcastService {
     podcastId: number,
     expertId: number,
     dto: UpdatePodcastDto,
-    audioFile?: Express.Multer.File,
+    videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
     const podcast = await this.ensurePodcastExists(podcastId);
@@ -163,7 +162,7 @@ export class PodcastService {
     }
     // L'expert ne peut pas changer le statut
     const { statut, ...allowedDto } = dto;
-    return this.update(podcastId, allowedDto, audioFile, imageFile);
+    return this.update(podcastId, allowedDto, videoFile, imageFile);
   }
 
   async deleteByExpert(podcastId: number, expertId: number): Promise<void> {
