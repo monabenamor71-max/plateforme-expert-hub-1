@@ -1901,8 +1901,32 @@ export default function DashboardAdmin() {
   async function loadDevisForDemande(demandeId: number) { if (devisCache[demandeId]) return devisCache[demandeId]; try { const r = await fetch(`${BASE}/devis/admin/by-demande/${demandeId}`, { headers: hdr() }); const data = r.ok ? await r.json() : []; setDevisCache(prev => ({ ...prev, [demandeId]: data })); return data; } catch { return []; } }
 
   async function supprimerMedia(id: number) { if (!confirm("Supprimer ?")) return; const r = await fetch(`${BASE}/admin/medias/${id}`, { method: "DELETE", headers: hdr() }); if (r.ok) { notify("Supprimé"); loadMedias(); } else notify("Erreur", false); }
-  async function valider(type: string, id: number) { const r = await fetch(`${BASE}/admin/${type}/${id}/valider`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("Validé !"); setSelectedExpert(null); setSelectedStartup(null); loadAll(); } else notify("Erreur", false); }
-  async function refuser(type: string, id: number) { const r = await fetch(`${BASE}/admin/${type}/${id}/refuser`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("Refusé"); setSelectedExpert(null); setSelectedStartup(null); loadAll(); } else notify("Erreur", false); }
+  async function valider(type: string, id: number) { 
+  if (!confirm("Valider ?")) return; 
+  const r = await fetch(`${BASE}/admin/${type}/${id}/valider`, { method: "PATCH", headers: hdr() }); 
+  if (r.ok) { 
+    notify("✅ Validé !"); 
+    setSelectedExpert(null); 
+    setSelectedStartup(null); 
+    loadAll(); 
+  } else { 
+    notify("Erreur", false); 
+  } 
+}
+
+async function refuser(type: string, id: number) { 
+  if (!confirm("Refuser ?")) return; 
+  const r = await fetch(`${BASE}/admin/${type}/${id}/refuser`, { method: "PATCH", headers: hdr() }); 
+  if (r.ok) { 
+    notify("❌ Refusé"); 
+    setSelectedExpert(null); 
+    setSelectedStartup(null); 
+    loadAll(); 
+  } else { 
+    notify("Erreur", false); 
+  } 
+}
+  
   async function validerModification(id: number) { const r = await fetch(`${BASE}/experts/${id}/valider-modification`, { method: "PATCH", headers: hdr() }); if (r.ok) notify("Modification validée"); else notify("Erreur", false); loadAll(); }
   async function refuserModification(id: number) { const r = await fetch(`${BASE}/experts/${id}/refuser-modification`, { method: "PATCH", headers: hdr() }); if (r.ok) notify("Modification refusée"); else notify("Erreur", false); loadAll(); }
   async function validerTemo(id: number) { const r = await fetch(`${BASE}/temoignages/${id}/valider`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("Publié !"); loadAll(); } else notify("Erreur", false); }
