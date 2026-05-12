@@ -1,3 +1,5 @@
+// demandes-service.service.ts (version corrigée)
+
 import {
   Injectable, NotFoundException, BadRequestException, UnauthorizedException, Logger,
 } from '@nestjs/common';
@@ -8,6 +10,7 @@ import { Formation } from '../formations/formation.entity';
 import { Expert } from '../user/expert.entity';
 import { Devis } from '../devis/devis.entity';
 import { FormationsService } from '../formations/formations.service';
+import { MailService } from '../mail/mail.service';
 import { CreateDemandeDto } from './dto/create-demande.dto';
 import { UpdateDemandeDto } from './dto/update-demande.dto';
 import { UpdateStatutDto } from './dto/update-statut.dto';
@@ -28,6 +31,7 @@ export class DemandesServiceService {
     @InjectRepository(Devis)
     private devisRepo: Repository<Devis>,
     private formationsService: FormationsService,
+    private mailService: MailService,
   ) {}
 
   // ==================== ADMIN ====================
@@ -143,10 +147,55 @@ export class DemandesServiceService {
   }
 
   async create(userId: number, dto: CreateDemandeDto) {
+    // Récupérer l'utilisateur avec ses informations SANS la relation startup
+    const userRepo = this.repo.manager.getRepository('User');
+    const user = await userRepo.findOne({ 
+      where: { id: userId }
+    });
+    
+    // Récupérer la startup séparément si nécessaire (via une autre requête)
+    let startupNom = '';
+    let secteur = '';
+    
+    try {
+      const startupRepo = this.repo.manager.getRepository('Startup');
+      const startup = await startupRepo.findOne({ 
+        where: { user_id: userId }
+      });
+      if (startup) {
+        startupNom = startup.nom_startup || '';
+        secteur = startup.secteur || '';
+      }
+    } catch (error) {
+      this.logger.warn(`Impossible de récupérer la startup pour l'utilisateur ${userId}: ${error.message}`);
+    }
+    
     const data = { user_id: userId, ...dto, statut: 'en_attente' };
     const demande = this.repo.create(data);
     const saved = await this.repo.save(demande);
     if (!saved) throw new BadRequestException('Erreur lors de la création de la demande');
+    
+    // ENVOYER LA NOTIFICATION PAR EMAIL À L'ADMIN
+    try {
+      await this.mailService.sendDemandeServiceNotification(
+        user?.nom || 'Non renseigné',
+        user?.prenom || 'Non renseigné',
+        user?.email || '',
+        dto.telephone || (user as any)?.telephone || '',
+        dto.service || 'service',
+        dto.domaine || 'Non spécifié',
+        dto.description || '',
+        dto.objectif || '',
+        dto.delai || '',
+        startupNom,
+        secteur
+      );
+      this.logger.log(`📧 Notification admin envoyée pour la demande de service ${saved.id}`);
+    } catch (emailError) {
+      this.logger.error(`❌ Erreur envoi email admin: ${emailError.message}`);
+      // Ne pas bloquer la création de la demande
+    }
+    
     this.logger.log(`Demande créée par user ${userId}`);
     return saved;
   }
@@ -175,6 +224,44 @@ export class DemandesServiceService {
     });
     const saved = await this.repo.save(demande);
     if (!saved) throw new BadRequestException('Erreur lors de la création de la demande de formation');
+    
+    // ENVOYER LA NOTIFICATION PAR EMAIL À L'ADMIN POUR UNE FORMATION
+    try {
+      const userRepo = this.repo.manager.getRepository('User');
+      const user = await userRepo.findOne({ where: { id: userId } });
+      
+      let startupNom = '';
+      let secteur = '';
+      
+      try {
+        const startupRepo = this.repo.manager.getRepository('Startup');
+        const startup = await startupRepo.findOne({ where: { user_id: userId } });
+        if (startup) {
+          startupNom = startup.nom_startup || '';
+          secteur = startup.secteur || '';
+        }
+      } catch (error) {
+        this.logger.warn(`Impossible de récupérer la startup: ${error.message}`);
+      }
+      
+      await this.mailService.sendDemandeServiceNotification(
+        user?.nom || 'Non renseigné',
+        user?.prenom || 'Non renseigné',
+        user?.email || '',
+        (user as any)?.telephone || '',
+        'formation',
+        formation.domaine || 'Non spécifié',
+        `Demande d'inscription à la formation : ${formation.titre}`,
+        '',
+        '',
+        startupNom,
+        secteur
+      );
+      this.logger.log(`📧 Notification admin envoyée pour la demande de formation ${saved.id}`);
+    } catch (emailError) {
+      this.logger.error(`❌ Erreur envoi email admin: ${emailError.message}`);
+    }
+    
     this.logger.log(`Demande de formation créée par user ${userId} pour formation ${formationId}`);
     return saved;
   }
@@ -234,7 +321,6 @@ export class DemandesServiceService {
       let notifies = Array.isArray(d.experts_notifies) ? d.experts_notifies : [];
       let acceptes = Array.isArray(d.experts_acceptes) ? d.experts_acceptes : [];
       
-      // Gérer le cas où ce sont des objets
       if (notifies.length > 0 && typeof notifies[0] === 'object') {
         notifies = notifies.map((n: any) => n.expert_id || n.id);
       }
@@ -252,7 +338,6 @@ export class DemandesServiceService {
     return notifications;
   }
 
-  // ✅ NOUVEAU : Endpoint pour que l'expert voie ses demandes visibles
   async getVisibleDemandesForExpert(userId: number) {
     const expert = await this.getExpertByUserId(userId);
     
@@ -265,7 +350,6 @@ export class DemandesServiceService {
       let notifies = d.experts_notifies || [];
       let acceptes = d.experts_acceptes || [];
       
-      // Gérer les formats
       if (notifies.length > 0 && typeof notifies[0] === 'object') {
         notifies = notifies.map((n: any) => n.expert_id || n.id);
       }
@@ -278,7 +362,6 @@ export class DemandesServiceService {
       const hasAlreadyAccepted = acceptes.includes(expert.id);
       const assignedToOther = d.expert_assigne_id !== null && d.expert_assigne_id !== expert.id;
       
-      // Ne pas montrer celles déjà acceptées ou assignées à un autre
       return (isNotified || isDirectlyAssigned) && !hasAlreadyAccepted && !assignedToOther;
     });
     
@@ -286,37 +369,35 @@ export class DemandesServiceService {
     return visible;
   }
 
- async accepterMission(demandeId: number, userId: number) {
-  const expert = await this.getExpertByUserId(userId);
-  const demande = await this.repo.findOne({ where: { id: demandeId } });
-  if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
+  async accepterMission(demandeId: number, userId: number) {
+    const expert = await this.getExpertByUserId(userId);
+    const demande = await this.repo.findOne({ where: { id: demandeId } });
+    if (!demande) throw new NotFoundException(`Demande ${demandeId} non trouvée`);
 
-  let notifies = demande.experts_notifies || [];
-  if (notifies.length > 0 && typeof notifies[0] === 'object') {
-    notifies = notifies.map((n: any) => n.expert_id || n.id);
+    let notifies = demande.experts_notifies || [];
+    if (notifies.length > 0 && typeof notifies[0] === 'object') {
+      notifies = notifies.map((n: any) => n.expert_id || n.id);
+    }
+    
+    if (!notifies.includes(expert.id))
+      throw new BadRequestException("Vous n'avez pas été notifié pour cette mission");
+    if (demande.expert_assigne_id)
+      throw new BadRequestException('Un expert est déjà assigné à cette mission');
+
+    let acceptes = demande.experts_acceptes || [];
+    if (acceptes.length > 0 && typeof acceptes[0] === 'object') {
+      acceptes = acceptes.map((a: any) => a.expert_id || a.id);
+    }
+    if (acceptes.includes(expert.id)) return { message: 'Vous avez déjà accepté' };
+
+    demande.experts_acceptes = [...acceptes, expert.id];
+    demande.statut = 'acceptee';
+    
+    const saved = await this.repo.save(demande);
+    if (!saved) throw new BadRequestException('Erreur lors de l’enregistrement de l’acceptation');
+    this.logger.log(`Expert ${expert.id} a accepté la mission ${demandeId}`);
+    return { message: 'Acceptation enregistrée, vous pouvez maintenant soumettre un devis' };
   }
-  
-  if (!notifies.includes(expert.id))
-    throw new BadRequestException("Vous n'avez pas été notifié pour cette mission");
-  if (demande.expert_assigne_id)
-    throw new BadRequestException('Un expert est déjà assigné à cette mission');
-
-  let acceptes = demande.experts_acceptes || [];
-  if (acceptes.length > 0 && typeof acceptes[0] === 'object') {
-    acceptes = acceptes.map((a: any) => a.expert_id || a.id);
-  }
-  if (acceptes.includes(expert.id)) return { message: 'Vous avez déjà accepté' };
-
-  demande.experts_acceptes = [...acceptes, expert.id];
-  
-  // ✅ CORRECTION : Mettre le statut à "acceptee" car l'expert a accepté
-  demande.statut = 'acceptee';
-  
-  const saved = await this.repo.save(demande);
-  if (!saved) throw new BadRequestException('Erreur lors de l’enregistrement de l’acceptation');
-  this.logger.log(`Expert ${expert.id} a accepté la mission ${demandeId}`);
-  return { message: 'Acceptation enregistrée, vous pouvez maintenant soumettre un devis' };
-}
 
   async refuserMission(demandeId: number, userId: number) {
     const expert = await this.getExpertByUserId(userId);

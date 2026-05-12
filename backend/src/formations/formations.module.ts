@@ -3,9 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Formation } from './formation.entity';
 import { FormationsService } from './formations.service';
 import { FormationsController } from './formations.controller';
+import { MailModule } from '../mail/mail.module';
+import { Expert } from '../user/expert.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Formation])],
+  imports: [
+    TypeOrmModule.forFeature([Formation, Expert]),
+    MailModule,  // ← TRÈS IMPORTANT: MailModule doit être importé
+  ],
   controllers: [FormationsController],
   providers: [FormationsService],
   exports: [FormationsService],

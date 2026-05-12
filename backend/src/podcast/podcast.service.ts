@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Podcast } from './podcast.entity';
 import { CreatePodcastDto, UpdatePodcastDto } from './dto/podcast.dto';
+import { MailService } from '../mail/mail.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,6 +14,7 @@ export class PodcastService {
   constructor(
     @InjectRepository(Podcast)
     private podcastRepo: Repository<Podcast>,
+    private mailService: MailService,
   ) {}
 
   private async ensurePodcastExists(id: number): Promise<Podcast> {
@@ -32,7 +34,7 @@ export class PodcastService {
 
   async create(
     dto: CreatePodcastDto,
-    videoFile?: Express.Multer.File,   // ← renommé
+    videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
     const podcast = this.podcastRepo.create({
@@ -41,7 +43,7 @@ export class PodcastService {
       auteur: dto.auteur || '',
       domaine: dto.domaine || '',
       statut: dto.statut || 'en_attente',
-      url_audio: videoFile?.filename || '',   // stocké dans url_audio (mais c'est une vidéo)
+      url_audio: videoFile?.filename || '',
       image: imageFile?.filename || '',
     });
     const saved = await this.podcastRepo.save(podcast);
@@ -121,6 +123,7 @@ export class PodcastService {
   async createByExpert(
     dto: CreatePodcastDto,
     expertId: number,
+    expertUser: any,
     videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
@@ -138,6 +141,26 @@ export class PodcastService {
     if (!saved || !saved.id) {
       throw new BadRequestException('Erreur lors de la création du podcast par l’expert');
     }
+    
+    // 🔔 ENVOYER NOTIFICATION EMAIL À L'ADMIN
+    try {
+      if (this.mailService && expertUser) {
+        await this.mailService.sendPodcastProposeeNotification(
+          expertUser.prenom || 'Expert',
+          expertUser.nom || '',
+          expertUser.email || '',
+          dto.titre || 'Sans titre',
+          dto.domaine || 'Non spécifié',
+          dto.description || ''
+        );
+        this.logger.log(`📧 Notification admin envoyée pour le podcast: ${saved.id}`);
+      } else {
+        this.logger.warn(`⚠️ Impossible d'envoyer l'email: mailService ou expertUser manquant`);
+      }
+    } catch (emailError) {
+      this.logger.error(`❌ Erreur envoi email admin pour podcast: ${emailError.message}`);
+    }
+    
     this.logger.log(`Podcast créé par expert ${expertId} : ${saved.id}`);
     return saved;
   }
@@ -160,7 +183,6 @@ export class PodcastService {
     if (podcast.expert_id !== expertId) {
       throw new ForbiddenException('Vous ne pouvez pas modifier ce podcast');
     }
-    // L'expert ne peut pas changer le statut
     const { statut, ...allowedDto } = dto;
     return this.update(podcastId, allowedDto, videoFile, imageFile);
   }

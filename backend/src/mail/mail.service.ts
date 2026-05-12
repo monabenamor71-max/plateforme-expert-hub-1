@@ -10,12 +10,9 @@ export class MailService {
   private readonly baseUrl: string;
 
   constructor() {
-    // Variable d'environnement obligatoire pour la production
-    // Par défaut, utilise localhost:3001 en développement
     this.baseUrl = process.env.APP_BASE_URL || 'http://localhost:3001';
     this.logger.log(`🌐 Base URL utilisée pour les liens dans les emails : ${this.baseUrl}`);
 
-    // Utiliser un mot de passe d'application Gmail depuis variable d'environnement (recommandé)
     const emailPass = process.env.EMAIL_APP_PASS || 'eeby aygp htye hwvu';
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -102,7 +99,7 @@ export class MailService {
     await this.sendEmail(email, 'Confirmation de votre adresse email', html);
   }
 
-  // ==================== NOTIFICATION ADMIN ====================
+  // ==================== NOTIFICATION ADMIN (INSCRIPTION) ====================
   async sendAdminNotification(nom: string, role: string, email: string) {
     console.log(`🔔 NOUVELLE INSCRIPTION ${role.toUpperCase()} : ${nom} (${email})`);
 
@@ -118,6 +115,151 @@ export class MailService {
     const adminDashboardUrl = `${this.baseUrl}/dashboard/admin`;
     const html = this.getBaseHtml(content, { url: adminDashboardUrl, text: '📊 Accéder à l’admin' });
     await this.sendEmail(this.adminEmail, `Nouvelle inscription ${role}`, html);
+  }
+
+  // ==================== NOTIFICATION DEMANDE DE SERVICE ====================
+  async sendDemandeServiceNotification(
+    userNom: string,
+    userPrenom: string,
+    userEmail: string,
+    userTelephone: string,
+    serviceType: string,
+    domaine: string,
+    description: string,
+    objectif: string,
+    delai: string,
+    startupNom?: string,
+    secteur?: string
+  ) {
+    this.logger.log(`🔔 Nouvelle demande de service de ${userPrenom} ${userNom} - ${serviceType}`);
+
+    const serviceLabels: Record<string, string> = {
+      'consulting': 'Consulting Stratégique',
+      'audit-sur-site': 'Audit sur site',
+      'nos-plateformes': 'Nos Plateformes (Développement)',
+      'formations': 'Formation sur mesure',
+      'formation': 'Formation existante',
+    };
+    const serviceLabel = serviceLabels[serviceType] || serviceType;
+
+    const content = `
+      <h2 style="color: #0A2540; font-size: 20px; margin-bottom: 16px;">📋 Nouvelle demande de service</h2>
+      
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">👤 Informations du demandeur</h3>
+        <p style="margin: 0 0 8px;"><strong>Nom complet :</strong> ${userPrenom} ${userNom}</p>
+        <p style="margin: 0 0 8px;"><strong>Email :</strong> ${userEmail}</p>
+        <p style="margin: 0 0 8px;"><strong>Téléphone :</strong> ${userTelephone || 'Non renseigné'}</p>
+        ${startupNom ? `<p style="margin: 0 0 8px;"><strong>Startup :</strong> ${startupNom}</p>` : ''}
+        ${secteur ? `<p style="margin: 0 0 8px;"><strong>Secteur d'activité :</strong> ${secteur}</p>` : ''}
+      </div>
+
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">🎯 Détails de la demande</h3>
+        <p style="margin: 0 0 8px;"><strong>Type de service :</strong> <span style="background: #F7B50020; padding: 3px 10px; border-radius: 99px; font-weight: 600;">${serviceLabel}</span></p>
+        <p style="margin: 0 0 8px;"><strong>Domaine :</strong> ${domaine || 'Non spécifié'}</p>
+        <p style="margin: 0 0 8px;"><strong>Objectif :</strong> ${objectif || 'Non spécifié'}</p>
+        <p style="margin: 0 0 8px;"><strong>Délai souhaité :</strong> ${delai || 'Non spécifié'}</p>
+      </div>
+
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">📝 Description détaillée</h3>
+        <p style="margin: 0; line-height: 1.6;">${description?.replace(/\n/g, '<br>') || 'Non renseignée'}</p>
+      </div>
+
+      <p style="color:#475569; margin-top: 20px;">Cette demande nécessite votre attention. Connectez-vous à l’espace administration pour gérer cette demande et notifier des experts.</p>
+    `;
+
+    const adminDemandesUrl = `${this.baseUrl}/dashboard/admin/demandes`;
+    const html = this.getBaseHtml(content, { url: adminDemandesUrl, text: '📊 Gérer les demandes' });
+    
+    await this.sendEmail(this.adminEmail, `📬 Nouvelle demande de service - ${serviceLabel} - ${userPrenom} ${userNom}`, html);
+  }
+
+  // ==================== NOTIFICATION FORMATION PROPOSÉE PAR EXPERT ====================
+  async sendFormationProposeeNotification(
+    expertPrenom: string,
+    expertNom: string,
+    expertEmail: string,
+    formationTitre: string,
+    domaine: string,
+    description: string
+  ) {
+    console.log('📧 [FORMATION] sendFormationProposeeNotification');
+    console.log(`   Expert: ${expertPrenom} ${expertNom} (${expertEmail})`);
+    console.log(`   Formation: ${formationTitre}`);
+    console.log(`   Destinataire admin: ${this.adminEmail}`);
+    
+    this.logger.log(`🔔 Nouvelle formation proposée par expert ${expertPrenom} ${expertNom}`);
+
+    const content = `
+      <h2 style="color: #0A2540; font-size: 20px; margin-bottom: 16px;">📚 Nouvelle formation proposée par un expert</h2>
+      
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">👤 Informations de l'expert</h3>
+        <p style="margin: 0 0 8px;"><strong>Nom :</strong> ${expertPrenom} ${expertNom}</p>
+        <p style="margin: 0 0 8px;"><strong>Email :</strong> ${expertEmail}</p>
+      </div>
+
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">🎓 Détails de la formation</h3>
+        <p style="margin: 0 0 8px;"><strong>Titre :</strong> ${formationTitre}</p>
+        <p style="margin: 0 0 8px;"><strong>Domaine :</strong> ${domaine || 'Non spécifié'}</p>
+        <p style="margin: 0 0 8px;"><strong>Description :</strong></p>
+        <p style="background: white; padding: 12px; border-radius: 12px;">${description?.replace(/\n/g, '<br>') || 'Non renseignée'}</p>
+      </div>
+
+      <p style="color:#475569; margin-top: 20px;">Cette formation est en attente de validation. Connectez-vous à l’espace administration pour l'examiner et la publier.</p>
+    `;
+
+    const adminFormationsUrl = `${this.baseUrl}/dashboard/admin/formations`;
+    const html = this.getBaseHtml(content, { url: adminFormationsUrl, text: '📊 Gérer les formations' });
+    
+    await this.sendEmail(this.adminEmail, `📚 Nouvelle formation proposée - ${formationTitre}`, html);
+    console.log('✅ Email formation envoyé avec succès!');
+  }
+
+  // ==================== NOTIFICATION PODCAST PROPOSÉ PAR EXPERT ====================
+  async sendPodcastProposeeNotification(
+    expertPrenom: string,
+    expertNom: string,
+    expertEmail: string,
+    podcastTitre: string,
+    domaine: string,
+    description: string
+  ) {
+    console.log('📧 [PODCAST] sendPodcastProposeeNotification');
+    console.log(`   Expert: ${expertPrenom} ${expertNom} (${expertEmail})`);
+    console.log(`   Podcast: ${podcastTitre}`);
+    console.log(`   Destinataire admin: ${this.adminEmail}`);
+    
+    this.logger.log(`🔔 Nouveau podcast proposé par expert ${expertPrenom} ${expertNom}`);
+
+    const content = `
+      <h2 style="color: #0A2540; font-size: 20px; margin-bottom: 16px;">🎙️ Nouveau podcast proposé par un expert</h2>
+      
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">👤 Informations de l'expert</h3>
+        <p style="margin: 0 0 8px;"><strong>Nom :</strong> ${expertPrenom} ${expertNom}</p>
+        <p style="margin: 0 0 8px;"><strong>Email :</strong> ${expertEmail}</p>
+      </div>
+
+      <div style="background: #F8FAFC; border-radius: 16px; padding: 20px; margin: 16px 0;">
+        <h3 style="color: #F7B500; font-size: 14px; margin-bottom: 12px;">🎬 Détails du podcast</h3>
+        <p style="margin: 0 0 8px;"><strong>Titre :</strong> ${podcastTitre}</p>
+        <p style="margin: 0 0 8px;"><strong>Domaine :</strong> ${domaine || 'Non spécifié'}</p>
+        <p style="margin: 0 0 8px;"><strong>Description :</strong></p>
+        <p style="background: white; padding: 12px; border-radius: 12px;">${description?.replace(/\n/g, '<br>') || 'Non renseignée'}</p>
+      </div>
+
+      <p style="color:#475569; margin-top: 20px;">Ce podcast est en attente de validation. Connectez-vous à l’espace administration pour l'examiner et le publier.</p>
+    `;
+
+    const adminPodcastsUrl = `${this.baseUrl}/dashboard/admin/podcasts`;
+    const html = this.getBaseHtml(content, { url: adminPodcastsUrl, text: '📊 Gérer les podcasts' });
+    
+    await this.sendEmail(this.adminEmail, `🎙️ Nouveau podcast proposé - ${podcastTitre}`, html);
+    console.log('✅ Email podcast envoyé avec succès!');
   }
 
   // ==================== VALIDATION DU COMPTE ====================

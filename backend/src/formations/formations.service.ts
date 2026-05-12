@@ -6,6 +6,7 @@ import { Formation } from './formation.entity';
 import { CreateFormationDto } from './dto/create-formation.dto';
 import { UpdateFormationDto } from './dto/update-formation.dto';
 import { UpdateStatutDto } from './dto/update-statut.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class FormationsService {
@@ -14,7 +15,10 @@ export class FormationsService {
   constructor(
     @InjectRepository(Formation)
     private formationRepo: Repository<Formation>,
-  ) {}
+    private mailService: MailService,
+  ) {
+    this.logger.log('✅ FormationsService initialisé');
+  }
 
   private async findOneOrFail(id: number): Promise<Formation> {
     const formation = await this.formationRepo.findOne({ where: { id } });
@@ -22,7 +26,17 @@ export class FormationsService {
     return formation;
   }
 
-  async createFromExpert(dto: CreateFormationDto, imageFile: Express.Multer.File | undefined, expertId: number): Promise<Formation> {
+  // ==================== EXPERTS ====================
+  async createFromExpert(
+    dto: CreateFormationDto, 
+    imageFile: Express.Multer.File | undefined, 
+    expertId: number,
+    expertUser: any
+  ): Promise<Formation> {
+    this.logger.log(`📝 Création formation par expert ${expertId}`);
+    this.logger.log(`👤 Expert: ${expertUser?.prenom} ${expertUser?.nom} (${expertUser?.email})`);
+    this.logger.log(`📚 Formation: ${dto.titre}`);
+
     const formation = this.formationRepo.create({
       titre: dto.titre,
       description: dto.description,
@@ -47,19 +61,39 @@ export class FormationsService {
       expertId,
       image: imageFile?.filename || '',
     });
+    
     const saved = await this.formationRepo.save(formation);
+    this.logger.log(`✅ Formation sauvegardée ID: ${saved.id}`);
+
+    // 🔔 ENVOYER NOTIFICATION EMAIL À L'ADMIN
+    try {
+      if (this.mailService && expertUser && expertUser.email) {
+        this.logger.log(`📧 Envoi email pour formation ${saved.id}...`);
+        await this.mailService.sendFormationProposeeNotification(
+          expertUser.prenom || 'Expert',
+          expertUser.nom || '',
+          expertUser.email || '',
+          dto.titre || 'Sans titre',
+          dto.domaine || 'Non spécifié',
+          dto.description || ''
+        );
+        this.logger.log(`✅ Email admin envoyé pour formation ${saved.id}`);
+      } else {
+        this.logger.warn(`⚠️ Impossible d'envoyer l'email: mailService=${!!this.mailService}, expertUser=${!!expertUser}, email=${expertUser?.email}`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ Erreur envoi email: ${error.message}`);
+    }
+    
     return saved;
   }
 
   async findByExpert(expertId: number): Promise<Formation[]> {
-    return this.formationRepo.find({
-      where: { expertId },
-      order: { createdAt: 'DESC' },
-    });
+    return this.formationRepo.find({ where: { expertId }, order: { createdAt: 'DESC' } });
   }
 
+  // ==================== ADMIN ====================
   async create(dto: CreateFormationDto, imageFile: Express.Multer.File | undefined, formateurImages: Express.Multer.File[] = []): Promise<Formation> {
-    // Construire le tableau des formateurs enrichi
     let formateurDetails: Array<any> = [];
 
     if (dto.formateur_details && Array.isArray(dto.formateur_details)) {
@@ -74,7 +108,6 @@ export class FormationsService {
         };
       });
     } else if (dto.formateur && dto.formateur.trim()) {
-      // Rétrocompatibilité : un seul formateur texte (sans détails)
       formateurDetails = [{
         prenom: '',
         nom: dto.formateur.trim(),
@@ -109,9 +142,7 @@ export class FormationsService {
       image: imageFile?.filename || '',
     });
 
-    const saved = await this.formationRepo.save(formation);
-    this.logger.log(`Admin a créé la formation ${saved.id} avec ${formateurDetails.length} formateur(s)`);
-    return saved;
+    return this.formationRepo.save(formation);
   }
 
   async findAll(): Promise<Formation[]> {
@@ -125,7 +156,9 @@ export class FormationsService {
     if (dto.description !== undefined) formation.description = dto.description;
     if (dto.domaine !== undefined) formation.domaine = dto.domaine;
     if (dto.formateur !== undefined) formation.formateur = dto.formateur;
-    // La mise à jour des formateur_details n'est pas gérée ici (simplifié)
+    if (dto.formateur_details && Array.isArray(dto.formateur_details)) {
+      formation.formateur_details = dto.formateur_details;
+    }
     if (dto.type !== undefined) formation.type = dto.type;
     if (dto.prix !== undefined) formation.prix = dto.prix;
     if (dto.places_limitees !== undefined) formation.places_limitees = dto.places_limitees;
@@ -142,8 +175,7 @@ export class FormationsService {
     if (dto.niveau !== undefined) formation.niveau = dto.niveau;
     if (dto.categorie !== undefined) formation.categorie = dto.categorie;
     if (dto.statut !== undefined) formation.statut = dto.statut;
-    const updated = await this.formationRepo.save(formation);
-    return updated;
+    return this.formationRepo.save(formation);
   }
 
   async updateStatut(id: number, dto: UpdateStatutDto): Promise<Formation> {
@@ -162,9 +194,9 @@ export class FormationsService {
   async decrementPlaces(formationId: number): Promise<void> {
     const formation = await this.findOneOrFail(formationId);
     if (formation.places_limitees) {
-      const currentPlaces = formation.places_disponibles ?? 0;
-      if (currentPlaces <= 0) throw new BadRequestException('Plus de places disponibles');
-      formation.places_disponibles = currentPlaces - 1;
+      const places = formation.places_disponibles ?? 0;
+      if (places <= 0) throw new BadRequestException('Plus de places disponibles');
+      formation.places_disponibles = places - 1;
       await this.formationRepo.save(formation);
     }
   }
@@ -177,11 +209,9 @@ export class FormationsService {
     }
   }
 
+  // ==================== PUBLIQUES ====================
   async findPublished(): Promise<Formation[]> {
-    return this.formationRepo.find({
-      where: { statut: 'publie' },
-      order: { createdAt: 'DESC' },
-    });
+    return this.formationRepo.find({ where: { statut: 'publie' }, order: { createdAt: 'DESC' } });
   }
 
   async findOne(id: number): Promise<Formation> {

@@ -1099,7 +1099,23 @@ export default function DashboardExpert() {
     const res = await fetch(`${BASE}/experts/profil`, { method: "PUT", headers: hdrJ(), body: JSON.stringify(payload) });
     if (res.ok) { notify("✅ Modification envoyée"); await loadExpertData(user?.id); } else notify("Erreur", false);
   }
-  async function handleDeletePodcast(id: number) { if (!confirm("Supprimer ?")) return; const res = await fetch(`${BASE}/podcasts/expert/supprimer/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${tk()}` } }); if (res.ok) { notify("Supprimé"); await loadExpertData(user?.id); } else notify("Erreur", false); }
+  async function handleDeletePodcast(id: number) { 
+  if (!confirm("Supprimer ?")) return; 
+  try {
+    const res = await fetch(`${BASE}/podcasts/expert/supprimer/${id}`, { 
+      method: "DELETE", 
+      headers: { Authorization: `Bearer ${tk()}` } 
+    }); 
+    if (res.ok) { 
+      notify("✅ Podcast supprimé avec succès"); 
+      await loadExpertData(user?.id); 
+    } else { 
+      notify("❌ Erreur lors de la suppression", false); 
+    }
+  } catch (error) {
+    notify("❌ Erreur réseau", false);
+  }
+}
 
   async function envoyerMessageAdmin(e: React.FormEvent) {
     e.preventDefault(); if (!contactAdminForm.message.trim()) return; setSendingContactAdmin(true);

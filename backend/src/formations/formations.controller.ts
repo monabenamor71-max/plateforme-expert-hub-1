@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Put, Patch, Delete,
   Body, Param, UseInterceptors, UploadedFiles,
   UseGuards, Request, ValidationPipe, ParseIntPipe,
+  Logger,
 } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -11,6 +12,9 @@ import { CreateFormationDto } from './dto/create-formation.dto';
 import { UpdateFormationDto } from './dto/update-formation.dto';
 import { UpdateStatutDto } from './dto/update-statut.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Expert } from '../user/expert.entity';
 import type { Request as ExpressRequest } from 'express';
 import * as fs from 'fs';
 
@@ -46,7 +50,15 @@ interface RequestWithUser extends ExpressRequest {
 
 @Controller('formations')
 export class FormationsController {
-  constructor(private readonly formationsService: FormationsService) {}
+  private readonly logger = new Logger(FormationsController.name);
+
+  constructor(
+    private readonly formationsService: FormationsService,
+    @InjectRepository(Expert)
+    private expertRepo: Repository<Expert>,
+  ) {
+    this.logger.log('✅ FormationsController initialisé');
+  }
 
   @Post('expert/proposer')
   @UseGuards(JwtAuthGuard)
@@ -56,8 +68,27 @@ export class FormationsController {
     @UploadedFiles() files: Express.Multer.File[],
     @Request() req: RequestWithUser,
   ) {
+    this.logger.log(`🔵 Requête proposition formation - User ID: ${req.user.id}`);
+    
     const imageFile = files.find(f => f.fieldname === 'image');
-    return this.formationsService.createFromExpert(dto, imageFile, req.user.id);
+    
+    // Récupérer les informations de l'expert pour l'email
+    const expert = await this.expertRepo.findOne({ 
+      where: { user_id: req.user.id },
+      relations: ['user']
+    });
+    
+    this.logger.log(`🔵 Expert trouvé: ${expert ? 'OUI' : 'NON'}`);
+    
+    if (!expert || !expert.user) {
+      this.logger.error(`❌ Expert ou user non trouvé pour l'utilisateur ${req.user.id}`);
+      throw new Error('Expert non trouvé');
+    }
+    
+    this.logger.log(`🔵 Expert: ${expert.user.prenom} ${expert.user.nom} (${expert.user.email})`);
+    this.logger.log(`🔵 Formation: ${dto.titre}`);
+    
+    return this.formationsService.createFromExpert(dto, imageFile, expert.id, expert.user);
   }
 
   @Get('expert/mes-formations')
