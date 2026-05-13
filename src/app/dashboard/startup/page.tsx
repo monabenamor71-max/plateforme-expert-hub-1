@@ -20,6 +20,7 @@ import {
 
 const BASE = "http://localhost:3001";
 
+// ✅ CORRECTION : Utiliser "formation-sur-mesure" au lieu de "formations"
 const SERVICES_INFO: Record<string, any> = {
   consulting: {
     label: "Consulting Stratégique", icon: <FaChartLine />, color: "#3B82F6",
@@ -39,8 +40,9 @@ const SERVICES_INFO: Record<string, any> = {
     duree: "4 à 16 semaines",
     points: ["Application Web", "Application Mobile", "Support & maintenance"],
   },
-  formations: {
-    label: "Formations", icon: <FaGraduationCap />, color: "#F59E0B",
+  // ✅ CORRECTION : "formations" → "formation-sur-mesure"
+  "formation-sur-mesure": {
+    label: "Formation sur mesure", icon: <FaGraduationCap />, color: "#F59E0B",
     desc: "Programmes certifiants sur mesure animés par nos experts.",
     duree: "1 jour à 3 mois",
     points: ["Contenu sur mesure", "Formateurs certifiés", "Certification incluse"],
@@ -73,8 +75,9 @@ const S_COLOR: Record<string, string> = {
   en_cours: "#3B82F6", terminee: "#10B981", refusee: "#EF4444",
 };
 
+// ✅ CORRECTION : Type ServiceSlug
+type ServiceSlug = "consulting" | "audit-sur-site" | "nos-plateformes" | "formation-sur-mesure" | "podcasts";
 type Tab = "accueil" | "services" | "profil" | "experts" | "rdv" | "messages" | "temoignages" | "mes-demandes" | "mes-devis" | "notifications";
-type ServiceSlug = "consulting" | "audit-sur-site" | "nos-plateformes" | "formations" | "podcasts";
 
 // ─── BADGES ──────────────────────────────────────────────────────────────────
 function RdvStatusBadge({ statut }: { statut: string }) {
@@ -154,7 +157,7 @@ function AutoField({ label, icon, value, onChange }: { label: string; icon: Reac
 // MODAL SERVICE AVEC FLECHE RETOUR
 // ═══════════════════════════════════════════════════════════════════
 function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending, demandeEdit }: {
-  slug: "consulting" | "audit-sur-site" | "formations";
+  slug: ServiceSlug;
   startup: any; realUser: any;
   onClose: () => void;
   onSubmit: (data: any) => void;
@@ -178,7 +181,7 @@ function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending,
     if (domaine === "Autre" && !domaineAutre.trim()) { alert("Veuillez préciser le domaine"); return; }
     if (!description.trim()) { alert("Veuillez décrire vos besoins"); return; }
     onSubmit({ 
-      service: slug, 
+      service: slug,  // ✅ slug est maintenant "formation-sur-mesure" 
       domaine: finalDomaine, 
       description, 
       objectif, 
@@ -240,10 +243,10 @@ function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending,
             )}
           </FL>
           <FL label="Description détaillée" required hint="Décrivez votre contexte, vos besoins et vos attentes spécifiques">
-            <textarea className="inp" rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder={slug === "formations" ? "Nombre de participants, niveau requis, thèmes prioritaires, format souhaité..." : "Contexte actuel, problématiques rencontrées, résultats attendus..."} style={{ resize: "none" }} required />
+            <textarea className="inp" rows={4} value={description} onChange={e => setDescription(e.target.value)} placeholder={slug === "formation-sur-mesure" ? "Nombre de participants, niveau requis, thèmes prioritaires, format souhaité..." : "Contexte actuel, problématiques rencontrées, résultats attendus..."} style={{ resize: "none" }} required />
           </FL>
           <FL label="Objectif principal" hint="Quel résultat souhaitez-vous atteindre ?">
-            <input className="inp" value={objectif} onChange={e => setObjectif(e.target.value)} placeholder={slug === "formations" ? "Ex: Former mon équipe RH, maîtriser le marketing digital..." : "Ex: Optimiser mes coûts, développer un nouveau marché..."} />
+            <input className="inp" value={objectif} onChange={e => setObjectif(e.target.value)} placeholder={slug === "formation-sur-mesure" ? "Ex: Former mon équipe RH, maîtriser le marketing digital..." : "Ex: Optimiser mes coûts, développer un nouveau marché..."} />
           </FL>
           <FL label="Délai souhaité">
             <SF value={delai} onChange={setDelai} options={DELAIS_LIST} placeholder="Choisissez un délai..." />
@@ -582,6 +585,7 @@ export default function DashboardStartup() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("accueil");
+  // ✅ CORRECTION : activeService utilise le bon slug
   const [activeService, setActiveService] = useState<ServiceSlug>("consulting");
   const [isOnline, setIsOnline] = useState(true);
 
@@ -852,7 +856,7 @@ export default function DashboardStartup() {
       setShowConsultingModal(true);
     } else if (demande.service === "audit-sur-site") {
       setShowAuditModal(true);
-    } else if (demande.service === "formations") {
+    } else if (demande.service === "formation-sur-mesure") {  // ✅ CORRECTION : "formations" → "formation-sur-mesure"
       setShowFormationModal(true);
     }
   };
@@ -1010,7 +1014,8 @@ export default function DashboardStartup() {
   filteredFormations.forEach(f => { const d = f.domaine || "Autres"; if (!formsByDomaine[d]) formsByDomaine[d] = []; formsByDomaine[d].push(f); });
   const filteredPodcasts = podcasts.filter(p => (domaineFilter === "Tous" || p.domaine === domaineFilter) && (!formSearch || p.titre?.toLowerCase().includes(formSearch.toLowerCase())));
 
-  const SERVICE_TABS: ServiceSlug[] = ["consulting", "audit-sur-site", "nos-plateformes", "formations", "podcasts"];
+  // ✅ CORRECTION : SERVICE_TABS avec le bon slug
+  const SERVICE_TABS: ServiceSlug[] = ["consulting", "audit-sur-site", "nos-plateformes", "formation-sur-mesure", "podcasts"];
   const TABS: { id: Tab; label: string }[] = [
     { id: "accueil", label: "Accueil" }, { id: "services", label: "Services" }, { id: "experts", label: "Experts" },
     { id: "rdv", label: "Rendez-vous" }, { id: "messages", label: "Messages" }, { id: "temoignages", label: "Témoignages" },
@@ -1070,7 +1075,8 @@ export default function DashboardStartup() {
       {showConsultingModal && <ServiceFormModal slug="consulting" startup={startup} realUser={realUser} onClose={() => { setShowConsultingModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showAuditModal && <ServiceFormModal slug="audit-sur-site" startup={startup} realUser={realUser} onClose={() => { setShowAuditModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showPlateformeModal && <PlateformeFormModal startup={startup} realUser={realUser} onClose={() => { setShowPlateformeModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
-      {showFormationModal && <ServiceFormModal slug="formations" startup={startup} realUser={realUser} onClose={() => { setShowFormationModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
+      {/* ✅ CORRECTION : slug="formation-sur-mesure" au lieu de "formations" */}
+      {showFormationModal && <ServiceFormModal slug="formation-sur-mesure" startup={startup} realUser={realUser} onClose={() => { setShowFormationModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
 
       {/* HEADER */}
       <header style={{ background: "linear-gradient(135deg,#0A2540 0%,#0c2d50 100%)", height: 64, padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 0 rgba(255,255,255,.06),0 4px 20px rgba(0,0,0,.25)" }}>
@@ -1410,7 +1416,8 @@ export default function DashboardStartup() {
               </div>
             )}
 
-            {activeService === "formations" && (
+            {/* ✅ CORRECTION : activeService === "formation-sur-mesure" */}
+            {activeService === "formation-sur-mesure" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
                   <div><h2 style={{ fontWeight: 800, fontSize: 19, color: "#0A2540" }}>Formations disponibles</h2><p style={{ fontSize: 12.5, color: "#64748B" }}>{filteredFormations.length} formation(s)</p></div>
@@ -1737,7 +1744,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* MES DEVIS - AVEC BOUTONS MESSAGE ET RDV APRÈS ACCEPTATION */}
+        {/* MES DEVIS */}
         {tab === "mes-devis" && (
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
@@ -1767,7 +1774,6 @@ export default function DashboardStartup() {
                       </div>
                     )}
                     
-                    {/* AFFICHAGE DES BOUTONS MESSAGE ET RDV APRÈS ACCEPTATION DU DEVIS */}
                     {dv.statut === "accepte" && dv.expert && (
                       <div style={{ marginTop: 16 }}>
                         <div style={{ background: "#ECFDF5", borderRadius: 12, padding: "12px 16px", marginBottom: 12, textAlign: "center" }}>

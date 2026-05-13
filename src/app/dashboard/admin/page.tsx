@@ -17,7 +17,7 @@ const BASE = "http://localhost:3001";
 type Tab =
   | "dashboard" | "experts" | "startups" | "temoignages" | "contacts"
   | "histoire" | "blog" | "formations" | "podcasts" | "demandes" | "medias" | "news"
-  | "contenu"; // NOUVEL ONGLET
+  | "contenu";
 
 const C = {
   teal: "#00BFA5", tealD: "#00897B", tealL: "#E0F2F1",
@@ -85,7 +85,6 @@ function loadChartJs(): Promise<void> {
   return chartJsPromise;
 }
 
-// ========================= STATUS BADGE =========================
 function StatusBadge({ statut }: { statut: string }) {
   const map: Record<string,any> = {
     valide:{bg:C.greenL,color:C.green,label:"Validé"},
@@ -129,7 +128,6 @@ function HField({ label, cle, type="text", rows=0, hf, setHF, placeholder="" }: 
   );
 }
 
-// ========================= SERVICE FILTER TABS =========================
 const SERVICE_FILTERS = [
   { key: "all", label: "Tous les services" },
   { key: "consulting", label: "Consulting" },
@@ -142,12 +140,26 @@ const SERVICE_FILTERS = [
 function normalizeService(service: string): string {
   if (!service) return "";
   const s = service.toLowerCase().trim();
-  if (s === "formations" || s === "formation") return "formation-existante";
+  
+  // Formation existante
+  if (s === "formations" || s === "formation" || s === "formation-existante") {
+    return "formation-existante";
+  }
+  
+  // Formation sur mesure - Ajouter plus de cas
+  if (s === "formation-sur-mesure" || 
+      s === "formation_sur_mesure" || 
+      s === "formation sur mesure" ||
+      s.includes("sur mesure") ||
+      s.includes("personnalisé") ||
+      s === "formation_personnalisee") {
+    return "formation-sur-mesure";
+  }
+  
   if (s === "personnalise") return "consulting";
   return s;
 }
 
-// ========================= KPI CARD =========================
 function KpiCard({ label, value, sub, color, onClick }: any) {
   const [hov, setHov] = useState(false);
   return (
@@ -163,7 +175,6 @@ function KpiCard({ label, value, sub, color, onClick }: any) {
   );
 }
 
-// ========================= DATA TABLE =========================
 function DataTable({ title, columns, data, renderRow, filters, searchKeys, actions, emptyText }: any) {
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string,string>>({});
@@ -238,7 +249,11 @@ function DataTable({ title, columns, data, renderRow, filters, searchKeys, actio
           </thead>
           <tbody>
             {paged.length===0 ? (
-              <tr><td colSpan={columns.length} style={{ textAlign:"center", padding:"44px 0", color:C.textSub, fontSize:13 }}>{emptyText||"Aucune donnée"}</td></tr>
+              <tr>
+                <td colSpan={columns.length} style={{ textAlign:"center", padding:"44px 0", color:C.textSub, fontSize:13 }}>
+                  {emptyText||"Aucune donnée"}
+                </td>
+              </tr>
             ) : (
               paged.map((row:any,i:number)=>renderRow(row,i))
             )}
@@ -250,7 +265,13 @@ function DataTable({ title, columns, data, renderRow, filters, searchKeys, actio
           <span style={{ fontSize:11.5, color:C.textSub }}>Page {page} / {totalPages}</span>
           <div style={{ display:"flex", gap:5 }}>
             <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{ padding:"5px 11px", border:`1.5px solid ${C.border}`, borderRadius:8, background:page===1?"#F8FAFC":C.white, color:page===1?"#D1D5DB":C.text, cursor:page===1?"not-allowed":"pointer", fontSize:12.5, fontFamily:"inherit" }}>←</button>
-            {Array.from({length:Math.min(5,totalPages)},(_,i)=>{let p=Math.max(1,Math.min(totalPages-4,page-2))+i;return <button key={p} onClick={()=>setPage(p)} style={{ padding:"5px 10px", border:`1.5px solid ${p===page?C.teal:C.border}`, borderRadius:8, background:p===page?C.teal:C.white, color:p===page?"#fff":C.text, cursor:"pointer", fontSize:12.5, fontFamily:"inherit", fontWeight:p===page?700:400 }}>{p}</button>;})}
+            {Array.from({length:Math.min(5,totalPages)},(_,i)=>{
+              let p = Math.max(1, Math.min(totalPages - Math.floor(5/2), page - Math.floor(5/2)) + i);
+              if (p <= totalPages) {
+                return <button key={p} onClick={()=>setPage(p)} style={{ padding:"5px 10px", border:`1.5px solid ${p===page?C.teal:C.border}`, borderRadius:8, background:p===page?C.teal:C.white, color:p===page?"#fff":C.text, cursor:"pointer", fontSize:12.5, fontFamily:"inherit", fontWeight:p===page?700:400 }}>{p}</button>;
+              }
+              return null;
+            })}
             <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{ padding:"5px 11px", border:`1.5px solid ${C.border}`, borderRadius:8, background:page===totalPages?"#F8FAFC":C.white, color:page===totalPages?"#D1D5DB":C.text, cursor:page===totalPages?"not-allowed":"pointer", fontSize:12.5, fontFamily:"inherit" }}>→</button>
           </div>
         </div>
@@ -259,7 +280,6 @@ function DataTable({ title, columns, data, renderRow, filters, searchKeys, actio
   );
 }
 
-// ========================= BI DASHBOARD (inchangé) =========================
 function ChartCanvas({ id, height=180 }: { id:string; height?:number }) {
   return <div style={{ position:"relative", width:"100%", height }}><canvas id={id} /></div>;
 }
@@ -472,8 +492,7 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
   );
 }
 
-// ========================= MODALS EXPERTS / STARTUPS (inchangés) =========================
-function resolveExpertChoisi(demande:any,experts:any[]):any|null {
+function resolveExpertChoisi(demande:any,experts:any[]):any|null{
   if(!demande) return null;
   for(const key of['expert_choisi','expert_assigne','expert_selectionne','expert','chosenExpert']){
     const value=demande[key];
@@ -563,7 +582,6 @@ function ModalStartupDetail({startup,onClose,onValider,onRefuser}:any){
   );
 }
 
-// ========================= MODAL DEMANDE (inchangé) =========================
 function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdmin,onChangerStatut,onNotifierExperts,onAccepterFormation,onRefuserFormation,onClose,getDemandeDomaine,setSelectedExpertProfile,devisList,onLoadDevis}:any){
   const svc=demande?.service||"";
   const svcNorm = normalizeService(svc);
@@ -734,7 +752,6 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
   );
 }
 
-// ========================= FORMATION FORM MODAL (inchangé) =========================
 function FormationFormModal({formation,onClose,onSave}:any){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:formation?.titre||"",description:formation?.description||"",domaine:formation?.domaine||"",mode:formation?.mode||"en_ligne",duree:formation?.duree||"",localisation:formation?.localisation||"",niveau:formation?.niveau||"",lien_formation:formation?.lien_formation||"",dateDebut:formation?.dateDebut?.split("T")[0]||"",dateFin:formation?.dateFin?.split("T")[0]||"",type:formation?.type||"payant",gratuit:formation?.gratuit||false,prix:formation?.prix||"",places_limitees:formation?.places_limitees||false,places_disponibles:formation?.places_disponibles||"",certifiante:formation?.certifiante||false,statut:formation?.statut||"publie"});
@@ -813,7 +830,6 @@ function FormationFormModal({formation,onClose,onSave}:any){
   );
 }
 
-// ========================= PODCAST FORM MODAL (inchangé) =========================
 function PodcastFormModal({podcast,onClose,onSave}:any){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:podcast?.titre||"",description:podcast?.description||"",domaine:podcast?.domaine||"",auteur:podcast?.auteur||"",statut:podcast?.statut||"publie",type_media:"video",video_url:podcast?.url_audio||""});
@@ -893,7 +909,6 @@ function PodcastFormModal({podcast,onClose,onSave}:any){
   );
 }
 
-// ========================= ARTICLE FORM MODAL (inchangé) =========================
 function ArticleFormModal({editingArticle,onClose,onSave,categoriesPredefinies}:any){
   const [form,setForm]=useState<any>({titre:editingArticle?.titre||"",description:editingArticle?.description||"",type:editingArticle?.type||"article",categorie:editingArticle?.categorie||"",statut:editingArticle?.statut||"brouillon",image:editingArticle?.image||"",pdf:editingArticle?.pdf||""});
   const [articleImageFile,setArticleImageFile]=useState<File|null>(null);
@@ -974,7 +989,6 @@ function ArticleFormModal({editingArticle,onClose,onSave,categoriesPredefinies}:
   );
 }
 
-// ========================= MEDIA MODAL (inchangé) =========================
 function MediaModal({media,onClose,onSave}:any){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:media?.titre||"",description:media?.description||"",url:media?.url||"",emission:media?.emission||"",date_publication:media?.date_publication?.split("T")[0]||new Date().toISOString().split("T")[0],statut:media?.statut||"publie"});
@@ -1018,7 +1032,6 @@ function MediaModal({media,onClose,onSave}:any){
   );
 }
 
-// ========================= MODAL VALIDATION FORMATION / PODCAST (inchangé) =========================
 function ModalFormationValidation({formation,onClose,onValider,onRefuser}:any){
   if(!formation) return null;
   return(
@@ -1071,16 +1084,22 @@ function ModalPodcastValidation({podcast,onClose,onValider,onRefuser}:any){
   );
 }
 
-// ========================= DEMANDES VIEW (inchangé) =========================
-// ========================= DEMANDES VIEW =========================
 function DemandesView({demandes,formations,podcasts,experts,formationsEnAttenteExpert,podcastsEnAttenteExpert,onOpenDemande,onPublierFormationExpert,onRefuserFormationExpert,onPublierPodcastExpert,onRefuserPodcastExpert,onSetFormationValidation,onSetPodcastValidation,onLoadDevisForDemande}:any){
   const [activeTab,setActiveTab]=useState<"experts"|"startups">("experts");
   const [expertSubTab,setExpertSubTab]=useState<"formations"|"podcasts">("formations");
   const [serviceFilter,setServiceFilter]=useState<string>("all");
   const totalExpertAttente=formationsEnAttenteExpert.length+podcastsEnAttenteExpert.length;
   const totalServiceAttente=demandes.filter((d:any)=>d.statut==="en_attente").length;
-  const countByService=(key:string)=>{if(key==="all")return demandes.length;return demandes.filter((d:any)=>normalizeService(d.service)===key).length;};
-  const demandesFiltrees=serviceFilter==="all"?demandes:demandes.filter((d:any)=>normalizeService(d.service)===serviceFilter);
+ const countByService = (key: string) => {
+  if (key === "all") return demandes.length;
+  const filtered = demandes.filter((d: any) => normalizeService(d.service) === key);
+  console.log(`Filtre ${key}: ${filtered.length} demandes`);
+  return filtered.length;
+};
+
+const demandesFiltrees = serviceFilter === "all" 
+  ? demandes 
+  : demandes.filter((d: any) => normalizeService(d.service) === serviceFilter);
 
   return(
     <div>
@@ -1229,7 +1248,6 @@ function DemandesView({demandes,formations,podcasts,experts,formationsEnAttenteE
   );
 }
 
-// ========================= NEWS FORM MODAL =========================
 function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;onSave:()=>void;token:string}){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:news?.titre||"",description:news?.description||"",categorie:news?.categorie||"",statut:news?.statut||"publie"});
@@ -1294,7 +1312,6 @@ function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;on
   );
 }
 
-// ========================= NEWS VIEW =========================
 function NewsView({token}:{token:string}){
   const [news,setNews]=useState<any[]>([]);
   const [abonnes,setAbonnes]=useState<any[]>([]);
@@ -1409,7 +1426,6 @@ function NewsView({token}:{token:string}){
   );
 }
 
-// ========================= SECTION CONTACT (MODIFIABLE) =========================
 function ContactConfigForm({ contactConfig, setContactConfig, onSave, saving }: any) {
   const [form, setForm] = useState({
     email: contactConfig?.email || "contact@beh.com",
@@ -1526,15 +1542,12 @@ function ContactConfigForm({ contactConfig, setContactConfig, onSave, saving }: 
   );
 }
 
-// ========================= COMPOSANT CONTENU PLATEFORME =========================
 function ContenuPlateformeView({ token }: { token: string }) {
   const [activeSection, setActiveSection] = useState<"histoire" | "contact">("histoire");
   
-  // Histoire (À propos)
   const [hForm, setHForm] = useState<any>({});
   const [savingH, setSavingH] = useState(false);
   
-  // Contact
   const [contactConfig, setContactConfig] = useState<any>(null);
   const [savingContact, setSavingContact] = useState(false);
   const [toast, setToast] = useState({ text: "", ok: true });
@@ -1632,7 +1645,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
         </a>
       </div>
 
-      {/* Sous-onglets */}
       <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 14, border: `1px solid ${C.border}`, padding: "6px", marginBottom: 28, width: "fit-content" }}>
         <button
           onClick={() => setActiveSection("histoire")}
@@ -1670,10 +1682,8 @@ function ContenuPlateformeView({ token }: { token: string }) {
         </button>
       </div>
 
-      {/* SECTION À PROPOS (HISTOIRE) */}
       {activeSection === "histoire" && (
         <form onSubmit={saveHistoire}>
-          {/* Hero */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} />
@@ -1685,7 +1695,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Vision */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} />
@@ -1702,7 +1711,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Citation */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
@@ -1717,7 +1725,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Mission */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
@@ -1728,7 +1735,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Timeline */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} />
@@ -1748,7 +1754,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Valeurs */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
@@ -1786,7 +1791,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Statistiques */}
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} />
@@ -1809,7 +1813,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
         </form>
       )}
 
-      {/* SECTION CONTACT */}
       {activeSection === "contact" && (
         <ContactConfigForm
           contactConfig={contactConfig}
@@ -1822,7 +1825,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
   );
 }
 
-// ========================= DASHBOARD ADMIN PRINCIPAL =========================
 export default function DashboardAdmin() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -1894,7 +1896,26 @@ export default function DashboardAdmin() {
   async function loadAll() { setLoading(true); try { const [e, s, t] = await Promise.all([fetch(`${BASE}/admin/experts?_=${Date.now()}`, { headers: hdr() }).then(r => r.json()), fetch(`${BASE}/admin/startups?_=${Date.now()}`, { headers: hdr() }).then(r => r.json()), fetch(`${BASE}/temoignages/all?_=${Date.now()}`, { headers: hdr() }).then(r => r.json())]); setExperts(Array.isArray(e) ? e : []); setStartups(Array.isArray(s) ? s : []); setTemoignages(Array.isArray(t) ? t : []); } catch { notify("Erreur chargement", false); } setLoading(false); }
   async function loadFormations() { try { const r = await fetch(`${BASE}/formations/admin/all?_=${Date.now()}`, { headers: hdr() }); setFormations(r.ok ? await r.json() : []); } catch { setFormations([]); } }
   async function loadPodcasts() { try { const r = await fetch(`${BASE}/admin/podcasts/all?_=${Date.now()}`, { headers: hdr() }); let all = r.ok ? await r.json() : []; all = all.filter((p: any) => p.type_media === "video" || !p.type_media); setPodcasts(all); } catch { setPodcasts([]); } }
-  async function loadDemandes() { try { const r = await fetch(`${BASE}/demandes-service/all?_=${Date.now()}`, { headers: hdr() }); setDemandes(r.ok ? await r.json() : []); } catch { setDemandes([]); } }
+async function loadDemandes() { 
+  try { 
+    const r = await fetch(`${BASE}/demandes-service/all?_=${Date.now()}`, { headers: hdr() }); 
+    const data = r.ok ? await r.json() : [];
+    
+    // Débogage : Afficher toutes les demandes avec leur service normalisé
+    console.log("=== TOUTES LES DEMANDES ===");
+    data.forEach((d: any) => {
+      const normalized = normalizeService(d.service);
+      console.log(`ID: ${d.id}, Service original: "${d.service}", Normalisé: "${normalized}"`);
+      if (normalized === "formation-sur-mesure") {
+        console.log("  -> FORMATION SUR MESURE TROUVÉE !", d);
+      }
+    });
+    
+    setDemandes(data); 
+  } catch { 
+    setDemandes([]); 
+  } 
+}
   async function loadArticles() { try { const r = await fetch(`${BASE}/articles/admin/all?_=${Date.now()}`, { headers: hdr() }); if (r.ok) setArticles(await r.json()); } catch { } }
   async function loadContactMessages() { try { const r = await fetch(`${BASE}/contact/messages?_=${Date.now()}`, { headers: hdr() }); if (r.ok) setContactMsgs(await r.json()); } catch { } }
   async function loadMedias() { try { const r = await fetch(`${BASE}/admin/medias/all`, { headers: hdr() }); setMedias(r.ok ? await r.json() : []); } catch { setMedias([]); } }
@@ -1902,30 +1923,29 @@ export default function DashboardAdmin() {
 
   async function supprimerMedia(id: number) { if (!confirm("Supprimer ?")) return; const r = await fetch(`${BASE}/admin/medias/${id}`, { method: "DELETE", headers: hdr() }); if (r.ok) { notify("Supprimé"); loadMedias(); } else notify("Erreur", false); }
   async function valider(type: string, id: number) { 
-  if (!confirm("Valider ?")) return; 
-  const r = await fetch(`${BASE}/admin/${type}/${id}/valider`, { method: "PATCH", headers: hdr() }); 
-  if (r.ok) { 
-    notify("✅ Validé !"); 
-    setSelectedExpert(null); 
-    setSelectedStartup(null); 
-    loadAll(); 
-  } else { 
-    notify("Erreur", false); 
-  } 
-}
-
-async function refuser(type: string, id: number) { 
-  if (!confirm("Refuser ?")) return; 
-  const r = await fetch(`${BASE}/admin/${type}/${id}/refuser`, { method: "PATCH", headers: hdr() }); 
-  if (r.ok) { 
-    notify("❌ Refusé"); 
-    setSelectedExpert(null); 
-    setSelectedStartup(null); 
-    loadAll(); 
-  } else { 
-    notify("Erreur", false); 
-  } 
-}
+    if (!confirm("Valider ?")) return; 
+    const r = await fetch(`${BASE}/admin/${type}/${id}/valider`, { method: "PATCH", headers: hdr() }); 
+    if (r.ok) { 
+      notify("✅ Validé !"); 
+      setSelectedExpert(null); 
+      setSelectedStartup(null); 
+      loadAll(); 
+    } else { 
+      notify("Erreur", false); 
+    } 
+  }
+  async function refuser(type: string, id: number) { 
+    if (!confirm("Refuser ?")) return; 
+    const r = await fetch(`${BASE}/admin/${type}/${id}/refuser`, { method: "PATCH", headers: hdr() }); 
+    if (r.ok) { 
+      notify("❌ Refusé"); 
+      setSelectedExpert(null); 
+      setSelectedStartup(null); 
+      loadAll(); 
+    } else { 
+      notify("Erreur", false); 
+    } 
+  }
   
   async function validerModification(id: number) { const r = await fetch(`${BASE}/experts/${id}/valider-modification`, { method: "PATCH", headers: hdr() }); if (r.ok) notify("Modification validée"); else notify("Erreur", false); loadAll(); }
   async function refuserModification(id: number) { const r = await fetch(`${BASE}/experts/${id}/refuser-modification`, { method: "PATCH", headers: hdr() }); if (r.ok) notify("Modification refusée"); else notify("Erreur", false); loadAll(); }
@@ -1977,7 +1997,7 @@ async function refuser(type: string, id: number) {
     { id: "podcasts", label: "Podcasts", color: C.cyan },
     { id: "medias", label: "Médias", color: C.red },
     { id: "news", label: "News & Newsletter", color: C.teal },
-    { id: "contenu", label: "Contenu Plateforme", color: "#8B5CF6" }, // NOUVEL ONGLET
+    { id: "contenu", label: "Contenu Plateforme", color: "#8B5CF6" },
   ];
 
   if (loadingAuth) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Chargement...</div>;
@@ -2027,10 +2047,9 @@ async function refuser(type: string, id: number) {
 
       {toast.text && <div style={{ position: "fixed", top: 18, right: 18, zIndex: 9999, background: C.white, border: `1px solid ${toast.ok ? C.greenM + "50" : C.red + "50"}`, borderLeft: `4px solid ${toast.ok ? C.greenM : C.red}`, color: toast.ok ? C.green : C.red, borderRadius: 12, padding: "13px 18px", fontWeight: 700, fontSize: 13, boxShadow: "0 10px 36px rgba(0,0,0,.09)", maxWidth: 360, animation: "slideIn .2s ease" }}>{toast.text}</div>}
 
-      {/* MODALS (inchangés) */}
       {selectedExpert && <ModalExpertDetail expert={selectedExpert} onClose={() => setSelectedExpert(null)} onValider={(id: number) => valider("experts", id)} onRefuser={(id: number) => refuser("experts", id)} />}
       {selectedStartup && <ModalStartupDetail startup={selectedStartup} onClose={() => setSelectedStartup(null)} onValider={(id: number) => valider("startups", id)} onRefuser={(id: number) => refuser("startups", id)} />}
-      {selectedDemande && <ModalDemandeService demande={selectedDemande} experts={experts} commentaireAdmin={commentaireAdmin} setCommentaireAdmin={setCommentaireAdmin} onChangerStatut={changerStatutDemande} onNotifierExperts={notifierExperts} onAccepterFormation={accepterFormationDemande} onRefuserFormation={refuserFormationDemande} onClose={() => { setSelectedDemande(null); setCommentaireAdmin(""); }} getDemandeDomaine={getDemandeDomaine} setSelectedExpertProfile={setSelectedExpertProfile} devisList={devisCache[selectedDemande.id] || []} onLoadDevis={loadDevisForDemande} />}
+      {selectedDemande && <ModalDemandeService demande={selectedDemande} experts={experts} commentaireAdmin={commentaireAdmin} setCommentaireAdmin={setCommentaireAdmin} onChangerStatut={changerStatutDemande} onNotifierExperts={notifierExperts} onAccepterFormation={accepterFormationDemande} onRefuserFormation={refuserFormationDemande} onClose={() => { setSelectedDemande(null); setCommentaireAdmin(""); }} getDemandeDomaine={getDemandeDomaine} setSelectedExpertProfile={setSelectedExpertProfile} devisList={devisCache[selectedDemande?.id] || []} onLoadDevis={loadDevisForDemande} />}
       {selectedExpertProfile && <ModalExpertDetail expert={selectedExpertProfile} onClose={() => setSelectedExpertProfile(null)} onValider={(id: number) => valider("experts", id)} onRefuser={(id: number) => refuser("experts", id)} />}
       {showFormationForm && <FormationFormModal formation={editingFormation} onClose={() => { setShowFormationForm(false); setEditingFormation(null); }} onSave={() => loadFormations()} />}
       {showPodcastForm && <PodcastFormModal podcast={editingPodcast} onClose={() => { setShowPodcastForm(false); setEditingPodcast(null); }} onSave={() => loadPodcasts()} />}
@@ -2055,7 +2074,6 @@ async function refuser(type: string, id: number) {
       {showMediaModal && <MediaModal media={editingMedia} onClose={() => { setShowMediaModal(false); setEditingMedia(null); }} onSave={() => loadMedias()} />}
 
       <div style={{ display: "flex", minHeight: "100vh" }}>
-        {/* SIDEBAR */}
         <aside style={{ width: sideCollapsed ? 64 : 240, background: C.sidebar, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", flexShrink: 0, transition: "width .22s cubic-bezier(.22,1,.36,1)", overflow: "hidden", zIndex: 90 }}>
           <div style={{ padding: "12px 10px 8px", borderBottom: "1px solid rgba(255,255,255,.07)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
@@ -2120,7 +2138,6 @@ async function refuser(type: string, id: number) {
           </div>
         </aside>
 
-        {/* MAIN */}
         <div style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
           <header style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: "0 22px", height: 52, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 80, flexShrink: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text }}>{navItems.find(n => n.id === tab)?.label}</div>
@@ -2163,12 +2180,33 @@ async function refuser(type: string, id: number) {
                       filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
                       renderRow={(e: any) => (
                         <tr key={e.id}>
-                          <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={32} color={C.teal} /><div style={{ fontWeight: 700, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div></div></td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                              <Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={32} color={C.teal} />
+                              <div style={{ fontWeight: 700, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div>
+                            </div>
+                          </td>
                           <td style={{ color: C.textSub, fontSize: 12 }}>{e.user?.email}</td>
-                          <td><span style={{ background: `${C.teal}12`, color: C.tealD, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{e.domaine || "—"}</span></td>
+                          <td>
+                            <span style={{ background: `${C.teal}12`, color: C.tealD, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>
+                              {e.domaine || "—"}
+                            </span>
+                          </td>
                           <td style={{ color: C.textSub, fontSize: 12 }}>{e.localisation || "—"}</td>
-                          <td><StatusBadge statut={e.statut} /></td>
-                          <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedExpert(e)}>Voir</button>{e.statut === "en_attente" && <><button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("experts", e.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("experts", e.id)}>Refuser</button></>}</div></td>
+                          <td>
+                            <StatusBadge statut={e.statut} />
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: 5 }}>
+                              <button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedExpert(e)}>Voir</button>
+                              {e.statut === "en_attente" && (
+                                <>
+                                  <button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("experts", e.id)}>Valider</button>
+                                  <button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("experts", e.id)}>Refuser</button>
+                                </>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       )}
                       emptyText="Aucun expert"
@@ -2179,17 +2217,39 @@ async function refuser(type: string, id: number) {
                   <DataTable
                     title={`Startups — ${startups.length} total · ${enAttenteStartups.length} en attente`}
                     columns={[{ key: "user.prenom", label: "Responsable", sortable: true }, { key: "user.email", label: "Email" }, { key: "nom_startup", label: "Startup", sortable: true }, { key: "secteur", label: "Secteur", sortable: true }, { key: "taille", label: "Taille" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={startups} searchKeys={["user.prenom", "user.nom", "user.email", "nom_startup", "secteur"]}
+                    data={startups} 
+                    searchKeys={["user.prenom", "user.nom", "user.email", "nom_startup", "secteur"]}
                     filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
                     renderRow={(s: any) => (
                       <tr key={s.id}>
-                        <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar prenom={s.user?.prenom} nom={s.user?.nom} size={32} color={C.orange} /><span style={{ fontWeight: 700, fontSize: 13 }}>{s.user?.prenom} {s.user?.nom}</span></div></td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                            <Avatar prenom={s.user?.prenom} nom={s.user?.nom} size={32} color={C.orange} />
+                            <span style={{ fontWeight: 700, fontSize: 13 }}>{s.user?.prenom} {s.user?.nom}</span>
+                          </div>
+                        </td>
                         <td style={{ color: C.textSub, fontSize: 12 }}>{s.user?.email}</td>
                         <td style={{ fontWeight: 700 }}>{s.nom_startup || "—"}</td>
-                        <td><span style={{ background: `${C.orange}12`, color: C.orange, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{s.secteur || "—"}</span></td>
+                        <td>
+                          <span style={{ background: `${C.orange}12`, color: C.orange, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>
+                            {s.secteur || "—"}
+                          </span>
+                        </td>
                         <td style={{ color: C.textSub }}>{s.taille || "—"}</td>
-                        <td><StatusBadge statut={s.statut} /></td>
-                        <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedStartup(s)}>Voir</button>{s.statut === "en_attente" && <><button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("startups", s.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("startups", s.id)}>Refuser</button></>}</div></td>
+                        <td>
+                          <StatusBadge statut={s.statut} />
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 5 }}>
+                            <button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedStartup(s)}>Voir</button>
+                            {s.statut === "en_attente" && (
+                              <>
+                                <button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("startups", s.id)}>Valider</button>
+                                <button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("startups", s.id)}>Refuser</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     )}
                     emptyText="Aucune startup"
@@ -2287,36 +2347,44 @@ async function refuser(type: string, id: number) {
                     emptyText="Aucune formation"
                   />
                 )}
-                {tab === "podcasts" && (
-                  <DataTable
-                    title={`Podcasts et Vidéos — ${tous_podcasts_onglet.length} au total`}
-                    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "auteur", label: "Auteur", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "type_media", label: "Format" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={tous_podcasts_onglet} searchKeys={["titre", "auteur", "domaine", "description"]}
-                    filters={[{ key: "statut", label: "Statut", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }]}
-                    actions={<button className="btn btn-cyan" style={{ fontSize: 12 }} onClick={() => { setEditingPodcast(null); setShowPodcastForm(true); }}>Ajouter un podcast</button>}
-                    renderRow={(p: any) => (
-                      <tr key={p.id}>
-                        <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            {p.image ? <img src={`${BASE}/uploads/podcasts-images/${p.image}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>V</span>}
-                          </div>
-                          <div><div style={{ fontWeight: 700, fontSize: 13 }}>{p.titre}</div>{p.expert_id && <span style={{ background: C.cyan, color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 8.5, fontWeight: 700 }}>EXPERT</span>}</div>
-                        </div></td>
-                        <td style={{ color: C.textSub }}>{p.auteur || "—"}</td>
-                        <td><span style={{ background: `${C.cyan}12`, color: C.cyan, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{p.domaine || "—"}</span></td>
-                        <td>{p.url_audio && p.url_audio.startsWith("http") ? <span style={{ background: `${C.blueM}12`, color: C.blueM, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>Lien</span> : <span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>MP4</span>}</td>
-                        <td><StatusBadge statut={p.statut} /></td>
-                        <td><div style={{ display: "flex", gap: 4 }}>
-                          {p.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => publierPodcast(p.id)}>Publier</button>}
-                          {p.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => archiverPodcast(p.id)}>Archiver</button>}
-                          {!p.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => { setEditingPodcast(p); setShowPodcastForm(true); }}>Modifier</button>}
-                          <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => supprimerPodcast(p.id)}>Supprimer</button>
-                        </div></td>
-                      </tr>
-                    )}
-                    emptyText="Aucun podcast"
-                  />
-                )}
+              {tab === "podcasts" && (
+  <DataTable
+    title={`Podcasts et Vidéos — ${tous_podcasts_onglet.length} au total`}
+    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "auteur", label: "Auteur", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "type_media", label: "Format" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
+    data={tous_podcasts_onglet} searchKeys={["titre", "auteur", "domaine", "description"]}
+    filters={[{ key: "statut", label: "Statut", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }]}
+    actions={<button className="btn btn-cyan" style={{ fontSize: 12 }} onClick={() => { setEditingPodcast(null); setShowPodcastForm(true); }}>Ajouter un podcast</button>}
+    renderRow={(p: any) => (
+      <tr key={p.id}>
+        <td>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {p.image ? <img src={`${BASE}/uploads/podcasts-images/${p.image}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>V</span>}
+            </div>
+            <div><div style={{ fontWeight: 700, fontSize: 13 }}>{p.titre}</div>{p.expert_id && <span style={{ background: C.cyan, color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 8.5, fontWeight: 700 }}>EXPERT</span>}</div>
+          </div>
+        </td>
+        <td style={{ color: C.textSub }}>{p.auteur || "—"}</td>
+        <td>
+          <span style={{ background: `${C.cyan}12`, color: C.cyan, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>
+            {p.domaine || "—"}
+          </span>
+        </td>
+        <td>{p.url_audio && p.url_audio.startsWith("http") ? <span style={{ background: `${C.blueM}12`, color: C.blueM, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>Lien</span> : <span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>MP4</span>}</td>
+        <td><StatusBadge statut={p.statut} /></td>
+        <td>
+          <div style={{ display: "flex", gap: 4 }}>
+            {p.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => publierPodcast(p.id)}>Publier</button>}
+            {p.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => archiverPodcast(p.id)}>Archiver</button>}
+            {!p.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => { setEditingPodcast(p); setShowPodcastForm(true); }}>Modifier</button>}
+            <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => supprimerPodcast(p.id)}>Supprimer</button>
+          </div>
+        </td>
+      </tr>
+    )}
+    emptyText="Aucun podcast"
+  />
+)}
                 {tab === "medias" && (
                   <DataTable
                     title={`Médias — ${medias.length} éléments`}
