@@ -11,16 +11,16 @@ import {
   FaChartLine, FaSearchPlus, FaDesktop, FaPlay,
   FaUsers, FaClock, FaCertificate, FaExternalLinkAlt, FaTimes,
   FaMobile, FaLaptopCode, FaEdit, FaTrash, FaSave,
-  FaMapMarkerAlt, FaBriefcase, FaCheckDouble, FaArrowLeft,
-  FaBuilding, FaChalkboardTeacher, FaCalendarAlt, FaTag, FaMedal,
+  FaBriefcase, FaCheckDouble, FaArrowLeft,
+  FaBuilding, FaCalendarAlt, FaTag, FaMedal,
   FaInfoCircle, FaPlayCircle, FaDownload, FaChevronDown, FaPhone,
   FaVideo, FaBell, FaEnvelope, FaNewspaper, FaEye, FaEyeSlash,
-  FaUser, FaLaptop, FaFilter, FaSync,
+  FaUser, FaLaptop, FaFilter, FaSync, FaFileAlt,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
 
-// ✅ CORRECTION : Utiliser "formation-sur-mesure" au lieu de "formations"
+// ==================== DONNÉES STATIQUES ====================
 const SERVICES_INFO: Record<string, any> = {
   consulting: {
     label: "Consulting Stratégique", icon: <FaChartLine />, color: "#3B82F6",
@@ -40,7 +40,6 @@ const SERVICES_INFO: Record<string, any> = {
     duree: "4 à 16 semaines",
     points: ["Application Web", "Application Mobile", "Support & maintenance"],
   },
-  // ✅ CORRECTION : "formations" → "formation-sur-mesure"
   "formation-sur-mesure": {
     label: "Formation sur mesure", icon: <FaGraduationCap />, color: "#F59E0B",
     desc: "Programmes certifiants sur mesure animés par nos experts.",
@@ -75,11 +74,10 @@ const S_COLOR: Record<string, string> = {
   en_cours: "#3B82F6", terminee: "#10B981", refusee: "#EF4444",
 };
 
-// ✅ CORRECTION : Type ServiceSlug
 type ServiceSlug = "consulting" | "audit-sur-site" | "nos-plateformes" | "formation-sur-mesure" | "podcasts";
 type Tab = "accueil" | "services" | "profil" | "experts" | "rdv" | "messages" | "temoignages" | "mes-demandes" | "mes-devis" | "notifications";
 
-// ─── BADGES ──────────────────────────────────────────────────────────────────
+// ==================== COMPOSANTS DE BADGES ====================
 function RdvStatusBadge({ statut }: { statut: string }) {
   const c: Record<string, any> = {
     en_attente: { bg: "#FFFBEB", color: "#92400E", border: "#FDE68A", icon: "⏳", label: "En attente" },
@@ -114,7 +112,7 @@ function DemandStatutBadge({ statut }: { statut: string }) {
   return <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, borderRadius: 99, padding: "5px 13px", fontSize: 12, fontWeight: 700 }}><span>{cfg.icon}</span> {cfg.label}</span>;
 }
 
-// ─── FORM HELPERS ────────────────────────────────────────────────────────────
+// ==================== HELPERS FORMULAIRES ====================
 function FL({ label, required, children, hint }: { label: string; required?: boolean; children: React.ReactNode; hint?: string }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -153,9 +151,7 @@ function AutoField({ label, icon, value, onChange }: { label: string; icon: Reac
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// MODAL SERVICE AVEC FLECHE RETOUR
-// ═══════════════════════════════════════════════════════════════════
+// ==================== MODALES ====================
 function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending, demandeEdit }: {
   slug: ServiceSlug;
   startup: any; realUser: any;
@@ -181,7 +177,7 @@ function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending,
     if (domaine === "Autre" && !domaineAutre.trim()) { alert("Veuillez préciser le domaine"); return; }
     if (!description.trim()) { alert("Veuillez décrire vos besoins"); return; }
     onSubmit({ 
-      service: slug,  // ✅ slug est maintenant "formation-sur-mesure" 
+      service: slug,
       domaine: finalDomaine, 
       description, 
       objectif, 
@@ -267,9 +263,6 @@ function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending,
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// MODAL PLATEFORME AVEC FLECHE RETOUR
-// ═══════════════════════════════════════════════════════════════════
 function PlateformeFormModal({ startup, realUser, onClose, onSubmit, sending, demandeEdit }: {
   startup: any; realUser: any;
   onClose: () => void;
@@ -396,7 +389,6 @@ function PlateformeFormModal({ startup, realUser, onClose, onSubmit, sending, de
   );
 }
 
-// ─── MODAL DETAIL FORMATION ───────────────────────────────────────────────────
 function FormationDetailModal({ formationId, onClose }: { formationId: number; onClose: () => void }) {
   const [formation, setFormation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -445,7 +437,6 @@ function FormationDetailModal({ formationId, onClose }: { formationId: number; o
   );
 }
 
-// ─── PODCAST MODAL AVEC VIDEO QUI FONCTIONNE ─────────────────────────────────────────────────
 function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () => void }) {
   const [videoError, setVideoError] = useState(false);
   
@@ -533,7 +524,6 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
   );
 }
 
-// ─── FORMATION CARD COMPONENT ─────────────────────────────────────────────────
 function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeFormation, onVoirDetail }: {
   f: any; demanderFormation: (id: number, titre: string) => void;
   demandeExiste: boolean; annulerDemandeFormation: (id: number) => void;
@@ -575,9 +565,7 @@ function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeForm
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// COMPOSANT PRINCIPAL
-// ══════════════════════════════════════════════════════════════════════════════
+// ==================== COMPOSANT PRINCIPAL ====================
 export default function DashboardStartup() {
   const router = useRouter();
   const [realUser, setRealUser] = useState<any>(null);
@@ -585,7 +573,6 @@ export default function DashboardStartup() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("accueil");
-  // ✅ CORRECTION : activeService utilise le bon slug
   const [activeService, setActiveService] = useState<ServiceSlug>("consulting");
   const [isOnline, setIsOnline] = useState(true);
 
@@ -653,9 +640,43 @@ export default function DashboardStartup() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState("");
 
-  // Toast
-  const [toast, setToast] = useState({ text: "", ok: true });
+  // ==================== GESTION DES LECTURES NEWS ====================
+  const [readNewsIds, setReadNewsIds] = useState<Set<number>>(new Set());
+  const [unreadCount, setUnreadCount] = useState(0);
 
+  useEffect(() => {
+    const stored = localStorage.getItem("startup_news_read");
+    if (stored) {
+      try {
+        const arr = JSON.parse(stored);
+        setReadNewsIds(new Set(arr));
+      } catch (e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("startup_news_read", JSON.stringify([...readNewsIds]));
+  }, [readNewsIds]);
+
+  useEffect(() => {
+    const newUnread = notifications.filter(n => !readNewsIds.has(n.id)).length;
+    setUnreadCount(newUnread);
+  }, [notifications, readNewsIds]);
+
+  const markNewsAsRead = (id: number) => {
+    if (!readNewsIds.has(id)) {
+      setReadNewsIds(prev => new Set(prev).add(id));
+    }
+  };
+
+  const markAllAsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadNewsIds(new Set(allIds));
+    notify("✅ Toutes les actualités ont été marquées comme lues");
+  };
+
+  // ==================== TOAST ====================
+  const [toast, setToast] = useState({ text: "", ok: true });
   const tk = useCallback(() => localStorage.getItem("access_token") || "", []);
   const hdr = useCallback(() => ({ Authorization: `Bearer ${tk()}` }), [tk]);
   const hdrJ = useCallback(() => ({ Authorization: `Bearer ${tk()}`, "Content-Type": "application/json" }), [tk]);
@@ -679,9 +700,7 @@ export default function DashboardStartup() {
       const response = await fetch(`${BASE}/news/startup`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
       const data = await response.json();
-      
       if (data.canView === false) {
         setNotifError("non_abonne");
         setNotifications([]);
@@ -733,6 +752,7 @@ export default function DashboardStartup() {
     }
   };
 
+  // ==================== CHARGEMENT DES DONNÉES STARTUP ====================
   const loadStartupData = useCallback(async (token: string) => {
     const aHdr = { Authorization: `Bearer ${token}` };
     const ts = `?_=${Date.now()}`;
@@ -752,6 +772,7 @@ export default function DashboardStartup() {
     return s;
   }, []);
 
+  // ==================== EXPERTS RECOMMANDÉS ====================
   const loadRecommendedExperts = useCallback(async () => {
     setLoadingExperts(true); setExpertsError(null);
     let list: any[] = [];
@@ -767,6 +788,7 @@ export default function DashboardStartup() {
     setExperts(list); setPubExperts(list.slice(0, 4)); setLoadingExperts(false);
   }, [hdr, startup?.secteur]);
 
+  // ==================== MESSAGES ====================
   const loadAllMessages = useCallback(async () => {
     try {
       const r = await fetch(`${BASE}/messages/mes-messages`, { headers: hdr() }); if (!r.ok) return;
@@ -785,6 +807,7 @@ export default function DashboardStartup() {
     if (ex) { setSelectedExpert(ex); await loadAllMessages(); }
   }, [experts, loadAllMessages]);
 
+  // ==================== PROPOSITIONS DE RDV ====================
   const loadPropositions = useCallback(async () => {
     try {
       const r = await fetch(`${BASE}/messages/mes-messages`, { headers: hdr() }); if (!r.ok) return;
@@ -824,17 +847,16 @@ export default function DashboardStartup() {
     setPropositionsVues(prev => { const n = new Set(prev); n.add(p.id); return n; });
   }, [hdrJ, tk, loadStartupData]);
 
+  // ==================== DEMANDES SERVICE ====================
   const envoyerDemande = async (payload: any) => {
     setSendingDemande(true);
     try {
       let url = `${BASE}/demandes-service`;
       let method = "POST";
-      
       if (payload.demande_id) {
         url = `${BASE}/demandes-service/client/${payload.demande_id}`;
         method = "PUT";
       }
-      
       const r = await fetch(url, { method, headers: hdrJ(), body: JSON.stringify(payload) });
       if (r.ok) {
         notify(payload.demande_id ? "✅ Demande modifiée avec succès !" : "✅ Demande envoyée avec succès !");
@@ -856,11 +878,12 @@ export default function DashboardStartup() {
       setShowConsultingModal(true);
     } else if (demande.service === "audit-sur-site") {
       setShowAuditModal(true);
-    } else if (demande.service === "formation-sur-mesure") {  // ✅ CORRECTION : "formations" → "formation-sur-mesure"
+    } else if (demande.service === "formation-sur-mesure") {
       setShowFormationModal(true);
     }
   };
 
+  // ==================== RDV ====================
   const prendreRdv = async () => {
     if (!rdvForm.expert_id || !rdvForm.date_rdv || !rdvForm.sujet) { notify("Remplissez tous les champs", false); return; }
     let expertId = parseInt(rdvForm.expert_id, 10);
@@ -879,6 +902,7 @@ export default function DashboardStartup() {
     if (r.ok) { notify("✅ RDV annulé"); await loadStartupData(tk()); } else notify("❌ Erreur", false);
   };
 
+  // ==================== TÉMOIGNAGES ====================
   const envoyerTemoignage = async () => {
     if (!newTemo.trim()) { notify("Veuillez écrire votre témoignage", false); return; }
     setSendingTemo(true);
@@ -891,6 +915,7 @@ export default function DashboardStartup() {
 
   const loadPublicTestimonials = useCallback(async () => { const r = await fetch(`${BASE}/temoignages/publics`); if (r.ok) setPubTemos(await r.json()); }, []);
 
+  // ==================== FORMATIONS & PODCASTS ====================
   const loadFormationsData = useCallback(async () => {
     setFormationsLoading(true);
     try {
@@ -914,6 +939,7 @@ export default function DashboardStartup() {
 
   const demandeExistePourFormation = (id: number) => demandes.some(d => d.service === "formation" && (d.formationId === id || d.formation?.id === id));
 
+  // ==================== DEVIS ====================
   const loadMesDevis = useCallback(async () => {
     try { const r = await fetch(`${BASE}/devis/client/mes-devis`, { headers: hdr() }); setMesDevis(r.ok ? await r.json() : []); } catch { setMesDevis([]); }
   }, [hdr]);
@@ -925,7 +951,6 @@ export default function DashboardStartup() {
         notify("✅ Devis accepté !"); 
         await loadMesDevis();
         await loadStartupData(tk());
-        
         setTimeout(() => {
           if (confirm("Souhaitez-vous contacter l'expert pour démarrer la collaboration ?")) {
             if (expertData) {
@@ -947,12 +972,14 @@ export default function DashboardStartup() {
     if (r.ok) { notify("Devis refusé"); await loadMesDevis(); } else notify("Erreur", false);
   };
 
+  // ==================== SUPPRESSION DEMANDE ====================
   const supprimerDemande = async (id: number) => {
     if (!confirm("Supprimer cette demande ?")) return;
     const r = await fetch(`${BASE}/demandes-service/client/${id}`, { method: "DELETE", headers: hdr() });
     if (r.ok) { notify("✅ Supprimée"); const res = await fetch(`${BASE}/demandes-service/mes-demandes`, { headers: hdr() }); if (res.ok) setDemandes(await res.json()); } else notify("❌ Erreur", false);
   };
 
+  // ==================== PROFIL ====================
   const saveProfil = async () => {
     const r = await fetch(`${BASE}/startups/profil`, { method: "PUT", headers: hdrJ(), body: JSON.stringify(editProfil) });
     if (r.ok) { notify("✅ Profil sauvegardé !"); await loadStartupData(tk()); } else notify("❌ Erreur", false);
@@ -965,6 +992,7 @@ export default function DashboardStartup() {
     if (r.ok) { notify("✅ Photo mise à jour !"); await loadStartupData(tk()); setPhotoFile(null); setPhotoPreview(""); } else notify("Erreur upload", false);
   };
 
+  // ==================== CHANGEMENT D'ONGLET ====================
   const handleTabChange = useCallback((t: Tab) => {
     setTab(t);
     if (t === "messages") { fetch(`${BASE}/messages/mark-all-read`, { method: "PATCH", headers: hdr() }).catch(() => { }); setAllMessages(prev => prev.map(m => ({ ...m, lu: true }))); }
@@ -972,33 +1000,52 @@ export default function DashboardStartup() {
     if (t === "notifications") { loadNotifications(); }
   }, [hdr, propositions, loadNotifications]);
 
-  // Chargement initial
+  // ==================== CHARGEMENT INITIAL ====================
   useEffect(() => {
-    const token = tk(); if (!token) { router.replace("/connexion"); return; }
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      router.replace("/connexion");
+      return;
+    }
     fetch(`${BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async r => {
-        if (!r.ok) { localStorage.removeItem("access_token"); localStorage.removeItem("user"); router.replace("/connexion"); throw new Error(); }
+        if (!r.ok) throw new Error("Auth failed");
         const user = await r.json();
-        if (user.role !== "startup") { localStorage.removeItem("access_token"); localStorage.removeItem("user"); router.replace(user.role === "expert" ? "/dashboard/expert" : user.role === "admin" ? "/dashboard/admin" : "/"); return; }
-        setRealUser(user); localStorage.setItem("user", JSON.stringify(user)); await loadStartupData(token);
+        // ✅ NORMALISATION DU RÔLE : on compare en minuscules
+        const normalizedRole = user.role?.toLowerCase();
+        if (normalizedRole !== "startup") {
+          console.warn("Rôle reçu :", user.role);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          if (normalizedRole === "expert") router.replace("/dashboard/expert");
+          else if (normalizedRole === "admin") router.replace("/dashboard/admin");
+          else router.replace("/connexion");
+          return;
+        }
+        setRealUser(user);
+        localStorage.setItem("user", JSON.stringify(user));
+        await loadStartupData(token);
       })
-      .catch(() => setError("Impossible de charger vos données."))
+      .catch(err => {
+        console.error("Erreur chargement startup :", err);
+        setError("Impossible de charger vos données. Vérifiez votre connexion ou reconnectez-vous.");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+      })
       .finally(() => setLoadingAuth(false));
   }, []);
 
-  // Charger les news au démarrage
   useEffect(() => {
-    loadNotifications();
-  }, []);
+    if (realUser) loadNotifications();
+  }, [realUser]);
 
-  // Autres effets
   useEffect(() => { if (startup?.secteur) loadRecommendedExperts(); }, [startup?.secteur, loadRecommendedExperts]);
   useEffect(() => { if (realUser?.id) loadPropositions(); }, [realUser?.id, loadPropositions]);
   useEffect(() => { if (tab === "messages") { loadAllMessages(); const i = setInterval(() => loadAllMessages(), 5000); return () => clearInterval(i); } }, [tab, loadAllMessages]);
   useEffect(() => { loadFormationsData(); loadPublicTestimonials(); loadMesDevis(); }, []);
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [conversation]);
 
-  // Calculs
+  // ==================== CALCULS ====================
   const unreadMsgCount = allMessages.filter(m => m.receiver_id === realUser?.id && !m.lu).length;
   const unreadPropositions = propositions.filter(p => !propositionsVues.has(p.id)).length;
   const pendingRdvCount = rdvs.filter(r => r.statut === "en_attente").length;
@@ -1014,7 +1061,6 @@ export default function DashboardStartup() {
   filteredFormations.forEach(f => { const d = f.domaine || "Autres"; if (!formsByDomaine[d]) formsByDomaine[d] = []; formsByDomaine[d].push(f); });
   const filteredPodcasts = podcasts.filter(p => (domaineFilter === "Tous" || p.domaine === domaineFilter) && (!formSearch || p.titre?.toLowerCase().includes(formSearch.toLowerCase())));
 
-  // ✅ CORRECTION : SERVICE_TABS avec le bon slug
   const SERVICE_TABS: ServiceSlug[] = ["consulting", "audit-sur-site", "nos-plateformes", "formation-sur-mesure", "podcasts"];
   const TABS: { id: Tab; label: string }[] = [
     { id: "accueil", label: "Accueil" }, { id: "services", label: "Services" }, { id: "experts", label: "Experts" },
@@ -1026,7 +1072,9 @@ export default function DashboardStartup() {
   const initials = realUser ? (realUser.prenom?.[0] || "") + (realUser.nom?.[0] || "") : "?";
   const showMsgBadge = tab !== "messages" && unreadMsgCount > 0;
   const showRdvBadge = tab !== "rdv" && (unreadPropositions > 0 || pendingRdvCount > 0);
+  const showNotifBadge = tab !== "notifications" && unreadCount > 0;
 
+  // ==================== RENDU ====================
   if (loadingAuth) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
       <div style={{ textAlign: "center" }}><div style={{ width: 44, height: 44, border: "4px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 14px" }} /><div style={{ color: "#0A2540", fontWeight: 600, fontSize: 14 }}>Vérification des accès...</div></div>
@@ -1041,7 +1089,7 @@ export default function DashboardStartup() {
         <div style={{ color: "#64748B", marginBottom: 22 }}>{error}</div>
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           <button onClick={() => window.location.reload()} style={{ background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Réessayer</button>
-          <button onClick={forceLogout} style={{ background: "#0A2540", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Se reconnecter</button>
+          <button onClick={() => { localStorage.removeItem("access_token"); window.location.href = "/connexion"; }} style={{ background: "#0A2540", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Se reconnecter</button>
         </div>
       </div>
     </div>
@@ -1075,7 +1123,6 @@ export default function DashboardStartup() {
       {showConsultingModal && <ServiceFormModal slug="consulting" startup={startup} realUser={realUser} onClose={() => { setShowConsultingModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showAuditModal && <ServiceFormModal slug="audit-sur-site" startup={startup} realUser={realUser} onClose={() => { setShowAuditModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showPlateformeModal && <PlateformeFormModal startup={startup} realUser={realUser} onClose={() => { setShowPlateformeModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
-      {/* ✅ CORRECTION : slug="formation-sur-mesure" au lieu de "formations" */}
       {showFormationModal && <ServiceFormModal slug="formation-sur-mesure" startup={startup} realUser={realUser} onClose={() => { setShowFormationModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
 
       {/* HEADER */}
@@ -1102,7 +1149,7 @@ export default function DashboardStartup() {
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444" }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: isOnline ? "rgba(255,255,255,.65)" : "#FCA5A5" }}>{isOnline ? "En ligne" : "Hors ligne"}</span>
           </div>
-          <button onClick={forceLogout} style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", color: "rgba(255,255,255,.55)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12 }}>Déconnexion</button>
+          <button onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("user"); window.location.href = "/connexion"; }} style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", color: "rgba(255,255,255,.55)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12 }}>Déconnexion</button>
         </div>
       </header>
 
@@ -1115,6 +1162,7 @@ export default function DashboardStartup() {
             if (t.id === "rdv" && showRdvBadge) badge = unreadPropositions + pendingRdvCount;
             if (t.id === "mes-demandes" && tab !== "mes-demandes" && (demandesEnAttente > 0 || demandesEnCours > 0)) badge = demandesEnAttente + demandesEnCours;
             if (t.id === "mes-devis" && tab !== "mes-devis" && mesDevisEnAttente > 0) badge = mesDevisEnAttente;
+            if (t.id === "notifications" && showNotifBadge) badge = unreadCount;
             const isOn = tab === t.id;
             return (
               <button key={t.id} onClick={() => handleTabChange(t.id)} style={{ background: "none", border: "none", borderBottom: `2.5px solid ${isOn ? "#F59E0B" : "transparent"}`, cursor: "pointer", padding: "14px 14px", fontSize: 12.5, fontWeight: isOn ? 800 : 500, color: isOn ? "#0A2540" : "#8A9AB5", fontFamily: "inherit", transition: "all .18s", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
@@ -1127,7 +1175,6 @@ export default function DashboardStartup() {
 
       {/* CONTENU PRINCIPAL */}
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 28px" }}>
-
         {/* ACCUEIL */}
         {tab === "accueil" && (
           <div>
@@ -1416,7 +1463,6 @@ export default function DashboardStartup() {
               </div>
             )}
 
-            {/* ✅ CORRECTION : activeService === "formation-sur-mesure" */}
             {activeService === "formation-sur-mesure" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -1813,70 +1859,112 @@ export default function DashboardStartup() {
         )}
 
         {/* NOTIFICATIONS */}
-        {tab === "notifications" && !notifLoading && notifError === "non_abonne" ? null : (
-          tab === "notifications" && (
-            <div style={{ maxWidth: 900, margin: "0 auto" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
-                <div>
-                  <h2 style={{ fontWeight: 800, fontSize: 20, color: "#0A2540", display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#F59E0B,#D97706)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <FaBell style={{ color: "#0A2540", fontSize: 16 }} />
-                    </div>
-                    Actualités & Annonces
-                  </h2>
-                </div>
+        {tab === "notifications" && (
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: 20, color: "#0A2540", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#F59E0B,#D97706)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FaBell style={{ color: "#0A2540", fontSize: 16 }} />
+                  </div>
+                  Actualités & Annonces
+                  {unreadCount > 0 && (
+                    <span style={{ background: "#EF4444", color: "#fff", borderRadius: 99, padding: "2px 8px", fontSize: 12, fontWeight: 700, marginLeft: 8 }}>
+                      {unreadCount} non lue{unreadCount > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </h2>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {unreadCount > 0 && (
+                  <button onClick={markAllAsRead} style={{ background: "#F3F4F6", color: "#1F2937", border: "none", borderRadius: 9, padding: "9px 16px", fontWeight: 600, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                    <FaCheckDouble size={12} /> Tout marquer comme lu
+                  </button>
+                )}
                 <button onClick={loadNotifications} style={{ background: "transparent", border: "1.5px solid #E2E8F0", color: "#475569", borderRadius: 9, padding: "9px 16px", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                   <FaSync size={11} /> Actualiser
                 </button>
               </div>
+            </div>
 
-              {notifLoading && (
-                <div style={{ textAlign: "center", padding: 40 }}>
-                  <div style={{ width: 36, height: 36, border: "3px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }} />
-                  <div style={{ color: "#64748B", fontSize: 13 }}>Chargement...</div>
-                </div>
-              )}
+            {notifLoading && (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <div style={{ width: 36, height: 36, border: "3px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }} />
+                <div style={{ color: "#64748B", fontSize: 13 }}>Chargement...</div>
+              </div>
+            )}
 
-              {!notifLoading && notifications.length === 0 && (
-                <div style={{ background: "#fff", borderRadius: 16, padding: 60, textAlign: "center", border: "1px solid #E8EEF6" }}>
-                  <div style={{ fontSize: 48, marginBottom: 10 }}>📭</div>
-                  <div style={{ fontWeight: 700, fontSize: 17, color: "#0A2540", marginBottom: 6 }}>Aucune actualité</div>
-                  <p style={{ color: "#64748B", fontSize: 13 }}>Aucune news disponible pour le moment.</p>
-                </div>
-              )}
+            {!notifLoading && notifications.length === 0 && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: 60, textAlign: "center", border: "1px solid #E8EEF6" }}>
+                <div style={{ fontSize: 48, marginBottom: 10 }}>📭</div>
+                <div style={{ fontWeight: 700, fontSize: 17, color: "#0A2540", marginBottom: 6 }}>Aucune actualité</div>
+                <p style={{ color: "#64748B", fontSize: 13 }}>Aucune news disponible pour le moment.</p>
+              </div>
+            )}
 
-              {!notifLoading && notifications.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {notifications.map((notif) => (
-                    <div key={notif.id} style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8EEF6", padding: 20 }}>
+            {!notifLoading && notifications.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {notifications.map((notif) => {
+                  const isRead = readNewsIds.has(notif.id);
+                  return (
+                    <div
+                      key={notif.id}
+                      onClick={() => markNewsAsRead(notif.id)}
+                      style={{
+                        background: isRead ? "#fff" : "#FFFBEB",
+                        border: `1.5px solid ${isRead ? "#E8EEF6" : "#FDE68A"}`,
+                        borderRadius: 16,
+                        padding: 20,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        boxShadow: isRead ? "none" : "0 2px 8px rgba(245,158,11,0.1)",
+                      }}
+                    >
                       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                         {notif.image && (
-                          <img 
-                            src={`${BASE}/uploads/news/${notif.image}`} 
-                            style={{ width: 80, height: 80, borderRadius: 10, objectFit: "cover" }} 
+                          <img
+                            src={`${BASE}/uploads/news/${notif.image}`}
+                            style={{ width: 80, height: 80, borderRadius: 10, objectFit: "cover" }}
                             alt=""
                             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                           />
                         )}
                         <div style={{ flex: 1 }}>
-                          <div style={{ marginBottom: 8 }}>
+                          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                             <span style={{ background: "#EFF6FF", color: "#1D4ED8", borderRadius: 99, padding: "2px 10px", fontSize: 11, fontWeight: 600 }}>
                               {notif.categorie || "Actualité"}
                             </span>
-                            <span style={{ marginLeft: 8, background: "#F1F5F9", color: "#64748B", borderRadius: 99, padding: "2px 10px", fontSize: 11 }}>
+                            <span style={{ background: "#F1F5F9", color: "#64748B", borderRadius: 99, padding: "2px 10px", fontSize: 11 }}>
                               {new Date(notif.createdAt).toLocaleDateString("fr-FR")}
                             </span>
+                            {!isRead && (
+                              <span style={{ background: "#FEF3C7", color: "#B45309", borderRadius: 99, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>
+                                Nouveau
+                              </span>
+                            )}
                           </div>
                           <h3 style={{ fontWeight: 800, fontSize: 16, color: "#0A2540", marginBottom: 8 }}>{notif.titre}</h3>
                           <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6 }}>{notif.description}</p>
+                          {notif.attachment && (
+                            <div style={{ marginTop: 12 }}>
+                              <a
+                                href={`${BASE}/uploads/news/${notif.attachment}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#F3F4F6", color: "#1F2937", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}
+                              >
+                                <FaFileAlt size={12} /> Télécharger le document joint
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* PROFIL */}
