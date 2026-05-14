@@ -18,7 +18,7 @@ import {
   FaBullhorn, FaHeadset, FaSignOutAlt, FaChevronLeft as FaLeft,
   FaChartLine, FaLaptopCode, FaCog, FaSearch, FaFilter,
   FaChevronDown, FaCheckDouble, FaVideo, FaYoutube, FaLink,
-  FaFilePdf, FaUpload,
+  FaFilePdf, FaUpload, FaFileAlt,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
@@ -1100,22 +1100,22 @@ export default function DashboardExpert() {
     if (res.ok) { notify("✅ Modification envoyée"); await loadExpertData(user?.id); } else notify("Erreur", false);
   }
   async function handleDeletePodcast(id: number) { 
-  if (!confirm("Supprimer ?")) return; 
-  try {
-    const res = await fetch(`${BASE}/podcasts/expert/supprimer/${id}`, { 
-      method: "DELETE", 
-      headers: { Authorization: `Bearer ${tk()}` } 
-    }); 
-    if (res.ok) { 
-      notify("✅ Podcast supprimé avec succès"); 
-      await loadExpertData(user?.id); 
-    } else { 
-      notify("❌ Erreur lors de la suppression", false); 
+    if (!confirm("Supprimer ?")) return; 
+    try {
+      const res = await fetch(`${BASE}/podcasts/expert/supprimer/${id}`, { 
+        method: "DELETE", 
+        headers: { Authorization: `Bearer ${tk()}` } 
+      }); 
+      if (res.ok) { 
+        notify("✅ Podcast supprimé avec succès"); 
+        await loadExpertData(user?.id); 
+      } else { 
+        notify("❌ Erreur lors de la suppression", false); 
+      }
+    } catch (error) {
+      notify("❌ Erreur réseau", false);
     }
-  } catch (error) {
-    notify("❌ Erreur réseau", false);
   }
-}
 
   async function envoyerMessageAdmin(e: React.FormEvent) {
     e.preventDefault(); if (!contactAdminForm.message.trim()) return; setSendingContactAdmin(true);
@@ -1133,7 +1133,14 @@ export default function DashboardExpert() {
       .then(async res => {
         if (!res.ok) { localStorage.clear(); router.replace("/connexion"); return; }
         const realUser = await res.json();
-        if (realUser.role !== "expert") { localStorage.clear(); if (realUser.role === "startup") router.replace("/dashboard/startup"); else if (realUser.role === "admin") router.replace("/dashboard/admin"); else router.replace("/"); return; }
+        const normalizedRole = realUser.role?.toLowerCase();
+        if (normalizedRole !== "expert") {
+          localStorage.clear();
+          if (normalizedRole === "startup") router.replace("/dashboard/startup");
+          else if (normalizedRole === "admin") router.replace("/dashboard/admin");
+          else router.replace("/");
+          return;
+        }
         setUser(realUser); localStorage.setItem("user", JSON.stringify(realUser)); await loadExpertData(realUser.id);
         try { const r = await fetch(`${BASE}/histoire`); if (r.ok) { const d = await r.json(); setContactInfo({ email: d.email_contact || "plateformebeh@gmail.com", telephone: d.telephone_contact || "29524360" }); } } catch { setContactInfo({ email: "plateformebeh@gmail.com", telephone: "29524360" }); }
       })
@@ -1236,7 +1243,7 @@ export default function DashboardExpert() {
   ];
 
   if (loadingAuth) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ textAlign: "center" }}><div style={{ width: 48, height: 48, border: "4px solid #F7B500", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} /><div style={{ color: "#0A2540", fontWeight: 600 }}>Vérification...</div></div></div>;
-  if (errorAuth || !user || user.role !== "expert") return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ padding: 32, maxWidth: 500, textAlign: "center" }}><div style={{ fontSize: 48, marginBottom: 16, color: "#EF4444" }}>⚠</div><div style={{ fontSize: 18, fontWeight: 700, color: "#DC2626", marginBottom: 8 }}>Accès refusé</div><button style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "11px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={() => window.location.href = "/connexion"}>Se reconnecter</button></div></div>;
+  if (errorAuth || !user || user.role?.toLowerCase() !== "expert") return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ padding: 32, maxWidth: 500, textAlign: "center" }}><div style={{ fontSize: 48, marginBottom: 16, color: "#EF4444" }}>⚠</div><div style={{ fontSize: 18, fontWeight: 700, color: "#DC2626", marginBottom: 8 }}>Accès refusé</div><button style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "11px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={() => window.location.href = "/connexion"}>Se reconnecter</button></div></div>;
 
   const photoUrl = expert?.photo ? `${BASE}/uploads/photos/${expert?.photo}` : null;
   const initials = user ? (user.prenom?.[0] || "") + (user.nom?.[0] || "") : "?";
@@ -2159,6 +2166,13 @@ export default function DashboardExpert() {
                               </div>
                               <h3 style={{ fontWeight: 800, color: "#0A2540", fontSize: 16, marginBottom: 8, lineHeight: 1.3 }}>{notif.titre}</h3>
                               {notif.description && <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.7 }}>{notif.description}</p>}
+                              {notif.attachment && (
+                                <div style={{ marginTop: 12 }}>
+                                  <a href={`${BASE}/uploads/news/${notif.attachment}`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#F3F4F6", color: "#1F2937", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                                    <FaFileAlt size={12} /> Télécharger le document joint
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
