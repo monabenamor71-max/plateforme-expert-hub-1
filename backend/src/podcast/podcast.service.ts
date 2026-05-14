@@ -37,15 +37,22 @@ export class PodcastService {
     videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
+    // ✅ Vérification : soit un fichier vidéo, soit une URL externe
+    if (!videoFile && !dto.url_audio) {
+      throw new BadRequestException('Le fichier vidéo ou une URL externe (YouTube, Vimeo, etc.) est obligatoire');
+    }
+    
     const podcast = this.podcastRepo.create({
       titre: dto.titre,
       description: dto.description || '',
       auteur: dto.auteur || '',
       domaine: dto.domaine || '',
       statut: dto.statut || 'en_attente',
-      url_audio: videoFile?.filename || '',
+      // ✅ Si fichier uploadé, on prend le nom; sinon, on prend l'URL fournie
+      url_audio: videoFile ? videoFile.filename : dto.url_audio,
       image: imageFile?.filename || '',
     });
+    
     const saved = await this.podcastRepo.save(podcast);
     if (!saved || !saved.id) {
       throw new BadRequestException('Erreur lors de la création du podcast');
@@ -63,12 +70,18 @@ export class PodcastService {
     const podcast = await this.ensurePodcastExists(id);
 
     if (videoFile) {
-      if (podcast.url_audio) {
+      if (podcast.url_audio && !podcast.url_audio.startsWith('http')) {
         const oldPath = path.join(process.cwd(), 'uploads', 'podcasts-audio', podcast.url_audio);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
       podcast.url_audio = videoFile.filename;
     }
+    
+    // ✅ Si une URL est fournie dans le DTO (mise à jour)
+    if (dto.url_audio !== undefined && !videoFile) {
+      podcast.url_audio = dto.url_audio;
+    }
+    
     if (imageFile) {
       if (podcast.image) {
         const oldPath = path.join(process.cwd(), 'uploads', 'podcasts-images', podcast.image);
@@ -104,7 +117,8 @@ export class PodcastService {
 
   async delete(id: number): Promise<void> {
     const podcast = await this.ensurePodcastExists(id);
-    if (podcast.url_audio) {
+    // ✅ Ne supprimer le fichier que si c'est un fichier local (pas une URL externe)
+    if (podcast.url_audio && !podcast.url_audio.startsWith('http')) {
       const audioPath = path.join(process.cwd(), 'uploads', 'podcasts-audio', podcast.url_audio);
       if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
     }
@@ -112,10 +126,7 @@ export class PodcastService {
       const imagePath = path.join(process.cwd(), 'uploads', 'podcasts-images', podcast.image);
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     }
-    const removed = await this.podcastRepo.remove(podcast);
-    if (!removed) {
-      throw new BadRequestException('Erreur lors de la suppression du podcast');
-    }
+    await this.podcastRepo.remove(podcast);
     this.logger.log(`Podcast ${id} supprimé`);
   }
 
@@ -127,22 +138,27 @@ export class PodcastService {
     videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
+    // ✅ Vérification : soit un fichier vidéo, soit une URL externe
+    if (!videoFile && !dto.url_audio) {
+      throw new BadRequestException('Le fichier vidéo ou une URL externe (YouTube, Vimeo, etc.) est obligatoire');
+    }
+    
     const podcast = this.podcastRepo.create({
       titre: dto.titre,
       description: dto.description || '',
       auteur: dto.auteur || '',
       domaine: dto.domaine || '',
       statut: 'en_attente',
-      url_audio: videoFile?.filename || '',
+      url_audio: videoFile ? videoFile.filename : dto.url_audio,
       image: imageFile?.filename || '',
       expert_id: expertId,
     });
+    
     const saved = await this.podcastRepo.save(podcast);
     if (!saved || !saved.id) {
       throw new BadRequestException('Erreur lors de la création du podcast par l’expert');
     }
     
-    // 🔔 ENVOYER NOTIFICATION EMAIL À L'ADMIN
     try {
       if (this.mailService && expertUser) {
         await this.mailService.sendPodcastProposeeNotification(
@@ -154,8 +170,6 @@ export class PodcastService {
           dto.description || ''
         );
         this.logger.log(`📧 Notification admin envoyée pour le podcast: ${saved.id}`);
-      } else {
-        this.logger.warn(`⚠️ Impossible d'envoyer l'email: mailService ou expertUser manquant`);
       }
     } catch (emailError) {
       this.logger.error(`❌ Erreur envoi email admin pour podcast: ${emailError.message}`);

@@ -1,3 +1,4 @@
+// src/admin/admin.controller.ts
 import {
   Controller,
   Get,
@@ -11,6 +12,7 @@ import {
   UseInterceptors,
   UploadedFile,
   UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -56,7 +58,7 @@ const mediaStorage = diskStorage({
 const podcastStorage = diskStorage({
   destination: (_req: Request, file: Express.Multer.File, cb) => {
     if (file.fieldname === 'video_file') {
-      cb(null, './uploads/podcasts-audio');   // on garde le même dossier
+      cb(null, './uploads/podcasts-audio');
     } else if (file.fieldname === 'image_file') {
       cb(null, './uploads/podcasts-images');
     } else {
@@ -260,7 +262,7 @@ export class AdminController {
     return this.adminService.deleteMedia(id);
   }
 
-  // ==================== PODCASTS (UNIQUEMENT MP4) ====================
+  // ==================== PODCASTS ====================
   @Get('podcasts/all')
   async getAllPodcasts() {
     return this.adminService.getAllPodcastsAdmin();
@@ -270,26 +272,32 @@ export class AdminController {
   async getPodcastById(@Param('id') id: number) {
     return this.adminService.getPodcastById(id);
   }
-
-  @Post('podcasts/create')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'video_file', maxCount: 1 },
-        { name: 'image_file', maxCount: 1 },
-      ],
-      { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize:  500 * 1024 * 1024 } },
-    ),
-  )
-  async createPodcast(
-    @Body() dto: CreatePodcastDto,
-    @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
-  ) {
-    const video = files?.video_file?.[0];
-    const image = files?.image_file?.[0];
-    return this.adminService.createPodcast(dto, video, image);
+// src/admin/admin.controller.ts
+@Post('podcasts/create')
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [
+      { name: 'video_file', maxCount: 1 },
+      { name: 'image_file', maxCount: 1 },
+    ],
+    { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize: 500 * 1024 * 1024 } },
+  ),
+)
+async createPodcast(
+  @Body() dto: CreatePodcastDto,
+  @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
+) {
+  const video = files?.video_file?.[0];
+  const image = files?.image_file?.[0];
+  
+  // ✅ Vérification : soit un fichier, soit une URL
+  if (!video && !dto.url_audio) {
+    throw new BadRequestException('Vous devez fournir soit un fichier vidéo (MP4), soit une URL externe (YouTube, Vimeo, etc.)');
   }
-
+  
+  return this.adminService.createPodcast(dto, video, image);
+}
+  
   @Put('podcasts/:id')
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -321,5 +329,21 @@ export class AdminController {
   @Delete('podcasts/:id')
   async deletePodcast(@Param('id') id: number) {
     return this.adminService.deletePodcast(id);
+  }
+
+  // ==================== VALIDATION ADMIN POUR NOUVEAUX COMPTES ====================
+  @Get('pending-users')
+  async getPendingUsers() {
+    return this.adminService.getPendingUsers();
+  }
+
+  @Post('validate-user/:id')
+  async validateUserByAdmin(@Param('id') id: number) {
+    return this.adminService.validateUserByAdmin(id);
+  }
+
+  @Post('reject-user/:id')
+  async rejectUserByAdmin(@Param('id') id: number) {
+    return this.adminService.rejectUserByAdmin(id);
   }
 }

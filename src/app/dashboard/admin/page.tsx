@@ -877,18 +877,47 @@ function PodcastFormModal({podcast,onClose,onSave}:any){
   const [imagePreview,setImagePreview]=useState(podcast?.image?`${BASE}/uploads/podcasts-images/${podcast.image}`:"");
   const [mediaName,setMediaName]=useState(podcast?.url_audio||"");
   const DOMAINES=["Marketing Digital","Finance / Comptabilité","Ressources Humaines","Développement Web / Mobile","Design UI/UX","Stratégie Commerciale","Logistique / Supply Chain","Intelligence Artificielle / Data","Management","Communication","Juridique","Autre"];
-  const handleSubmit=async(e:React.FormEvent)=>{
-    e.preventDefault();
-    if(!form.titre.trim()){alert("Titre requis");return;}
-    if(!useUrl&&!videoFile&&!podcast?.url_audio){alert("Veuillez uploader un fichier vidéo ou fournir un lien");return;}
-    setLoading(true);
-    const fd=new FormData();
-    fd.append("titre",form.titre);fd.append("description",form.description);fd.append("domaine",form.domaine);fd.append("auteur",form.auteur);fd.append("statut",form.statut);fd.append("type_media","video");
-    if(useUrl&&form.video_url.trim()){fd.append("video_url",form.video_url);}else if(videoFile){fd.append("video_file",videoFile);}
-    if(imageFile)fd.append("image_file",imageFile);
-    const url=podcast?`${BASE}/admin/podcasts/${podcast.id}`:`${BASE}/admin/podcasts/create`;
-    try{const res=await fetch(url,{method:podcast?"PUT":"POST",headers:{Authorization:`Bearer ${localStorage.getItem("access_token")}`},body:fd});if(res.ok){onSave();onClose();}else{const err=await res.text();alert(`Erreur : ${err||"Sauvegarde échouée"}`);}}catch{alert("Erreur réseau");}
-    setLoading(false);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!form.titre.trim()) { alert("Titre requis"); return; }
+  if (!useUrl && !videoFile && !podcast?.url_audio) { alert("Veuillez uploader un fichier vidéo ou fournir un lien"); return; }
+  
+  setLoading(true);
+  const fd = new FormData();
+  fd.append("titre", form.titre);
+  fd.append("description", form.description || "");
+  fd.append("domaine", form.domaine || "");
+  fd.append("auteur", form.auteur || "");
+  fd.append("statut", form.statut);
+  
+  // ✅ CORRECTION : utiliser "url_audio" au lieu de "video_url"
+  if (useUrl && form.video_url.trim()) {
+    fd.append("url_audio", form.video_url);  // ← Changement clé
+  } else if (videoFile) {
+    fd.append("video_file", videoFile);
+  }
+  
+  if (imageFile) fd.append("image_file", imageFile);
+  
+  const url = podcast ? `${BASE}/admin/podcasts/${podcast.id}` : `${BASE}/admin/podcasts/create`;
+  try {
+    const res = await fetch(url, {
+      method: podcast ? "PUT" : "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      body: fd
+    });
+    if (res.ok) {
+      onSave();
+      onClose();
+    } else {
+      const err = await res.text();
+      alert(`Erreur : ${err || "Sauvegarde échouée"}`);
+    }
+  } catch {
+    alert("Erreur réseau");
+  }
+  setLoading(false);
+
   };
   return(
     <div className="modal-bg" onClick={onClose}>

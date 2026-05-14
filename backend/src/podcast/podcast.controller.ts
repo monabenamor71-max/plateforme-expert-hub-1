@@ -71,18 +71,21 @@ export class PodcastController {
     @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
     @Request() req: RequestWithUser,
   ) {
+    // ✅ Vérification explicite
+    if (!files?.video_file?.[0]) {
+      throw new BadRequestException('Le fichier vidéo est obligatoire pour créer un podcast');
+    }
+    // ✅ Assertion de type : on sait que video est défini
+    const video = files.video_file[0] as Express.Multer.File;
+    const image = files?.image_file?.[0];
+    
     const expert = await this.expertRepo.findOne({
       where: { user_id: req.user.id },
       relations: ['user']
     });
-
     if (!expert || !expert.user) {
-      throw new Error('Expert non trouvé');
+      throw new BadRequestException('Expert non trouvé');
     }
-
-    const video = files?.video_file?.[0];
-    const image = files?.image_file?.[0];
-    
     return this.podcastService.createByExpert(dto, expert.id, expert.user, video, image);
   }
 
@@ -113,14 +116,11 @@ export class PodcastController {
   ) {
     const expert = await this.expertRepo.findOne({ where: { user_id: req.user.id } });
     if (!expert) throw new BadRequestException('Expert non trouvé');
-    
     const video = files?.video_file?.[0];
     const image = files?.image_file?.[0];
-    
     return this.podcastService.updateByExpert(id, expert.id, dto, video, image);
   }
 
-  // ✅ ROUTE DE SUPPRESSION AJOUTÉE
   @Delete('expert/supprimer/:id')
   @UseGuards(JwtAuthGuard)
   async supprimerParExpert(
@@ -142,7 +142,67 @@ export class PodcastController {
   // ==================== ADMIN ====================
   
   @Get('admin/all')
+  @UseGuards(JwtAuthGuard)
   async findAll() {
     return this.podcastService.findAll();
+  }
+
+  @Post('admin/create')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'video_file', maxCount: 1 },
+        { name: 'image_file', maxCount: 1 },
+      ],
+      { storage: podcastStorage, limits: { fileSize: 50 * 1024 * 1024 } },
+    ),
+  )
+  async createByAdmin(
+    @Body(ValidationPipe) dto: CreatePodcastDto,
+    @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
+  ) {
+    if (!files?.video_file?.[0]) {
+      throw new BadRequestException('Le fichier vidéo est obligatoire pour créer un podcast');
+    }
+    const video = files.video_file[0] as Express.Multer.File;
+    const image = files?.image_file?.[0];
+    return this.podcastService.create(dto, video, image);
+  }
+
+  @Put('admin/update/:id')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'video_file', maxCount: 1 },
+        { name: 'image_file', maxCount: 1 },
+      ],
+      { storage: podcastStorage, limits: { fileSize: 50 * 1024 * 1024 } },
+    ),
+  )
+  async updateByAdmin(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(ValidationPipe) dto: UpdatePodcastDto,
+    @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
+  ) {
+    const video = files?.video_file?.[0];
+    const image = files?.image_file?.[0];
+    return this.podcastService.update(id, dto, video, image);
+  }
+
+  @Put('admin/statut/:id')
+  @UseGuards(JwtAuthGuard)
+  async updateStatut(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('statut') statut: 'en_attente' | 'publie' | 'refuse',
+  ) {
+    return this.podcastService.updateStatut(id, statut);
+  }
+
+  @Delete('admin/delete/:id')
+  @UseGuards(JwtAuthGuard)
+  async deleteByAdmin(@Param('id', ParseIntPipe) id: number) {
+    return this.podcastService.delete(id);
   }
 }

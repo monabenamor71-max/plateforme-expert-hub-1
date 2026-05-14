@@ -444,10 +444,11 @@ export class AdminService {
   async getPodcastById(id: number) {
     return this.podcastService.findOne(id);
   }
-
-  async createPodcast(dto: CreatePodcastDto, audioFile?: Express.Multer.File, imageFile?: Express.Multer.File) {
-    return this.podcastService.create(dto, audioFile, imageFile);
-  }
+// src/admin/admin.service.ts
+async createPodcast(dto: CreatePodcastDto, audioFile?: Express.Multer.File, imageFile?: Express.Multer.File) {
+  // audioFile est optionnel (peut être undefined si on utilise une URL)
+  return this.podcastService.create(dto, audioFile, imageFile);
+}
 
   async updatePodcast(id: number, dto: UpdatePodcastDto, audioFile?: Express.Multer.File, imageFile?: Express.Multer.File) {
     return this.podcastService.update(id, dto, audioFile, imageFile);

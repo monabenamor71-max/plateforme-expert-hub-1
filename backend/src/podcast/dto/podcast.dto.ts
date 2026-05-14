@@ -1,3 +1,4 @@
+// src/podcast/dto/podcast.dto.ts
 import { IsString, IsOptional, IsIn, MinLength, MaxLength } from 'class-validator';
 
 export class CreatePodcastDto {
@@ -17,6 +18,10 @@ export class CreatePodcastDto {
   @IsString()
   @IsOptional()
   domaine?: string;
+
+  @IsOptional()
+  @IsString()
+  url_audio?: string;  // ← AJOUTE CETTE LIGNE
 
   @IsIn(['en_attente', 'publie', 'refuse'])
   @IsOptional()
@@ -40,6 +45,10 @@ export class UpdatePodcastDto {
   @IsString()
   @IsOptional()
   domaine?: string;
+
+  @IsOptional()
+  @IsString()
+  url_audio?: string;  // ← AJOUTE CETTE LIGNE
 
   @IsIn(['en_attente', 'publie', 'refuse'])
   @IsOptional()

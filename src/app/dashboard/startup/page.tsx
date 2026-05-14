@@ -437,93 +437,88 @@ function FormationDetailModal({ formationId, onClose }: { formationId: number; o
   );
 }
 
+// ==================== COMPOSANT PODCAST CORRIGÉ ====================
 function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () => void }) {
-  const [videoError, setVideoError] = useState(false);
+  console.log("Podcast reçu :", podcast);
   
-  const getVideoUrl = () => {
-    if (!podcast?.url_audio) return null;
-    if (podcast.url_audio.startsWith("http")) {
-      if (podcast.url_audio.includes("youtube.com/watch?v=")) {
-        const videoId = podcast.url_audio.split("v=")[1]?.split("&")[0];
-        return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
-      }
-      if (podcast.url_audio.includes("youtu.be/")) {
-        const videoId = podcast.url_audio.split("youtu.be/")[1]?.split("?")[0];
-        return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
-      }
-      if (podcast.url_audio.includes("vimeo.com")) {
-        const videoId = podcast.url_audio.split("vimeo.com/")[1]?.split("?")[0];
-        return `https://player.vimeo.com/video/${videoId}`;
-      }
-      return podcast.url_audio;
+  // Récupère l'URL depuis n'importe quel champ
+  let rawUrl = podcast.url_audio || podcast.url_video || podcast.video_url || podcast.url || podcast.lien || podcast.fichier || podcast.chemin || null;
+  
+  // Convertir les URLs YouTube en format embed
+  let videoUrl = rawUrl;
+  if (rawUrl) {
+    // YouTube
+    if (rawUrl.includes('youtube.com/watch?v=')) {
+      const videoId = rawUrl.split('v=')[1]?.split('&')[0];
+      if (videoId) videoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
     }
-    return `${BASE}/uploads/podcasts-audio/${podcast.url_audio}`;
-  };
+    // youtu.be
+    else if (rawUrl.includes('youtu.be/')) {
+      const videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) videoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+    }
+    // Vimeo
+    else if (rawUrl.includes('vimeo.com/') && !rawUrl.includes('player.vimeo.com')) {
+      const videoId = rawUrl.split('vimeo.com/')[1]?.split('?')[0];
+      if (videoId) videoUrl = `https://player.vimeo.com/video/${videoId}`;
+    }
+  }
 
-  const videoUrl = getVideoUrl();
-  const isEmbed = videoUrl?.includes("youtube.com/embed") || videoUrl?.includes("player.vimeo.com");
+  const isLocalVideo = videoUrl && videoUrl.match(/\.(mp4|webm|ogg)$/i);
+  const isEmbed = videoUrl && (videoUrl.includes('youtube.com/embed') || videoUrl.includes('player.vimeo.com') || videoUrl.includes('dailymotion.com/embed'));
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,37,64,.85)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(12px)" }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: 24, width: "100%", maxWidth: 720, maxHeight: "88vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "22px 24px", borderRadius: "24px 24px 0 0", position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 9, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff" }}><FaArrowLeft size={16} /></button>
-            <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 9, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff" }}><FaTimes /></button>
-          </div>
-          {podcast.domaine && (
-            <span style={{ background: "#7C3AED", color: "#fff", borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 700, marginTop: 12, display: "inline-block" }}>{podcast.domaine}</span>
-          )}
-          <div style={{ color: "#fff", fontWeight: 900, fontSize: 18, lineHeight: 1.3, marginTop: 10 }}>{podcast.titre}</div>
-          {podcast.auteur && <div style={{ color: "rgba(255,255,255,.55)", fontSize: 12.5, marginTop: 6 }}>{podcast.auteur}</div>}
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
+      <div style={{ background: "white", borderRadius: 20, maxWidth: "90%", width: 800, maxHeight: "90%", overflow: "auto", padding: 0 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{podcast.titre}</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>×</button>
         </div>
-        <div style={{ padding: "22px 26px" }}>
-          {podcast.description && (
-            <p style={{ fontSize: 13.5, color: "#475569", lineHeight: 1.8, marginBottom: 18, background: "#F8FAFC", borderRadius: 12, padding: "12px 16px", border: "1px solid #E8EEF6" }}>
-              {podcast.description}
-            </p>
-          )}
-          
-          {videoUrl && !videoError ? (
-            isEmbed ? (
-              <div style={{ borderRadius: 14, overflow: "hidden", aspectRatio: "16/9", background: "#000" }}>
-                <iframe
-                  src={videoUrl}
-                  style={{ width: "100%", height: "100%", border: "none" }}
+        
+        {podcast.description && (
+          <div style={{ padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#475569" }}>{podcast.description}</p>
+          </div>
+        )}
+        
+        <div style={{ padding: 20 }}>
+          {videoUrl ? (
+            <div style={{ borderRadius: 12, overflow: "hidden", background: "#000" }}>
+              {isLocalVideo ? (
+                <video controls src={videoUrl} style={{ width: "100%", maxHeight: 450 }} />
+              ) : isEmbed ? (
+                <iframe 
+                  src={videoUrl} 
+                  style={{ width: "100%", height: 400, border: "none" }}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  title={podcast.titre}
-                  onError={() => setVideoError(true)}
                 />
-              </div>
-            ) : (
-              <video 
-                src={videoUrl} 
-                controls 
-                style={{ width: "100%", borderRadius: 14, maxHeight: 360, background: "#000" }}
-                onError={() => setVideoError(true)}
-              >
-                <source src={videoUrl} type="video/mp4" />
-                Votre navigateur ne supporte pas la lecture vidéo.
-              </video>
-            )
+              ) : (
+                <div style={{ textAlign: "center", padding: 40 }}>
+                  <p>Lien : <a href={videoUrl} target="_blank" rel="noopener noreferrer">{videoUrl}</a></p>
+                  <video controls src={videoUrl} style={{ width: "100%", maxHeight: 400 }} />
+                </div>
+              )}
+            </div>
           ) : (
-            <div style={{ background: "#F3F0FF", borderRadius: 14, padding: "60px 24px", textAlign: "center", color: "#7C3AED" }}>
-              <FaVideo style={{ fontSize: 48, marginBottom: 16, opacity: .5 }} />
-              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Vidéo non disponible</div>
-              <div style={{ fontSize: 12.5, color: "#64748B" }}>Le contenu vidéo n'a pas pu être chargé.</div>
+            <div style={{ textAlign: "center", padding: 60, background: "#F3F0FF", borderRadius: 12 }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎬</div>
+              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Aucune vidéo trouvée</div>
+              <div style={{ fontSize: 12, color: "#64748B" }}>Ce podcast n'a pas de fichier vidéo associé.</div>
+              <div style={{ fontSize: 11, marginTop: 12, background: "#fff", padding: 10, borderRadius: 8, textAlign: "left", wordBreak: "break-all" }}>
+                <strong>Champs reçus :</strong> {Object.keys(podcast).join(", ")}
+              </div>
             </div>
           )}
-          
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-            <button onClick={onClose} style={{ background: "#F1F5F9", border: "1.5px solid #E2E8F0", borderRadius: 9, padding: "9px 20px", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", color: "#475569" }}>Fermer</button>
-          </div>
+        </div>
+        
+        <div style={{ padding: "12px 20px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ background: "#F1F5F9", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontWeight: 600 }}>Fermer</button>
         </div>
       </div>
     </div>
   );
 }
-
 function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeFormation, onVoirDetail }: {
   f: any; demanderFormation: (id: number, titre: string) => void;
   demandeExiste: boolean; annulerDemandeFormation: (id: number) => void;
@@ -640,7 +635,7 @@ export default function DashboardStartup() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState("");
 
-  // ==================== GESTION DES LECTURES NEWS ====================
+  // Gestion des lectures news
   const [readNewsIds, setReadNewsIds] = useState<Set<number>>(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -915,13 +910,40 @@ export default function DashboardStartup() {
 
   const loadPublicTestimonials = useCallback(async () => { const r = await fetch(`${BASE}/temoignages/publics`); if (r.ok) setPubTemos(await r.json()); }, []);
 
-  // ==================== FORMATIONS & PODCASTS ====================
+  // ==================== FORMATIONS & PODCASTS (CORRIGÉ) ====================
   const loadFormationsData = useCallback(async () => {
     setFormationsLoading(true);
     try {
-      const f = await fetch(`${BASE}/formations/public`); if (f.ok) setFormations(await f.json()); else setFormations([]);
-      const p = await fetch(`${BASE}/podcasts/public`); if (p.ok) setPodcasts(await p.json()); else setPodcasts([]);
-    } catch { setFormations([]); setPodcasts([]); } finally { setFormationsLoading(false); }
+      const f = await fetch(`${BASE}/formations/public`);
+      if (f.ok) setFormations(await f.json());
+      else setFormations([]);
+
+      const p = await fetch(`${BASE}/podcasts/public`);
+      if (p.ok) {
+        let podcastsData = await p.json();
+        podcastsData = podcastsData.map((pod: any) => {
+          let rawUrl = pod.url_audio || pod.url_video || pod.video_url || pod.url || '';
+          if (rawUrl && !rawUrl.startsWith('http')) {
+            if (rawUrl.startsWith('/')) {
+              rawUrl = `${BASE}${rawUrl}`;
+            } else {
+              rawUrl = `${BASE}/uploads/podcasts-audio/${rawUrl}`;
+            }
+          }
+          console.log(`Podcast "${pod.titre}" -> URL finale:`, rawUrl);
+          return { ...pod, url_audio: rawUrl };
+        });
+        setPodcasts(podcastsData);
+      } else {
+        setPodcasts([]);
+      }
+    } catch (err) {
+      console.error("Erreur chargement formations/podcasts", err);
+      setFormations([]);
+      setPodcasts([]);
+    } finally {
+      setFormationsLoading(false);
+    }
   }, []);
 
   const demanderFormation = async (id: number, titre: string) => {
@@ -1011,7 +1033,6 @@ export default function DashboardStartup() {
       .then(async r => {
         if (!r.ok) throw new Error("Auth failed");
         const user = await r.json();
-        // ✅ NORMALISATION DU RÔLE : on compare en minuscules
         const normalizedRole = user.role?.toLowerCase();
         if (normalizedRole !== "startup") {
           console.warn("Rôle reçu :", user.role);
@@ -1074,7 +1095,7 @@ export default function DashboardStartup() {
   const showRdvBadge = tab !== "rdv" && (unreadPropositions > 0 || pendingRdvCount > 0);
   const showNotifBadge = tab !== "notifications" && unreadCount > 0;
 
-  // ==================== RENDU ====================
+  // ==================== RENDU (LONG MAIS COMPLET) ====================
   if (loadingAuth) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
       <div style={{ textAlign: "center" }}><div style={{ width: 44, height: 44, border: "4px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 14px" }} /><div style={{ color: "#0A2540", fontWeight: 600, fontSize: 14 }}>Vérification des accès...</div></div>
@@ -1112,12 +1133,10 @@ export default function DashboardStartup() {
         @keyframes fadeInUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
       `}</style>
 
-      {/* TOAST */}
       {toast.text && (
         <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, background: toast.ok ? "#ECFDF5" : "#FEF2F2", border: `1.5px solid ${toast.ok ? "#A7F3D0" : "#FECACA"}`, borderLeft: `4px solid ${toast.ok ? "#059669" : "#DC2626"}`, color: toast.ok ? "#059669" : "#DC2626", borderRadius: 11, padding: "12px 18px", fontWeight: 700, fontSize: 13, boxShadow: "0 8px 28px rgba(0,0,0,.1)", animation: "fadeInUp .3s ease" }}>{toast.text}</div>
       )}
 
-      {/* MODALS */}
       {selectedFormationId !== null && <FormationDetailModal formationId={selectedFormationId} onClose={() => setSelectedFormationId(null)} />}
       {selectedPodcast && <PodcastDetailModal podcast={selectedPodcast} onClose={() => setSelectedPodcast(null)} />}
       {showConsultingModal && <ServiceFormModal slug="consulting" startup={startup} realUser={realUser} onClose={() => { setShowConsultingModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
@@ -1125,7 +1144,6 @@ export default function DashboardStartup() {
       {showPlateformeModal && <PlateformeFormModal startup={startup} realUser={realUser} onClose={() => { setShowPlateformeModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showFormationModal && <ServiceFormModal slug="formation-sur-mesure" startup={startup} realUser={realUser} onClose={() => { setShowFormationModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
 
-      {/* HEADER */}
       <header style={{ background: "linear-gradient(135deg,#0A2540 0%,#0c2d50 100%)", height: 64, padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 0 rgba(255,255,255,.06),0 4px 20px rgba(0,0,0,.25)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
@@ -1153,7 +1171,6 @@ export default function DashboardStartup() {
         </div>
       </header>
 
-      {/* NAVBAR */}
       <div style={{ background: "#fff", borderBottom: "1px solid #EEF2F8", position: "sticky", top: 64, zIndex: 90, boxShadow: "0 1px 6px rgba(10,37,64,.04)" }}>
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 28px", display: "flex", gap: 0, overflowX: "auto" }}>
           {TABS.map(t => {
@@ -1173,9 +1190,8 @@ export default function DashboardStartup() {
         </div>
       </div>
 
-      {/* CONTENU PRINCIPAL */}
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 28px" }}>
-        {/* ACCUEIL */}
+        {/* ACCUEIL - REPRIS INTÉGRALEMENT */}
         {tab === "accueil" && (
           <div>
             <section style={{ position: "relative", overflow: "hidden", minHeight: 400, borderRadius: 18, marginBottom: 20 }}>
@@ -1236,29 +1252,29 @@ export default function DashboardStartup() {
                 {loadingExperts ? <div style={{ textAlign: "center", padding: "40px 0" }}><div style={{ width: 36, height: 36, border: "3px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto" }} /></div>
                   : pubExperts.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8", fontSize: 13 }}>Aucun expert trouvé.</div>
                     : <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
-                      {pubExperts.map((ex) => {
-                        const d = (ex.domaine || "").toLowerCase();
-                        const isMatch = secteurNorm && (d.includes(secteurNorm) || secteurNorm.includes(d));
-                        return (
-                          <div key={ex.id} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative", border: isMatch ? "1.5px solid rgba(245,158,11,.4)" : "1.5px solid #E8EEF6" }}>
-                            {isMatch && <div style={{ position: "absolute", top: 9, left: 9, zIndex: 5, background: "#F59E0B", color: "#0A2540", borderRadius: 99, padding: "2px 8px", fontSize: 9.5, fontWeight: 800 }}>⭐ Recommandé</div>}
-                            <div style={{ height: 3, background: "linear-gradient(90deg,#0A2540,#F59E0B)" }} />
-                            <div style={{ position: "relative", height: 140, background: "linear-gradient(135deg,#0A2540,#1a3f6f)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              {ex.photo ? <img src={`${BASE}/uploads/photos/${ex.photo}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={ev => (ev.currentTarget.style.display = "none")} /> : <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(245,158,11,.2)", border: "3px solid #F59E0B", display: "flex", alignItems: "center", justifyContent: "center", color: "#F59E0B", fontWeight: 800, fontSize: 20 }}>{ex.user?.prenom?.[0]}{ex.user?.nom?.[0]}</div>}
-                            </div>
-                            <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
-                              <div style={{ fontWeight: 700, fontSize: 14, color: "#0A2540", marginBottom: 4 }}>{ex.user?.prenom} {ex.user?.nom}</div>
-                              <div style={{ fontSize: 10.5, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 6, padding: "2px 7px", display: "inline-block", marginBottom: 7 }}>{ex.domaine || "Expert"}</div>
-                              {ex.description && <p style={{ fontSize: 11.5, color: "#64748B", lineHeight: 1.65, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ex.description}</p>}
-                              <div style={{ display: "flex", gap: 7, marginTop: "auto" }}>
-                                <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(ex); handleTabChange("messages"); loadConversation(ex.user_id || ex.user?.id); }}><FaComments size={11} /> Message</button>
-                                <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(ex.id), sujet: "" }); handleTabChange("rdv"); }}><FaCalendar size={11} /> RDV</button>
+                        {pubExperts.map((ex) => {
+                          const d = (ex.domaine || "").toLowerCase();
+                          const isMatch = secteurNorm && (d.includes(secteurNorm) || secteurNorm.includes(d));
+                          return (
+                            <div key={ex.id} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative", border: isMatch ? "1.5px solid rgba(245,158,11,.4)" : "1.5px solid #E8EEF6" }}>
+                              {isMatch && <div style={{ position: "absolute", top: 9, left: 9, zIndex: 5, background: "#F59E0B", color: "#0A2540", borderRadius: 99, padding: "2px 8px", fontSize: 9.5, fontWeight: 800 }}>⭐ Recommandé</div>}
+                              <div style={{ height: 3, background: "linear-gradient(90deg,#0A2540,#F59E0B)" }} />
+                              <div style={{ position: "relative", height: 140, background: "linear-gradient(135deg,#0A2540,#1a3f6f)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {ex.photo ? <img src={`${BASE}/uploads/photos/${ex.photo}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={ev => (ev.currentTarget.style.display = "none")} /> : <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(245,158,11,.2)", border: "3px solid #F59E0B", display: "flex", alignItems: "center", justifyContent: "center", color: "#F59E0B", fontWeight: 800, fontSize: 20 }}>{ex.user?.prenom?.[0]}{ex.user?.nom?.[0]}</div>}
+                              </div>
+                              <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: "#0A2540", marginBottom: 4 }}>{ex.user?.prenom} {ex.user?.nom}</div>
+                                <div style={{ fontSize: 10.5, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 6, padding: "2px 7px", display: "inline-block", marginBottom: 7 }}>{ex.domaine || "Expert"}</div>
+                                {ex.description && <p style={{ fontSize: 11.5, color: "#64748B", lineHeight: 1.65, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ex.description}</p>}
+                                <div style={{ display: "flex", gap: 7, marginTop: "auto" }}>
+                                  <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(ex); handleTabChange("messages"); loadConversation(ex.user_id || ex.user?.id); }}><FaComments size={11} /> Message</button>
+                                  <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(ex.id), sujet: "" }); handleTabChange("rdv"); }}><FaCalendar size={11} /> RDV</button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
                 }
               </div>
             </section>
@@ -1292,7 +1308,6 @@ export default function DashboardStartup() {
               </section>
             )}
 
-            {/* Newsletter Section */}
             <section style={{ padding: "44px 0", background: "#fff", borderRadius: 18, marginTop: 20 }}>
               <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
                 <div style={{ borderRadius: 22, background: "#FFF8E1", border: "1px solid rgba(245,158,11,.2)", position: "relative", padding: "40px 44px", textAlign: "center", overflow: "hidden" }}>
@@ -1332,7 +1347,6 @@ export default function DashboardStartup() {
                 return <button key={slug} onClick={() => setActiveService(slug)} style={{ background: isOn ? svc.color : "transparent", color: isOn ? "#fff" : "#64748B", border: `1.5px solid ${isOn ? svc.color : "#E8EEF6"}`, borderRadius: 9, padding: "8px 16px", fontSize: 12.5, fontWeight: isOn ? 800 : 600, cursor: "pointer", fontFamily: "inherit", transition: "all .2s", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><span style={{ fontSize: 13 }}>{svc.icon}</span> {svc.label}</button>;
               })}
             </div>
-
             {activeService === "consulting" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", borderRadius: 18, border: "1.5px solid rgba(59,130,246,.18)", overflow: "hidden" }}>
@@ -2011,7 +2025,6 @@ export default function DashboardStartup() {
         )}
       </div>
 
-      {/* FOOTER */}
       <footer style={{ background: "#0A2540", color: "#fff", padding: "24px 28px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,.06)", marginTop: 40 }}>
         <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
           <div style={{ width: 26, height: 26, background: "linear-gradient(135deg,#F59E0B,#D97706)", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 9, color: "#0A2540" }}>BEH</div>
