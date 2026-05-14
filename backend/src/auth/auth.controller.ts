@@ -96,18 +96,22 @@ export class AuthController {
 
   @Get('confirm')
   async confirmEmail(@Query('token') token: string, @Res() res: Response) {
+    console.log('=== CONFIRMATION EMAIL ===');
+    console.log('Token reçu:', token);
+    
+    if (!token) {
+      return res.status(400).json({ message: 'Token de confirmation manquant' });
+    }
+    
     try {
       const result = await this.authService.confirmEmail(token);
-      const redirectUrl = `http://localhost:3000/confirmation?status=success&message=${encodeURIComponent(result.message)}`;
-      return res.redirect(redirectUrl);
+      return res.status(200).json({ message: result.message });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Lien de confirmation invalide ou expiré';
-      const redirectUrl = `http://localhost:3000/confirmation?status=error&message=${encodeURIComponent(errorMessage)}`;
-      return res.redirect(redirectUrl);
+      const message = error instanceof Error ? error.message : 'Lien de confirmation invalide ou expiré';
+      return res.status(400).json({ message });
     }
   }
 
-  // ✅ NOUVEAU : Vérifier si un email existe dans la table `user`
   @Get('check-email')
   async checkEmail(@Query('email') email: string) {
     if (!email) throw new BadRequestException('Email requis');
@@ -129,6 +133,7 @@ export class AuthController {
       prenom: user.prenom,
       nom: user.nom,
       telephone: user.telephone,
+      statut: user.statut,
     };
   }
 }

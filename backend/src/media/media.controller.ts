@@ -1,3 +1,4 @@
+// src/media/media.controller.ts
 import {
   Controller,
   Get,
@@ -7,13 +8,13 @@ import {
   Body,
   Param,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   Query,
   ParseIntPipe,
   ValidationPipe,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { MediaService } from './media.service';
@@ -23,15 +24,40 @@ import { Roles } from '../auth/roles.decorator';
 import { CreateMediaDto, UpdateMediaDto } from './dto/media.dto';
 import type { Request } from 'express';
 
-const storage = diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, './uploads/videos-miniatures');
+const videoStorage = diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb) => {
+    if (file.fieldname === 'miniature_file') {
+      cb(null, './uploads/videos-miniatures');
+    } else if (file.fieldname === 'video_file') {
+      cb(null, './uploads/videos');
+    } else {
+      cb(new Error('Champ non autorisé'), '');
+    }
   },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+  filename: (req: Request, file: Express.Multer.File, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `miniature-${unique}${extname(file.originalname)}`);
+    const prefix = file.fieldname === 'miniature_file' ? 'miniature' : 'video';
+    cb(null, `${prefix}-${unique}${extname(file.originalname)}`);
   },
 });
+
+const videoFileFilter = (req: Request, file: Express.Multer.File, cb) => {
+  if (file.fieldname === 'miniature_file') {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Seules les images sont autorisées pour la miniature'), false);
+    } else {
+      cb(null, true);
+    }
+  } else if (file.fieldname === 'video_file') {
+    if (!file.mimetype.startsWith('video/')) {
+      cb(new Error('Seules les vidéos sont autorisées pour le fichier vidéo'), false);
+    } else {
+      cb(null, true);
+    }
+  } else {
+    cb(new Error('Champ de fichier non autorisé'), false);
+  }
+};
 
 @Controller('medias')
 export class MediaController {
@@ -41,12 +67,22 @@ export class MediaController {
   @Post('videos/create')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @UseInterceptors(FileInterceptor('miniature_file', { storage }))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'miniature_file', maxCount: 1 },
+        { name: 'video_file', maxCount: 1 },
+      ],
+      { storage: videoStorage, fileFilter: videoFileFilter, limits: { fileSize: 500 * 1024 * 1024 } }, // 500 MB max
+    ),
+  )
   async create(
     @Body(ValidationPipe) createDto: CreateMediaDto,
-    @UploadedFile() miniatureFile: Express.Multer.File,
+    @UploadedFiles() files: { miniature_file?: Express.Multer.File[]; video_file?: Express.Multer.File[] },
   ) {
-    return this.mediaService.create(createDto, miniatureFile);
+    const miniature = files.miniature_file?.[0];
+    const video = files.video_file?.[0];
+    return this.mediaService.create(createDto, miniature, video);
   }
 
   @Get('videos/admin/all')
@@ -66,13 +102,23 @@ export class MediaController {
   @Put('videos/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @UseInterceptors(FileInterceptor('miniature_file', { storage }))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'miniature_file', maxCount: 1 },
+        { name: 'video_file', maxCount: 1 },
+      ],
+      { storage: videoStorage, fileFilter: videoFileFilter, limits: { fileSize: 500 * 1024 * 1024 } },
+    ),
+  )
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body(ValidationPipe) updateDto: UpdateMediaDto,
-    @UploadedFile() miniatureFile: Express.Multer.File,
+    @UploadedFiles() files: { miniature_file?: Express.Multer.File[]; video_file?: Express.Multer.File[] },
   ) {
-    return this.mediaService.update(id, updateDto, miniatureFile);
+    const miniature = files.miniature_file?.[0];
+    const video = files.video_file?.[0];
+    return this.mediaService.update(id, updateDto, miniature, video);
   }
 
   @Delete('videos/:id')

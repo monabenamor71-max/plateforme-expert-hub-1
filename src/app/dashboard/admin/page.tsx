@@ -10,6 +10,7 @@ import {
   FaMapMarkerAlt, FaPhone, FaStar, FaGraduationCap, FaVideo,
   FaMicrophone, FaComments, FaHeart, FaGlobe, FaClock as FaClockIcon,
   FaEnvelope as FaEnvelopeIcon, FaMapMarkerAlt as FaMapIcon,
+  FaFileAlt,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
@@ -89,18 +90,19 @@ function StatusBadge({ statut }: { statut: string }) {
   const map: Record<string,any> = {
     valide:{bg:C.greenL,color:C.green,label:"Validé"},
     en_attente:{bg:C.amberL,color:"#92400E",label:"En attente"},
+    en_attente_verification:{bg:C.blueL,color:"#1D4ED8",label:"Email à confirmer"},
     notifie_experts:{bg:C.blueL,color:C.blue,label:"Experts notifiés"},
     devis_envoye:{bg:"#FFF3E0",color:"#E65100",label:"Devis envoyé"},
     refuse:{bg:C.redL,color:C.red,label:"Refusé"},
     refusé:{bg:C.redL,color:C.red,label:"Refusé"},
     publie:{bg:C.greenL,color:C.green,label:"Publié"},
     brouillon:{bg:C.amberL,color:"#92400E",label:"Brouillon"},
+    envoye:{bg:C.greenL,color:C.green,label:"Envoyé"},
     archive:{bg:"#F1F5F9",color:C.textSub,label:"Archivé"},
     acceptee:{bg:C.greenL,color:C.green,label:"Acceptée"},
     en_cours:{bg:C.blueL,color:C.blue,label:"En cours"},
     terminee:{bg:C.tealL,color:C.tealD,label:"Terminée"},
     refusee:{bg:C.redL,color:C.red,label:"Refusée"},
-    envoye:{bg:C.greenL,color:C.green,label:"Envoyé"},
     planifie:{bg:C.blueL,color:C.blue,label:"Planifié"},
   };
   const s = map[statut]||{bg:"#F1F5F9",color:C.textSub,label:statut};
@@ -140,13 +142,9 @@ const SERVICE_FILTERS = [
 function normalizeService(service: string): string {
   if (!service) return "";
   const s = service.toLowerCase().trim();
-  
-  // Formation existante
   if (s === "formations" || s === "formation" || s === "formation-existante") {
     return "formation-existante";
   }
-  
-  // Formation sur mesure - Ajouter plus de cas
   if (s === "formation-sur-mesure" || 
       s === "formation_sur_mesure" || 
       s === "formation sur mesure" ||
@@ -155,7 +153,6 @@ function normalizeService(service: string): string {
       s === "formation_personnalisee") {
     return "formation-sur-mesure";
   }
-  
   if (s === "personnalise") return "consulting";
   return s;
 }
@@ -284,8 +281,10 @@ function ChartCanvas({ id, height=180 }: { id:string; height?:number }) {
   return <div style={{ position:"relative", width:"100%", height }}><canvas id={id} /></div>;
 }
 
+// ==================== TABLEAU DE BORD ====================
 function BIDashboardView({ experts, startups, temoignages, demandes, formationsProposees, podcastsProposees, formations, podcasts, articles, setTab, isOnline }: any) {
-  const [villeFilter, setVilleFilter] = useState<"all"|"valide"|"en_attente">("all");
+  const [villeFilterExperts, setVilleFilterExperts] = useState<"all"|"valide"|"en_attente">("all");
+  const [villeFilterStartups, setVilleFilterStartups] = useState<"all"|"valide"|"en_attente">("all");
   const chartRefs = useRef<Record<string,any>>({});
 
   const expertValides = experts.filter((e:any)=>e.statut==="valide").length;
@@ -297,7 +296,7 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
 
   const destroyChart = (id:string) => { if(chartRefs.current[id]){chartRefs.current[id].destroy();delete chartRefs.current[id];} };
 
-  const buildCharts = useCallback(async(vf:string)=>{
+  const buildCharts = useCallback(async (vfExperts:string, vfStartups:string)=>{
     await loadChartJs();
     const CJS = (window as any).Chart;
     if (!CJS) return;
@@ -328,14 +327,24 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
       chartRefs.current["bi-donut-st"]=new CJS(dStEl,{type:"doughnut",data:{labels:d.map(x=>x.label),datasets:[{data:d.map(x=>x.value),backgroundColor:["#378ADD","#D85A30","#E24B4A"],borderWidth:2,borderColor:"transparent"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"68%",plugins:{legend:{display:false}}}});
     }
 
-    destroyChart("bi-villes");
-    const villesEl = document.getElementById("bi-villes") as HTMLCanvasElement;
-    if (villesEl) {
-      const filtered = vf==="all"?experts:experts.filter((e:any)=>e.statut===vf);
+    destroyChart("bi-villes-experts");
+    const villesElExperts = document.getElementById("bi-villes-experts") as HTMLCanvasElement;
+    if (villesElExperts) {
+      const filtered = vfExperts==="all"?experts:experts.filter((e:any)=>e.statut===vfExperts);
       const map:Record<string,number>={};
       filtered.forEach((e:any)=>{const v=detectVille(e.localisation||"");map[v]=(map[v]||0)+1;});
       const sortedData=Object.entries(map).sort((a,b)=>(b[1] as number)-(a[1] as number));
-      chartRefs.current["bi-villes"]=new CJS(villesEl,{type:"bar",data:{labels:sortedData.map(x=>x[0]),datasets:[{label:"Experts",data:sortedData.map(x=>x[1]),backgroundColor:sortedData.map((_,i)=>PAL[i%PAL.length]),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:40}},y:{grid:{color:"rgba(0,0,0,0.04)"},ticks:{font:{size:10},stepSize:1},beginAtZero:true}}}});
+      chartRefs.current["bi-villes-experts"]=new CJS(villesElExperts,{type:"bar",data:{labels:sortedData.map(x=>x[0]),datasets:[{label:"Experts",data:sortedData.map(x=>x[1]),backgroundColor:sortedData.map((_,i)=>PAL[i%PAL.length]),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:40}},y:{grid:{color:"rgba(0,0,0,0.04)"},ticks:{font:{size:10},stepSize:1},beginAtZero:true}}}});
+    }
+
+    destroyChart("bi-villes-startups");
+    const villesElStartups = document.getElementById("bi-villes-startups") as HTMLCanvasElement;
+    if (villesElStartups) {
+      const filtered = vfStartups==="all"?startups:startups.filter((s:any)=>s.statut===vfStartups);
+      const map:Record<string,number>={};
+      filtered.forEach((s:any)=>{const v=detectVille(s.localisation||s.user?.localisation||"");map[v]=(map[v]||0)+1;});
+      const sortedData=Object.entries(map).sort((a,b)=>(b[1] as number)-(a[1] as number));
+      chartRefs.current["bi-villes-startups"]=new CJS(villesElStartups,{type:"bar",data:{labels:sortedData.map(x=>x[0]),datasets:[{label:"Startups",data:sortedData.map(x=>x[1]),backgroundColor:sortedData.map((_,i)=>PAL[i%PAL.length]),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:40}},y:{grid:{color:"rgba(0,0,0,0.04)"},ticks:{font:{size:10},stepSize:1},beginAtZero:true}}}});
     }
 
     destroyChart("bi-domaines");
@@ -375,7 +384,7 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
     }
   },[experts,startups,temoignages,demandes,avgNote,expertValides,startupValides]);
 
-  useEffect(()=>{buildCharts(villeFilter);return()=>{Object.keys(chartRefs.current).forEach(destroyChart);};},[buildCharts,villeFilter]);
+  useEffect(()=>{buildCharts(villeFilterExperts, villeFilterStartups);return()=>{Object.keys(chartRefs.current).forEach(destroyChart);};},[buildCharts,villeFilterExperts, villeFilterStartups]);
 
   const donutLegendExp=[{label:"Valides",color:"#1D9E75",value:expertValides},{label:"En attente",color:"#BA7517",value:experts.filter((e:any)=>e.statut==="en_attente").length},{label:"Refusés",color:"#E24B4A",value:experts.filter((e:any)=>e.statut==="refuse"||e.statut==="refusé").length}].filter(d=>d.value>0);
   const donutLegendSt=[{label:"Validées",color:"#378ADD",value:startupValides},{label:"En attente",color:"#D85A30",value:startups.filter((s:any)=>s.statut==="en_attente").length},{label:"Refusées",color:"#E24B4A",value:startups.filter((s:any)=>s.statut==="refuse"||s.statut==="refusé").length}].filter(d=>d.value>0);
@@ -386,7 +395,6 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
     <div>
       <div style={{ marginBottom:24, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
-          <div style={{ fontSize:10, fontWeight:700, color:C.teal, textTransform:"uppercase", letterSpacing:"2px", marginBottom:4 }}>Plateforme Admin</div>
           <h1 style={{ fontSize:24, fontWeight:900, color:C.text, margin:0 }}>Tableau de Bord</h1>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8, background:C.white, borderRadius:99, padding:"5px 14px", border:`1px solid ${C.border}` }}>
@@ -453,26 +461,41 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
             <div><div style={{ fontWeight:800, fontSize:14, color:C.text }}>Experts par ville</div><div style={{ fontSize:11.5, color:C.textSub }}>Distribution géographique</div></div>
             <div style={{ display:"flex", gap:5 }}>
               {(["all","valide","en_attente"] as const).map(f=>(
-                <button key={f} onClick={()=>setVilleFilter(f)} style={{ padding:"4px 10px", border:`1.5px solid ${villeFilter===f?C.teal:C.border}`, borderRadius:8, background:villeFilter===f?C.tealL:C.white, color:villeFilter===f?C.tealD:C.textSub, fontWeight:villeFilter===f?700:500, cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>
+                <button key={f} onClick={()=>setVilleFilterExperts(f)} style={{ padding:"4px 10px", border:`1.5px solid ${villeFilterExperts===f?C.teal:C.border}`, borderRadius:8, background:villeFilterExperts===f?C.tealL:C.white, color:villeFilterExperts===f?C.tealD:C.textSub, fontWeight:villeFilterExperts===f?700:500, cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>
                   {f==="all"?"Tous":f==="valide"?"Valides":"En attente"}
                 </button>
               ))}
             </div>
           </div>
-          <ChartCanvas id="bi-villes" height={200} />
+          <ChartCanvas id="bi-villes-experts" height={200} />
         </div>
+        <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div><div style={{ fontWeight:800, fontSize:14, color:C.text }}>Startups par ville</div><div style={{ fontSize:11.5, color:C.textSub }}>Distribution géographique</div></div>
+            <div style={{ display:"flex", gap:5 }}>
+              {(["all","valide","en_attente"] as const).map(f=>(
+                <button key={f} onClick={()=>setVilleFilterStartups(f)} style={{ padding:"4px 10px", border:`1.5px solid ${villeFilterStartups===f?C.teal:C.border}`, borderRadius:8, background:villeFilterStartups===f?C.tealL:C.white, color:villeFilterStartups===f?C.tealD:C.textSub, fontWeight:villeFilterStartups===f?700:500, cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>
+                  {f==="all"?"Tous":f==="valide"?"Valides":"En attente"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ChartCanvas id="bi-villes-startups" height={200} />
+        </div>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
           <div style={{ fontWeight:800, fontSize:14, color:C.text, marginBottom:2 }}>Experts par domaine</div>
           <div style={{ fontSize:11.5, color:C.textSub, marginBottom:14 }}>Top {Math.min(domaineCount,8)} domaines</div>
           <ChartCanvas id="bi-domaines" height={Math.max(180,Math.min(domaineCount,8)*36+40)} />
         </div>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
           <div style={{ fontWeight:800, fontSize:14, color:C.text, marginBottom:2 }}>Startups par secteur</div>
           <div style={{ fontSize:11.5, color:C.textSub, marginBottom:14 }}>Top {Math.min(secteurCount,10)} secteurs</div>
           <ChartCanvas id="bi-secteurs" height={Math.max(200,Math.min(secteurCount,10)*38+40)} />
         </div>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:14 }}>
             <div><div style={{ fontWeight:800, fontSize:14, color:C.text }}>Taux de satisfaction</div><div style={{ fontSize:11.5, color:C.textSub }}>Évolution mensuelle</div></div>
@@ -480,34 +503,19 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
           </div>
           <ChartCanvas id="bi-sat-line" height={140} />
         </div>
-      </div>
-      <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-          <div><div style={{ fontWeight:800, fontSize:14, color:C.text }}>Services les plus demandés</div><div style={{ fontSize:11.5, color:C.textSub }}>{demandes.length} demandes totales</div></div>
-          <span style={{ background:C.tealL, color:C.tealD, borderRadius:8, padding:"3px 9px", fontSize:10.5, fontWeight:700 }}>Top 6</span>
+        <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+            <div><div style={{ fontWeight:800, fontSize:14, color:C.text }}>Services les plus demandés</div><div style={{ fontSize:11.5, color:C.textSub }}>{demandes.length} demandes totales</div></div>
+            <span style={{ background:C.tealL, color:C.tealD, borderRadius:8, padding:"3px 9px", fontSize:10.5, fontWeight:700 }}>Top 6</span>
+          </div>
+          <ChartCanvas id="bi-services" height={160} />
         </div>
-        <ChartCanvas id="bi-services" height={160} />
       </div>
     </div>
   );
 }
 
-function resolveExpertChoisi(demande:any,experts:any[]):any|null{
-  if(!demande) return null;
-  for(const key of['expert_choisi','expert_assigne','expert_selectionne','expert','chosenExpert']){
-    const value=demande[key];
-    if(value&&typeof value==='object'){
-      if(value.user) return value;
-      if(value.id){const found=experts.find(e=>e.id===value.id);return found||{...value,user:{id:value.id,prenom:value.prenom||'',nom:value.nom||'',email:value.email||''}};}
-    }
-  }
-  for(const key of['expert_assigne_id','expert_choisi_id','expert_id','chosenExpertId']){
-    const id=demande[key];
-    if(id&&typeof id==='number'){const found=experts.find(e=>e.id===id);if(found) return found;}
-  }
-  return null;
-}
-
+// ==================== MODAL DÉTAIL EXPERT ====================
 function ModalExpertDetail({expert,onClose,onValider,onRefuser}:any){
   return(
     <div className="modal-bg" onClick={onClose}>
@@ -546,6 +554,7 @@ function ModalExpertDetail({expert,onClose,onValider,onRefuser}:any){
   );
 }
 
+// ==================== MODAL DÉTAIL STARTUP (avec localisation) ====================
 function ModalStartupDetail({startup,onClose,onValider,onRefuser}:any){
   return(
     <div className="modal-bg" onClick={onClose}>
@@ -566,7 +575,15 @@ function ModalStartupDetail({startup,onClose,onValider,onRefuser}:any){
         <div style={{padding:"22px 26px",maxHeight:"75vh",overflowY:"auto"}}>
           <div style={{background:"#F8FAFC",borderRadius:14,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.border}`}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{label:"Nom complet",val:`${startup.user?.prenom||""} ${startup.user?.nom||""}`},{label:"Email",val:startup.user?.email||"—"},{label:"Téléphone",val:startup.user?.telephone||"—"},{label:"Startup",val:startup.nom_startup||"—"},{label:"Secteur",val:startup.secteur||"—"},{label:"Taille",val:startup.taille||"—"}].map((row,i)=>(
+              {[
+                {label:"Nom complet",val:`${startup.user?.prenom||""} ${startup.user?.nom||""}`},
+                {label:"Email",val:startup.user?.email||"—"},
+                {label:"Téléphone",val:startup.user?.telephone||"—"},
+                {label:"Startup",val:startup.nom_startup||"—"},
+                {label:"Secteur",val:startup.secteur||"—"},
+                {label:"Localisation",val:startup.localisation||startup.user?.localisation||"—"},
+                {label:"Taille",val:startup.taille||"—"}
+              ].map((row,i)=>(
                 <div key={i} style={{background:C.white,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.border}`}}>
                   <div style={{fontSize:9.5,fontWeight:700,color:C.textSub,textTransform:"uppercase",marginBottom:4}}>{row.label}</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{row.val}</div>
@@ -582,6 +599,24 @@ function ModalStartupDetail({startup,onClose,onValider,onRefuser}:any){
   );
 }
 
+// ==================== RESOLVE EXPERT CHOISI ====================
+function resolveExpertChoisi(demande:any,experts:any[]):any|null{
+  if(!demande) return null;
+  for(const key of['expert_choisi','expert_assigne','expert_selectionne','expert','chosenExpert']){
+    const value=demande[key];
+    if(value&&typeof value==='object'){
+      if(value.user) return value;
+      if(value.id){const found=experts.find(e=>e.id===value.id);return found||{...value,user:{id:value.id,prenom:value.prenom||'',nom:value.nom||'',email:value.email||''}};}
+    }
+  }
+  for(const key of['expert_assigne_id','expert_choisi_id','expert_id','chosenExpertId']){
+    const id=demande[key];
+    if(id&&typeof id==='number'){const found=experts.find(e=>e.id===id);if(found) return found;}
+  }
+  return null;
+}
+
+// ==================== MODAL DEMANDE SERVICE ====================
 function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdmin,onChangerStatut,onNotifierExperts,onAccepterFormation,onRefuserFormation,onClose,getDemandeDomaine,setSelectedExpertProfile,devisList,onLoadDevis}:any){
   const svc=demande?.service||"";
   const svcNorm = normalizeService(svc);
@@ -626,6 +661,7 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
           </div>
         </div>
         <div style={{padding:"22px 26px",maxHeight:"80vh",overflowY:"auto"}}>
+          {/* Corps détaillé (identique à l'original) - gardé pour ne pas surcharger, mais fonctionnel */}
           <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
             <span style={{background:isFormationExistante?C.greenL:isFormationSurMesure?C.blueL:C.tealL,color:isFormationExistante?C.green:isFormationSurMesure?C.blue:C.tealD,borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700}}>
               {getServiceLabel(svc)}
@@ -752,6 +788,7 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
   );
 }
 
+// ==================== FORMATION FORM MODAL ====================
 function FormationFormModal({formation,onClose,onSave}:any){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:formation?.titre||"",description:formation?.description||"",domaine:formation?.domaine||"",mode:formation?.mode||"en_ligne",duree:formation?.duree||"",localisation:formation?.localisation||"",niveau:formation?.niveau||"",lien_formation:formation?.lien_formation||"",dateDebut:formation?.dateDebut?.split("T")[0]||"",dateFin:formation?.dateFin?.split("T")[0]||"",type:formation?.type||"payant",gratuit:formation?.gratuit||false,prix:formation?.prix||"",places_limitees:formation?.places_limitees||false,places_disponibles:formation?.places_disponibles||"",certifiante:formation?.certifiante||false,statut:formation?.statut||"publie"});
@@ -830,6 +867,7 @@ function FormationFormModal({formation,onClose,onSave}:any){
   );
 }
 
+// ==================== PODCAST FORM MODAL ====================
 function PodcastFormModal({podcast,onClose,onSave}:any){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:podcast?.titre||"",description:podcast?.description||"",domaine:podcast?.domaine||"",auteur:podcast?.auteur||"",statut:podcast?.statut||"publie",type_media:"video",video_url:podcast?.url_audio||""});
@@ -909,6 +947,7 @@ function PodcastFormModal({podcast,onClose,onSave}:any){
   );
 }
 
+// ==================== ARTICLE FORM MODAL ====================
 function ArticleFormModal({editingArticle,onClose,onSave,categoriesPredefinies}:any){
   const [form,setForm]=useState<any>({titre:editingArticle?.titre||"",description:editingArticle?.description||"",type:editingArticle?.type||"article",categorie:editingArticle?.categorie||"",statut:editingArticle?.statut||"brouillon",image:editingArticle?.image||"",pdf:editingArticle?.pdf||""});
   const [articleImageFile,setArticleImageFile]=useState<File|null>(null);
@@ -989,6 +1028,7 @@ function ArticleFormModal({editingArticle,onClose,onSave,categoriesPredefinies}:
   );
 }
 
+// ==================== MEDIA MODAL ====================
 function MediaModal({media,onClose,onSave}:any){
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({titre:media?.titre||"",description:media?.description||"",url:media?.url||"",emission:media?.emission||"",date_publication:media?.date_publication?.split("T")[0]||new Date().toISOString().split("T")[0],statut:media?.statut||"publie"});
@@ -1032,6 +1072,7 @@ function MediaModal({media,onClose,onSave}:any){
   );
 }
 
+// ==================== MODAL VALIDATION FORMATION ====================
 function ModalFormationValidation({formation,onClose,onValider,onRefuser}:any){
   if(!formation) return null;
   return(
@@ -1061,6 +1102,7 @@ function ModalFormationValidation({formation,onClose,onValider,onRefuser}:any){
   );
 }
 
+// ==================== MODAL VALIDATION PODCAST ====================
 function ModalPodcastValidation({podcast,onClose,onValider,onRefuser}:any){
   if(!podcast) return null;
   return(
@@ -1084,22 +1126,15 @@ function ModalPodcastValidation({podcast,onClose,onValider,onRefuser}:any){
   );
 }
 
+// ==================== DEMANDES VIEW ====================
 function DemandesView({demandes,formations,podcasts,experts,formationsEnAttenteExpert,podcastsEnAttenteExpert,onOpenDemande,onPublierFormationExpert,onRefuserFormationExpert,onPublierPodcastExpert,onRefuserPodcastExpert,onSetFormationValidation,onSetPodcastValidation,onLoadDevisForDemande}:any){
   const [activeTab,setActiveTab]=useState<"experts"|"startups">("experts");
   const [expertSubTab,setExpertSubTab]=useState<"formations"|"podcasts">("formations");
   const [serviceFilter,setServiceFilter]=useState<string>("all");
   const totalExpertAttente=formationsEnAttenteExpert.length+podcastsEnAttenteExpert.length;
   const totalServiceAttente=demandes.filter((d:any)=>d.statut==="en_attente").length;
- const countByService = (key: string) => {
-  if (key === "all") return demandes.length;
-  const filtered = demandes.filter((d: any) => normalizeService(d.service) === key);
-  console.log(`Filtre ${key}: ${filtered.length} demandes`);
-  return filtered.length;
-};
-
-const demandesFiltrees = serviceFilter === "all" 
-  ? demandes 
-  : demandes.filter((d: any) => normalizeService(d.service) === serviceFilter);
+  const countByService=(key:string)=>{if(key==="all")return demandes.length;return demandes.filter((d:any)=>normalizeService(d.service)===key).length;};
+  const demandesFiltrees=serviceFilter==="all"?demandes:demandes.filter((d:any)=>normalizeService(d.service)===serviceFilter);
 
   return(
     <div>
@@ -1248,25 +1283,46 @@ const demandesFiltrees = serviceFilter === "all"
   );
 }
 
+// ==================== NEWS FORM MODAL (corrigé : statut uniquement brouillon ou envoyé) ====================
 function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;onSave:()=>void;token:string}){
   const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({titre:news?.titre||"",description:news?.description||"",categorie:news?.categorie||"",statut:news?.statut||"publie"});
+  const [form,setForm]=useState({titre:news?.titre||"",description:news?.description||"",categorie:news?.categorie||"",statut:news?.statut||"brouillon"});
   const [imageFile,setImageFile]=useState<File|null>(null);
+  const [attachmentFile,setAttachmentFile]=useState<File|null>(null);
   const [imagePreview,setImagePreview]=useState(news?.image?`${BASE}/uploads/news/${news.image}`:"");
   const [sendNow,setSendNow]=useState(false);
   const CATEGORIES=["Actualité","Événement","Offre spéciale","Formation","Partenariat","Annonce","Autre"];
+  
   const handleSubmit=async(e:React.FormEvent)=>{
     e.preventDefault();
     if(!form.titre.trim()){alert("Titre requis");return;}
     setLoading(true);
     const fd=new FormData();
-    fd.append("titre",form.titre);fd.append("description",form.description);fd.append("categorie",form.categorie);fd.append("statut",form.statut);
-    if(sendNow)fd.append("send_newsletter","true");
-    if(imageFile)fd.append("image",imageFile);
-    const url=news?`${BASE}/admin/news/${news.id}`:`${BASE}/admin/news/create`;
-    try{const res=await fetch(url,{method:news?"PUT":"POST",headers:{Authorization:`Bearer ${token}`},body:fd});if(res.ok){onSave();onClose();}else{const err=await res.text();alert(`Erreur : ${err||"Impossible de sauvegarder"}`);}}catch{alert("Erreur réseau");}
+    fd.append("titre",form.titre);
+    fd.append("description",form.description);
+    fd.append("categorie",form.categorie);
+    // Pour une création : statut = "brouillon"
+    // Pour une modification : on garde le statut existant (ne pas le changer ici)
+    const statutFinal = news ? form.statut : "brouillon";
+    fd.append("statut", statutFinal);
+    if(sendNow && !news) fd.append("send_newsletter","true");
+    if(imageFile) fd.append("image",imageFile);
+    if(attachmentFile) fd.append("attachment",attachmentFile);
+    const url = news ? `${BASE}/news/admin/${news.id}` : `${BASE}/news/admin/create`;
+    try{
+      const res=await fetch(url,{method:news?"PUT":"POST",headers:{Authorization:`Bearer ${token}`},body:fd});
+      if(res.ok){
+        // Si l'envoi immédiat est coché, on recharge pour afficher le nouveau statut (le backend aura mis "envoye" si l'envoi a réussi)
+        onSave();
+        onClose();
+      }else{
+        const err=await res.text();
+        alert(`Erreur : ${err||"Impossible de sauvegarder"}`);
+      }
+    }catch{alert("Erreur réseau");}
     setLoading(false);
   };
+
   return(
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" style={{maxWidth:800}} onClick={(e:any)=>e.stopPropagation()}>
@@ -1281,7 +1337,9 @@ function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;on
           <div style={{marginBottom:12}}><label className="lbl">Titre *</label><input className="inp" required value={form.titre} onChange={e=>setForm({...form,titre:e.target.value})} placeholder="Titre de l'annonce"/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
             <div><label className="lbl">Catégorie</label><select className="inp" value={form.categorie} onChange={e=>setForm({...form,categorie:e.target.value})}><option value="">Sélectionner</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-            <div><label className="lbl">Statut</label><select className="inp" value={form.statut} onChange={e=>setForm({...form,statut:e.target.value})}><option value="publie">Publié</option><option value="brouillon">Brouillon</option></select></div>
+            {news && (
+              <div><label className="lbl">Statut actuel</label><div style={{padding:"9px 13px", background:"#F8FAFC", borderRadius:9, fontSize:13}}><StatusBadge statut={form.statut} /></div></div>
+            )}
           </div>
           <div style={{marginBottom:16}}><label className="lbl">Contenu de l'annonce *</label><textarea className="inp" rows={8} required value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Rédigez le contenu de votre annonce ici..." style={{resize:"vertical",minHeight:180,fontSize:13.5,lineHeight:1.75}}/></div>
           <div style={{marginBottom:16}}>
@@ -1291,7 +1349,14 @@ function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;on
               {imagePreview?<img src={imagePreview} style={{maxHeight:80,borderRadius:8,maxWidth:"100%"}} alt=""/>:<div style={{fontSize:12,color:C.textSub}}>Cliquer pour importer une image</div>}
             </label>
           </div>
-          {!news&&(
+          <div style={{marginBottom:16}}>
+            <label className="lbl">Fichier joint (optionnel)</label>
+            <label className="upload-zone" style={{minHeight:80,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
+              <input type="file" onChange={e=>{const f=e.target.files?.[0];if(f)setAttachmentFile(f);}} style={{display:"none"}}/>
+              {attachmentFile?<div style={{fontSize:12,color:C.greenM}}><FaFileAlt/> {attachmentFile.name}</div>:<div style={{fontSize:12,color:C.textSub}}>Ajouter un document (PDF, etc.)</div>}
+            </label>
+          </div>
+          {!news && (
             <div style={{background:`${C.teal}08`,border:`1.5px solid ${C.teal}40`,borderRadius:12,padding:"16px 18px",marginBottom:16}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
                 <div onClick={()=>setSendNow(!sendNow)} style={{width:44,height:24,background:sendNow?C.teal:"#D1D5DB",borderRadius:99,position:"relative",cursor:"pointer",flexShrink:0}}>
@@ -1312,6 +1377,7 @@ function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;on
   );
 }
 
+// ==================== NEWS VIEW (avec statuts brouillon / envoyé) ====================
 function NewsView({token}:{token:string}){
   const [news,setNews]=useState<any[]>([]);
   const [abonnes,setAbonnes]=useState<any[]>([]);
@@ -1325,11 +1391,17 @@ function NewsView({token}:{token:string}){
   const hdrJ=()=>({Authorization:`Bearer ${token}`,"Content-Type":"application/json"});
   const notify=(msg:string)=>{setToast(msg);setTimeout(()=>setToast(""),3000);};
 
-  const loadNews=async()=>{
-    setLoading(true);
-    try{const r=await fetch(`${BASE}/admin/news/all`,{headers:hdr()});if(r.ok)setNews(await r.json());else setNews([]);}catch{setNews([]);}
-    setLoading(false);
-  };
+  const loadNews = async () => {
+  setLoading(true);
+  try {
+    const r = await fetch(`${BASE}/news/admin/all`, { headers: hdr() });
+    if (r.ok) setNews(await r.json());
+    else setNews([]);
+  } catch {
+    setNews([]);
+  }
+  setLoading(false);
+};
   const loadAbonnes=async()=>{
     try{const r=await fetch(`${BASE}/newsletter/admin/all`,{headers:hdr()});if(r.ok)setAbonnes(await r.json());else setAbonnes([]);}catch{setAbonnes([]);}
   };
@@ -1337,19 +1409,27 @@ function NewsView({token}:{token:string}){
 
   const supprimerNews=async(id:number)=>{
     if(!confirm("Supprimer cette annonce ?"))return;
-    const r=await fetch(`${BASE}/admin/news/${id}`,{method:"DELETE",headers:hdr()});
+    const r = await fetch(`${BASE}/news/admin/${id}`, { method: "DELETE", headers: hdr() });
     if(r.ok){notify("Supprimée");loadNews();}else notify("Erreur");
   };
-  const envoyerNewsletter=async(id:number)=>{
-    if(!confirm(`Envoyer cette annonce aux ${abonnes.length} abonné(s) ?`))return;
-    setSending(id);
-    try{
-      const r=await fetch(`${BASE}/admin/news/${id}/send-newsletter`,{method:"POST",headers:hdrJ()});
-      if(r.ok){notify(`Envoyé à ${abonnes.length} abonné(s) !`);loadNews();}
-      else{const e=await r.text();notify(`Erreur: ${e}`);}
-    }catch{notify("Erreur réseau");}
-    setSending(null);
-  };
+
+  const envoyerNewsletter = async (id: number) => {
+  if (!confirm(`Envoyer cette annonce aux ${abonnes.length} abonné(s) ?`)) return;
+  setSending(id);
+  try {
+    const r = await fetch(`${BASE}/news/admin/${id}/send-newsletter`, { method: "POST", headers: hdrJ() });
+    if (r.ok) {
+      notify(`Envoyé à ${abonnes.length} abonné(s) !`);
+      await loadNews(); // recharge pour voir le nouveau statut (backend mettra "envoye")
+    } else {
+      const e = await r.text();
+      notify(`Erreur: ${e}`);
+    }
+  } catch {
+    notify("Erreur réseau");
+  }
+  setSending(null);
+};
 
   return(
     <div>
@@ -1360,7 +1440,7 @@ function NewsView({token}:{token:string}){
         <button className="btn btn-teal" style={{display:"flex",alignItems:"center",gap:7}} onClick={()=>{setEditingNews(null);setShowForm(true);}}><FaPlus size={11}/> Nouvelle annonce</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
-        {[{label:"Annonces totales",value:news.length,color:C.blueM},{label:"Publiées",value:news.filter(n=>n.statut==="publie").length,color:C.green},{label:"Abonnés newsletter",value:abonnes.length,color:C.purple},{label:"Envoyées",value:news.filter(n=>n.statut==="envoye"||n.newsletter_envoye).length,color:C.teal}].map((s,i)=>(
+        {[{label:"Annonces totales",value:news.length,color:C.blueM},{label:"Brouillons",value:news.filter(n=>n.statut==="brouillon").length,color:C.amber},{label:"Abonnés newsletter",value:abonnes.length,color:C.purple},{label:"Annonces envoyées",value:news.filter(n=>n.statut==="envoye").length,color:C.green}].map((s,i)=>(
           <div key={i} style={{background:C.white,border:`2px solid ${s.color}30`,borderRadius:14,padding:"16px 18px"}}>
             <div style={{fontSize:11.5,color:C.textSub,fontWeight:600,marginBottom:6}}>{s.label}</div>
             <div style={{fontSize:28,fontWeight:900,color:s.color}}>{s.value}</div>
@@ -1392,14 +1472,13 @@ function NewsView({token}:{token:string}){
         ):(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             {news.map((n:any)=>(
-              <div key={n.id} style={{background:C.white,border:`2px solid ${n.newsletter_envoye||n.statut==="envoye"?C.greenM+"40":C.border}`,borderRadius:16,overflow:"hidden"}}>
+              <div key={n.id} style={{background:C.white,border:`2px solid ${n.statut==="envoye"?C.greenM+"40":C.border}`,borderRadius:16,overflow:"hidden"}}>
                 <div style={{padding:"18px 22px",display:"flex",gap:18,alignItems:"flex-start"}}>
                   {n.image&&<img src={`${BASE}/uploads/news/${n.image}`} style={{width:80,height:80,borderRadius:10,objectFit:"cover",flexShrink:0}} alt=""/>}
                   <div style={{flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,flexWrap:"wrap"}}>
                       <span style={{fontWeight:800,fontSize:15,color:C.text}}>{n.titre}</span>
-                      <StatusBadge statut={n.statut||"brouillon"}/>
-                      {(n.newsletter_envoye||n.statut==="envoye")&&<span style={{background:C.greenL,color:C.green,borderRadius:99,padding:"2px 10px",fontSize:11,fontWeight:700}}>📧 Newsletter envoyée</span>}
+                      <StatusBadge statut={n.statut || "brouillon"}/>
                     </div>
                     {n.description&&<div style={{fontSize:13,color:C.textSub,lineHeight:1.6,marginBottom:8}}>{(n.description||"").slice(0,160)}{(n.description||"").length>160?"...":""}</div>}
                     <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
@@ -1408,7 +1487,7 @@ function NewsView({token}:{token:string}){
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:7,flexShrink:0}}>
-                    {!(n.newsletter_envoye||n.statut==="envoye")&&abonnes.length>0&&(
+                    {n.statut !== "envoye" && abonnes.length > 0 && (
                       <button className="btn btn-teal" style={{fontSize:12,padding:"7px 14px"}} disabled={sending===n.id} onClick={()=>envoyerNewsletter(n.id)}>
                         {sending===n.id?"Envoi en cours...":`Envoyer (${abonnes.length})`}
                       </button>
@@ -1426,6 +1505,7 @@ function NewsView({token}:{token:string}){
   );
 }
 
+// ==================== CONTACT CONFIG FORM ====================
 function ContactConfigForm({ contactConfig, setContactConfig, onSave, saving }: any) {
   const [form, setForm] = useState({
     email: contactConfig?.email || "contact@beh.com",
@@ -1542,12 +1622,11 @@ function ContactConfigForm({ contactConfig, setContactConfig, onSave, saving }: 
   );
 }
 
+// ==================== CONTENU PLATEFORME VIEW ====================
 function ContenuPlateformeView({ token }: { token: string }) {
   const [activeSection, setActiveSection] = useState<"histoire" | "contact">("histoire");
-  
   const [hForm, setHForm] = useState<any>({});
   const [savingH, setSavingH] = useState(false);
-  
   const [contactConfig, setContactConfig] = useState<any>(null);
   const [savingContact, setSavingContact] = useState(false);
   const [toast, setToast] = useState({ text: "", ok: true });
@@ -1633,73 +1712,29 @@ function ContenuPlateformeView({ token }: { token: string }) {
           {toast.text}
         </div>
       )}
-
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Gestion du contenu</div>
           <h1 style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>Contenu de la Plateforme</h1>
           <p style={{ fontSize: 12.5, color: C.textSub, marginTop: 4 }}>Gérez les pages À propos et Contact</p>
         </div>
-        <a href="/a-propos" target="_blank" className="btn btn-gray" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          Voir la page À propos →
-        </a>
+        <a href="/a-propos" target="_blank" className="btn btn-gray" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>Voir la page À propos →</a>
       </div>
-
       <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 14, border: `1px solid ${C.border}`, padding: "6px", marginBottom: 28, width: "fit-content" }}>
-        <button
-          onClick={() => setActiveSection("histoire")}
-          style={{
-            padding: "10px 24px",
-            borderRadius: 10,
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontSize: 13.5,
-            fontWeight: activeSection === "histoire" ? 800 : 600,
-            background: activeSection === "histoire" ? C.teal : "transparent",
-            color: activeSection === "histoire" ? "#fff" : C.textSub,
-            transition: "all .2s",
-          }}
-        >
-          <FaNewspaper style={{ marginRight: 8 }} /> Page À propos
-        </button>
-        <button
-          onClick={() => setActiveSection("contact")}
-          style={{
-            padding: "10px 24px",
-            borderRadius: 10,
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontSize: 13.5,
-            fontWeight: activeSection === "contact" ? 800 : 600,
-            background: activeSection === "contact" ? C.blueM : "transparent",
-            color: activeSection === "contact" ? "#fff" : C.textSub,
-            transition: "all .2s",
-          }}
-        >
-          <FaEnvelope style={{ marginRight: 8 }} /> Page Contact
-        </button>
+        <button onClick={() => setActiveSection("histoire")} style={{ padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: activeSection === "histoire" ? 800 : 600, background: activeSection === "histoire" ? C.teal : "transparent", color: activeSection === "histoire" ? "#fff" : C.textSub, transition: "all .2s" }}><FaNewspaper style={{ marginRight: 8 }} /> Page À propos</button>
+        <button onClick={() => setActiveSection("contact")} style={{ padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: activeSection === "contact" ? 800 : 600, background: activeSection === "contact" ? C.blueM : "transparent", color: activeSection === "contact" ? "#fff" : C.textSub, transition: "all .2s" }}><FaEnvelope style={{ marginRight: 8 }} /> Page Contact</button>
       </div>
-
       {activeSection === "histoire" && (
         <form onSubmit={saveHistoire}>
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Hero</span>
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Hero</span></div>
             <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "180px 1fr", gap: 14, alignItems: "start" }}>
               <HField label="Année de création" cle="annee_creation" hf={hf} setHF={setHF} placeholder="2019" />
               <HField label="Description principale" cle="description_hero" rows={3} hf={hf} setHF={setHF} placeholder="Depuis 2019, nous connectons les startups…" />
             </div>
           </div>
-
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Vision</span>
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Vision</span></div>
             <div style={{ padding: "18px 20px" }}>
               <HField label="Description vision" cle="description_vision" rows={3} hf={hf} setHF={setHF} placeholder="Notre vision est de créer un écosystème…" />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
@@ -1710,12 +1745,8 @@ function ContenuPlateformeView({ token }: { token: string }) {
               </div>
             </div>
           </div>
-
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Citation fondateur</span>
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Citation fondateur</span></div>
             <div style={{ padding: "18px 20px" }}>
               <HField label="Texte de la citation" cle="citation" rows={3} hf={hf} setHF={setHF} placeholder="Nous ne faisons pas que connecter…" />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
@@ -1724,28 +1755,18 @@ function ContenuPlateformeView({ token }: { token: string }) {
               </div>
             </div>
           </div>
-
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Mission</span>
-            </div>
-            <div style={{ padding: "18px 20px" }}>
-              <HField label="Description mission" cle="mission_desc" rows={3} hf={hf} setHF={setHF} placeholder="Offrir aux startups un accès privilégié…" />
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Mission</span></div>
+            <div style={{ padding: "18px 20px" }}><HField label="Description mission" cle="mission_desc" rows={3} hf={hf} setHF={setHF} placeholder="Offrir aux startups un accès privilégié…" /></div>
           </div>
-
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Timeline — Notre parcours</span>
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Timeline — Notre parcours</span></div>
             <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {[1, 2, 3, 4, 5, 6].map(n => (
+              {[1,2,3,4,5,6].map(n => (
                 <div key={n} style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 10.5, fontWeight: 800, color: C.textSub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Étape {n}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 2fr", gap: 10 }}>
-                    <HField label="Année" cle={`timeline${n}_year`} hf={hf} setHF={setHF} placeholder={String(2018 + n)} />
+                    <HField label="Année" cle={`timeline${n}_year`} hf={hf} setHF={setHF} placeholder={String(2018+n)} />
                     <HField label="Titre" cle={`timeline${n}_title`} hf={hf} setHF={setHF} placeholder="Ex: Fondation" />
                     <HField label="Description" cle={`timeline${n}_desc`} hf={hf} setHF={setHF} placeholder="Courte description…" />
                   </div>
@@ -1753,36 +1774,20 @@ function ContenuPlateformeView({ token }: { token: string }) {
               ))}
             </div>
           </div>
-
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Nos Valeurs</span>
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Nos Valeurs</span></div>
             <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {[1, 2, 3].map(n => (
+              {[1,2,3].map(n => (
                 <div key={n} style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 10.5, fontWeight: 800, color: C.textSub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Valeur {n}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 120px", gap: 10, alignItems: "start" }}>
-                    <HField label="Titre" cle={`valeur${n}_titre`} hf={hf} setHF={setHF} placeholder={n === 1 ? "Excellence" : n === 2 ? "Transparence" : "Engagement"} />
+                    <HField label="Titre" cle={`valeur${n}_titre`} hf={hf} setHF={setHF} placeholder={n===1?"Excellence":n===2?"Transparence":"Engagement"} />
                     <HField label="Description" cle={`valeur${n}_desc`} rows={2} hf={hf} setHF={setHF} placeholder="Courte description de cette valeur…" />
                     <div>
                       <label className="lbl">Couleur</label>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <input
-                          type="color"
-                          value={hf(`valeur${n}_color`) || ["#F7B500", "#22C55E", "#3B82F6"][n - 1]}
-                          onChange={(e) => setHF(`valeur${n}_color`, e.target.value)}
-                          style={{ width: 40, height: 36, border: `1.5px solid ${C.border}`, borderRadius: 8, cursor: "pointer", padding: 2 }}
-                        />
-                        <input
-                          type="text"
-                          className="inp"
-                          value={hf(`valeur${n}_color`) || ["#F7B500", "#22C55E", "#3B82F6"][n - 1]}
-                          onChange={(e) => setHF(`valeur${n}_color`, e.target.value)}
-                          placeholder="#F7B500"
-                          style={{ flex: 1, fontSize: 12, padding: "8px 10px" }}
-                        />
+                        <input type="color" value={hf(`valeur${n}_color`) || ["#F7B500","#22C55E","#3B82F6"][n-1]} onChange={(e)=>setHF(`valeur${n}_color`,e.target.value)} style={{ width: 40, height: 36, border: `1.5px solid ${C.border}`, borderRadius: 8, cursor: "pointer", padding: 2 }} />
+                        <input type="text" className="inp" value={hf(`valeur${n}_color`) || ["#F7B500","#22C55E","#3B82F6"][n-1]} onChange={(e)=>setHF(`valeur${n}_color`,e.target.value)} placeholder="#F7B500" style={{ flex: 1, fontSize: 12, padding: "8px 10px" }} />
                       </div>
                     </div>
                   </div>
@@ -1790,12 +1795,8 @@ function ContenuPlateformeView({ token }: { token: string }) {
               ))}
             </div>
           </div>
-
           <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} />
-              <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Statistiques (page Consulting)</span>
-            </div>
+            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Statistiques (page Consulting)</span></div>
             <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <HField label="Startups accompagnées" cle="startups_accompagnees" hf={hf} setHF={setHF} placeholder="150" type="number" />
               <HField label="Taux de satisfaction (%)" cle="taux_satisfaction" hf={hf} setHF={setHF} placeholder="94" type="number" />
@@ -1803,28 +1804,20 @@ function ContenuPlateformeView({ token }: { token: string }) {
               <HField label="Experts certifiés" cle="experts_certifies" hf={hf} setHF={setHF} placeholder="45" type="number" />
             </div>
           </div>
-
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 11, padding: "6px 0 4px" }}>
             <button type="button" className="btn btn-gray" onClick={loadHistoire}>Annuler les changements</button>
-            <button type="submit" className="btn btn-teal" disabled={savingH} style={{ padding: "10px 28px", fontSize: 14 }}>
-              {savingH ? "Sauvegarde en cours..." : "💾 Sauvegarder"}
-            </button>
+            <button type="submit" className="btn btn-teal" disabled={savingH} style={{ padding: "10px 28px", fontSize: 14 }}>{savingH ? "Sauvegarde en cours..." : "💾 Sauvegarder"}</button>
           </div>
         </form>
       )}
-
       {activeSection === "contact" && (
-        <ContactConfigForm
-          contactConfig={contactConfig}
-          setContactConfig={setContactConfig}
-          onSave={saveContactConfig}
-          saving={savingContact}
-        />
+        <ContactConfigForm contactConfig={contactConfig} setContactConfig={setContactConfig} onSave={saveContactConfig} saving={savingContact} />
       )}
     </div>
   );
 }
 
+// ==================== COMPOSANT PRINCIPAL ====================
 export default function DashboardAdmin() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -1896,57 +1889,15 @@ export default function DashboardAdmin() {
   async function loadAll() { setLoading(true); try { const [e, s, t] = await Promise.all([fetch(`${BASE}/admin/experts?_=${Date.now()}`, { headers: hdr() }).then(r => r.json()), fetch(`${BASE}/admin/startups?_=${Date.now()}`, { headers: hdr() }).then(r => r.json()), fetch(`${BASE}/temoignages/all?_=${Date.now()}`, { headers: hdr() }).then(r => r.json())]); setExperts(Array.isArray(e) ? e : []); setStartups(Array.isArray(s) ? s : []); setTemoignages(Array.isArray(t) ? t : []); } catch { notify("Erreur chargement", false); } setLoading(false); }
   async function loadFormations() { try { const r = await fetch(`${BASE}/formations/admin/all?_=${Date.now()}`, { headers: hdr() }); setFormations(r.ok ? await r.json() : []); } catch { setFormations([]); } }
   async function loadPodcasts() { try { const r = await fetch(`${BASE}/admin/podcasts/all?_=${Date.now()}`, { headers: hdr() }); let all = r.ok ? await r.json() : []; all = all.filter((p: any) => p.type_media === "video" || !p.type_media); setPodcasts(all); } catch { setPodcasts([]); } }
-async function loadDemandes() { 
-  try { 
-    const r = await fetch(`${BASE}/demandes-service/all?_=${Date.now()}`, { headers: hdr() }); 
-    const data = r.ok ? await r.json() : [];
-    
-    // Débogage : Afficher toutes les demandes avec leur service normalisé
-    console.log("=== TOUTES LES DEMANDES ===");
-    data.forEach((d: any) => {
-      const normalized = normalizeService(d.service);
-      console.log(`ID: ${d.id}, Service original: "${d.service}", Normalisé: "${normalized}"`);
-      if (normalized === "formation-sur-mesure") {
-        console.log("  -> FORMATION SUR MESURE TROUVÉE !", d);
-      }
-    });
-    
-    setDemandes(data); 
-  } catch { 
-    setDemandes([]); 
-  } 
-}
+  async function loadDemandes() { try { const r = await fetch(`${BASE}/demandes-service/all?_=${Date.now()}`, { headers: hdr() }); setDemandes(r.ok ? await r.json() : []); } catch { setDemandes([]); } }
   async function loadArticles() { try { const r = await fetch(`${BASE}/articles/admin/all?_=${Date.now()}`, { headers: hdr() }); if (r.ok) setArticles(await r.json()); } catch { } }
   async function loadContactMessages() { try { const r = await fetch(`${BASE}/contact/messages?_=${Date.now()}`, { headers: hdr() }); if (r.ok) setContactMsgs(await r.json()); } catch { } }
   async function loadMedias() { try { const r = await fetch(`${BASE}/admin/medias/all`, { headers: hdr() }); setMedias(r.ok ? await r.json() : []); } catch { setMedias([]); } }
   async function loadDevisForDemande(demandeId: number) { if (devisCache[demandeId]) return devisCache[demandeId]; try { const r = await fetch(`${BASE}/devis/admin/by-demande/${demandeId}`, { headers: hdr() }); const data = r.ok ? await r.json() : []; setDevisCache(prev => ({ ...prev, [demandeId]: data })); return data; } catch { return []; } }
 
   async function supprimerMedia(id: number) { if (!confirm("Supprimer ?")) return; const r = await fetch(`${BASE}/admin/medias/${id}`, { method: "DELETE", headers: hdr() }); if (r.ok) { notify("Supprimé"); loadMedias(); } else notify("Erreur", false); }
-  async function valider(type: string, id: number) { 
-    if (!confirm("Valider ?")) return; 
-    const r = await fetch(`${BASE}/admin/${type}/${id}/valider`, { method: "PATCH", headers: hdr() }); 
-    if (r.ok) { 
-      notify("✅ Validé !"); 
-      setSelectedExpert(null); 
-      setSelectedStartup(null); 
-      loadAll(); 
-    } else { 
-      notify("Erreur", false); 
-    } 
-  }
-  async function refuser(type: string, id: number) { 
-    if (!confirm("Refuser ?")) return; 
-    const r = await fetch(`${BASE}/admin/${type}/${id}/refuser`, { method: "PATCH", headers: hdr() }); 
-    if (r.ok) { 
-      notify("❌ Refusé"); 
-      setSelectedExpert(null); 
-      setSelectedStartup(null); 
-      loadAll(); 
-    } else { 
-      notify("Erreur", false); 
-    } 
-  }
-  
+  async function valider(type: string, id: number) { if (!confirm("Valider ?")) return; const r = await fetch(`${BASE}/admin/${type}/${id}/valider`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("✅ Validé !"); setSelectedExpert(null); setSelectedStartup(null); loadAll(); } else { notify("Erreur", false); } }
+  async function refuser(type: string, id: number) { if (!confirm("Refuser ?")) return; const r = await fetch(`${BASE}/admin/${type}/${id}/refuser`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("❌ Refusé"); setSelectedExpert(null); setSelectedStartup(null); loadAll(); } else { notify("Erreur", false); } }
   async function validerModification(id: number) { const r = await fetch(`${BASE}/experts/${id}/valider-modification`, { method: "PATCH", headers: hdr() }); if (r.ok) notify("Modification validée"); else notify("Erreur", false); loadAll(); }
   async function refuserModification(id: number) { const r = await fetch(`${BASE}/experts/${id}/refuser-modification`, { method: "PATCH", headers: hdr() }); if (r.ok) notify("Modification refusée"); else notify("Erreur", false); loadAll(); }
   async function validerTemo(id: number) { const r = await fetch(`${BASE}/temoignages/${id}/valider`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("Publié !"); loadAll(); } else notify("Erreur", false); }
@@ -2083,7 +2034,7 @@ async function loadDemandes() {
             <button onClick={() => router.push("/")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,.09)", cursor: "pointer", background: "rgba(255,255,255,.04)", color: "rgba(255,255,255,.6)", fontSize: 11.5, fontWeight: 700, fontFamily: "inherit", transition: "all .18s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(247,181,0,.12)"; e.currentTarget.style.color = "#F7B500"; e.currentTarget.style.borderColor = "rgba(247,181,0,.25)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.04)"; e.currentTarget.style.color = "rgba(255,255,255,.6)"; e.currentTarget.style.borderColor = "rgba(255,255,255,.09)"; }}>
-              <FaArrowLeft size={10} style={{ flexShrink: 0 }} />{!sideCollapsed && <span>Retour au site</span>}
+              <FaArrowLeft size={10} style={{ flexShrink: 0 }} />{!sideCollapsed && <span>Retour</span>}
             </button>
           </div>
 
@@ -2180,33 +2131,12 @@ async function loadDemandes() {
                       filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
                       renderRow={(e: any) => (
                         <tr key={e.id}>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                              <Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={32} color={C.teal} />
-                              <div style={{ fontWeight: 700, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div>
-                            </div>
-                          </td>
+                          <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={32} color={C.teal} /><div style={{ fontWeight: 700, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div></div></td>
                           <td style={{ color: C.textSub, fontSize: 12 }}>{e.user?.email}</td>
-                          <td>
-                            <span style={{ background: `${C.teal}12`, color: C.tealD, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>
-                              {e.domaine || "—"}
-                            </span>
-                          </td>
+                          <td><span style={{ background: `${C.teal}12`, color: C.tealD, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{e.domaine || "—"}</span></td>
                           <td style={{ color: C.textSub, fontSize: 12 }}>{e.localisation || "—"}</td>
-                          <td>
-                            <StatusBadge statut={e.statut} />
-                          </td>
-                          <td>
-                            <div style={{ display: "flex", gap: 5 }}>
-                              <button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedExpert(e)}>Voir</button>
-                              {e.statut === "en_attente" && (
-                                <>
-                                  <button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("experts", e.id)}>Valider</button>
-                                  <button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("experts", e.id)}>Refuser</button>
-                                </>
-                              )}
-                            </div>
-                          </td>
+                          <td><StatusBadge statut={e.statut} /></td>
+                          <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedExpert(e)}>Voir</button>{e.statut === "en_attente" && <><button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("experts", e.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("experts", e.id)}>Refuser</button></>}</div></td>
                         </tr>
                       )}
                       emptyText="Aucun expert"
@@ -2216,9 +2146,9 @@ async function loadDemandes() {
                 {tab === "startups" && (
                   <DataTable
                     title={`Startups — ${startups.length} total · ${enAttenteStartups.length} en attente`}
-                    columns={[{ key: "user.prenom", label: "Responsable", sortable: true }, { key: "user.email", label: "Email" }, { key: "nom_startup", label: "Startup", sortable: true }, { key: "secteur", label: "Secteur", sortable: true }, { key: "taille", label: "Taille" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={startups} 
-                    searchKeys={["user.prenom", "user.nom", "user.email", "nom_startup", "secteur"]}
+                    columns={[{ key: "user.prenom", label: "Responsable", sortable: true }, { key: "user.email", label: "Email" }, { key: "nom_startup", label: "Startup", sortable: true }, { key: "secteur", label: "Secteur", sortable: true }, { key: "localisation", label: "Localisation", sortable: true }, { key: "taille", label: "Taille" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
+                    data={startups}
+                    searchKeys={["user.prenom", "user.nom", "user.email", "nom_startup", "secteur", "localisation"]}
                     filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
                     renderRow={(s: any) => (
                       <tr key={s.id}>
@@ -2235,10 +2165,9 @@ async function loadDemandes() {
                             {s.secteur || "—"}
                           </span>
                         </td>
+                        <td style={{ color: C.textSub, fontSize: 12 }}>{s.localisation || s.user?.localisation || "—"}</td>
                         <td style={{ color: C.textSub }}>{s.taille || "—"}</td>
-                        <td>
-                          <StatusBadge statut={s.statut} />
-                        </td>
+                        <td><StatusBadge statut={s.statut} /></td>
                         <td>
                           <div style={{ display: "flex", gap: 5 }}>
                             <button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedStartup(s)}>Voir</button>
@@ -2261,7 +2190,7 @@ async function loadDemandes() {
                     {temoignages.length === 0 ? <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 14, padding: "56px 0", textAlign: "center", color: C.textSub }}>Aucun témoignage</div> : temoignages.map((t: any) => (
                       <div key={t.id} style={{ background: C.white, border: `2px solid ${t.statut === "en_attente" ? C.amber + "40" : t.statut === "valide" ? C.greenM + "30" : C.border}`, borderRadius: 13, padding: "16px 18px", marginBottom: 11, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}><Avatar prenom={t.user?.prenom} nom={t.user?.nom} size={36} color={C.amber} /><div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{t.user?.prenom} {t.user?.nom}</div><div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>{[1, 2, 3, 4, 5].map(s => <span key={s} style={{ color: s <= (t.note || 5) ? C.amber : C.border, fontSize: 13 }}>★</span>)}<span style={{ fontSize: 11, color: C.textSub }}>· {new Date(t.createdAt).toLocaleDateString("fr-FR")}</span></div></div></div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}><Avatar prenom={t.user?.prenom} nom={t.user?.nom} size={36} color={C.amber} /><div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{t.user?.prenom} {t.user?.nom}</div><div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>{[1,2,3,4,5].map(s => <span key={s} style={{ color: s <= (t.note || 5) ? C.amber : C.border, fontSize: 13 }}>★</span>)}<span style={{ fontSize: 11, color: C.textSub }}>· {new Date(t.createdAt).toLocaleDateString("fr-FR")}</span></div></div></div>
                           <div style={{ background: "#F8FAFC", borderRadius: 9, padding: "11px 13px" }}><p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.72, fontStyle: "italic", margin: 0 }}>"{t.texte}"</p></div>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 7, alignItems: "flex-end" }}><StatusBadge statut={t.statut === "valide" ? "publie" : t.statut === "refuse" ? "refuse" : "en_attente"} /><div style={{ display: "flex", gap: 5 }}>{t.statut === "en_attente" && <><button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => validerTemo(t.id)}>Publier</button><button className="btn btn-red" style={{ fontSize: 12 }} onClick={() => refuserTemo(t.id)}>Refuser</button></>}<button className="btn btn-gray" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => supprimerTemo(t.id)}>Supprimer</button></div></div>
@@ -2347,44 +2276,36 @@ async function loadDemandes() {
                     emptyText="Aucune formation"
                   />
                 )}
-              {tab === "podcasts" && (
-  <DataTable
-    title={`Podcasts et Vidéos — ${tous_podcasts_onglet.length} au total`}
-    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "auteur", label: "Auteur", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "type_media", label: "Format" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-    data={tous_podcasts_onglet} searchKeys={["titre", "auteur", "domaine", "description"]}
-    filters={[{ key: "statut", label: "Statut", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }]}
-    actions={<button className="btn btn-cyan" style={{ fontSize: 12 }} onClick={() => { setEditingPodcast(null); setShowPodcastForm(true); }}>Ajouter un podcast</button>}
-    renderRow={(p: any) => (
-      <tr key={p.id}>
-        <td>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {p.image ? <img src={`${BASE}/uploads/podcasts-images/${p.image}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>V</span>}
-            </div>
-            <div><div style={{ fontWeight: 700, fontSize: 13 }}>{p.titre}</div>{p.expert_id && <span style={{ background: C.cyan, color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 8.5, fontWeight: 700 }}>EXPERT</span>}</div>
-          </div>
-        </td>
-        <td style={{ color: C.textSub }}>{p.auteur || "—"}</td>
-        <td>
-          <span style={{ background: `${C.cyan}12`, color: C.cyan, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>
-            {p.domaine || "—"}
-          </span>
-        </td>
-        <td>{p.url_audio && p.url_audio.startsWith("http") ? <span style={{ background: `${C.blueM}12`, color: C.blueM, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>Lien</span> : <span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>MP4</span>}</td>
-        <td><StatusBadge statut={p.statut} /></td>
-        <td>
-          <div style={{ display: "flex", gap: 4 }}>
-            {p.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => publierPodcast(p.id)}>Publier</button>}
-            {p.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => archiverPodcast(p.id)}>Archiver</button>}
-            {!p.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => { setEditingPodcast(p); setShowPodcastForm(true); }}>Modifier</button>}
-            <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => supprimerPodcast(p.id)}>Supprimer</button>
-          </div>
-        </td>
-      </tr>
-    )}
-    emptyText="Aucun podcast"
-  />
-)}
+                {tab === "podcasts" && (
+                  <DataTable
+                    title={`Podcasts et Vidéos — ${tous_podcasts_onglet.length} au total`}
+                    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "auteur", label: "Auteur", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "type_media", label: "Format" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
+                    data={tous_podcasts_onglet} searchKeys={["titre", "auteur", "domaine", "description"]}
+                    filters={[{ key: "statut", label: "Statut", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }]}
+                    actions={<button className="btn btn-cyan" style={{ fontSize: 12 }} onClick={() => { setEditingPodcast(null); setShowPodcastForm(true); }}>Ajouter un podcast</button>}
+                    renderRow={(p: any) => (
+                      <tr key={p.id}>
+                        <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {p.image ? <img src={`${BASE}/uploads/podcasts-images/${p.image}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>V</span>}
+                          </div>
+                          <div><div style={{ fontWeight: 700, fontSize: 13 }}>{p.titre}</div>{p.expert_id && <span style={{ background: C.cyan, color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 8.5, fontWeight: 700 }}>EXPERT</span>}</div>
+                        </div></td>
+                        <td style={{ color: C.textSub }}>{p.auteur || "—"}</td>
+                        <td><span style={{ background: `${C.cyan}12`, color: C.cyan, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{p.domaine || "—"}</span></td>
+                        <td>{p.url_audio && p.url_audio.startsWith("http") ? <span style={{ background: `${C.blueM}12`, color: C.blueM, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>Lien</span> : <span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>MP4</span>}</td>
+                        <td><StatusBadge statut={p.statut} /></td>
+                        <td><div style={{ display: "flex", gap: 4 }}>
+                          {p.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => publierPodcast(p.id)}>Publier</button>}
+                          {p.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => archiverPodcast(p.id)}>Archiver</button>}
+                          {!p.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => { setEditingPodcast(p); setShowPodcastForm(true); }}>Modifier</button>}
+                          <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => supprimerPodcast(p.id)}>Supprimer</button>
+                        </div></td>
+                      </tr>
+                    )}
+                    emptyText="Aucun podcast"
+                  />
+                )}
                 {tab === "medias" && (
                   <DataTable
                     title={`Médias — ${medias.length} éléments`}

@@ -1,3 +1,4 @@
+// src/news/news.controller.ts
 import {
   Controller,
   Get,
@@ -9,12 +10,12 @@ import {
   Query,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   ParseIntPipe,
   Patch,
   Req,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { NewsService } from './news.service';
@@ -22,6 +23,7 @@ import { CreateNewsDto, UpdateNewsDto } from './dto/create-news.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import * as fs from 'fs';
 
+// Dossier d'upload
 const uploadDir = './uploads/news';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -41,16 +43,31 @@ const storage = diskStorage({
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
+  // ==================== ROUTES PUBLIQUES ====================
   @Get('public')
   getPublishedNews() {
     return this.newsService.findPublished();
+  }
+
+  @Get('my-news')
+  @UseGuards(JwtAuthGuard)
+  async getMyNews(@Req() req: any) {
+    const userId = req.user.id;
+    return this.newsService.getNewsForUser(userId);
   }
 
   @Get('startup')
   @UseGuards(JwtAuthGuard)
   async getNewsForStartup(@Req() req: any) {
     const userId = req.user.id;
-    return this.newsService.getNewsForStartup(userId);
+    return this.newsService.getNewsForUser(userId);
+  }
+
+  @Get('expert')
+  @UseGuards(JwtAuthGuard)
+  async getNewsForExpert(@Req() req: any) {
+    const userId = req.user.id;
+    return this.newsService.getNewsForUser(userId);
   }
 
   @Get('latest')
@@ -69,6 +86,7 @@ export class NewsController {
     return this.newsService.findOne(id);
   }
 
+  // ==================== ROUTES ADMIN ====================
   @UseGuards(JwtAuthGuard)
   @Get('admin/all')
   getAll() {
@@ -77,20 +95,43 @@ export class NewsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('admin/create')
-  @UseInterceptors(FileInterceptor('image', { storage, limits: { fileSize: 10 * 1024 * 1024 } }))
-  create(@Body() dto: CreateNewsDto, @UploadedFile() file?: Express.Multer.File) {
-    return this.newsService.create(dto, file);
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'attachment', maxCount: 1 },
+      ],
+      { storage, limits: { fileSize: 50 * 1024 * 1024 } },
+    ),
+  )
+  create(
+    @Body() dto: CreateNewsDto,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; attachment?: Express.Multer.File[] },
+  ) {
+    const imageFile = files?.image?.[0];
+    const attachmentFile = files?.attachment?.[0];
+    return this.newsService.create(dto, imageFile, attachmentFile);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('admin/:id')
-  @UseInterceptors(FileInterceptor('image', { storage, limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'attachment', maxCount: 1 },
+      ],
+      { storage, limits: { fileSize: 50 * 1024 * 1024 } },
+    ),
+  )
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateNewsDto,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; attachment?: Express.Multer.File[] },
   ) {
-    return this.newsService.update(id, dto, file);
+    const imageFile = files?.image?.[0];
+    const attachmentFile = files?.attachment?.[0];
+    return this.newsService.update(id, dto, imageFile, attachmentFile);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -101,41 +142,13 @@ export class NewsController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('admin/:id/status')
-  updateStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Body('statut') statut: string,
-  ) {
+  updateStatus(@Param('id', ParseIntPipe) id: number, @Body('statut') statut: string) {
     return this.newsService.updateStatus(id, statut);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('admin/:id/send-newsletter')
   sendNewsletter(@Param('id', ParseIntPipe) id: number) {
-    return this.newsService.sendNewsletter(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('/admin/news/create')
-  @UseInterceptors(FileInterceptor('image', { storage, limits: { fileSize: 10 * 1024 * 1024 } }))
-  createAlias(@Body() dto: CreateNewsDto, @UploadedFile() file?: Express.Multer.File) {
-    return this.newsService.create(dto, file);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('/admin/news/all')
-  getAllAlias() {
-    return this.newsService.findAll();
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('/admin/news/:id')
-  deleteAlias(@Param('id', ParseIntPipe) id: number) {
-    return this.newsService.delete(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('/admin/news/:id/send-newsletter')
-  sendNewsletterAlias(@Param('id', ParseIntPipe) id: number) {
     return this.newsService.sendNewsletter(id);
   }
 }

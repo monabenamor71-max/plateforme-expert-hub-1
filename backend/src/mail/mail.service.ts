@@ -1,4 +1,4 @@
-// src/mail/mail.service.ts
+// backend/src/mail/mail.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
@@ -10,7 +10,8 @@ export class MailService {
   private readonly baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.APP_BASE_URL || 'http://localhost:3001';
+    // ✅ Important : baseUrl doit être le frontend (port 3000)
+    this.baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     this.logger.log(`🌐 Base URL utilisée pour les liens dans les emails : ${this.baseUrl}`);
 
     const emailPass = process.env.EMAIL_APP_PASS || 'eeby aygp htye hwvu';
@@ -83,9 +84,10 @@ export class MailService {
   }
 
   // ==================== CONFIRMATION D'EMAIL ====================
-  async sendConfirmationEmail(email: string, token: string) {
-    const confirmLink = `${this.baseUrl}/auth/confirm?token=${token}`;
-    console.log(`\n📧 LIEN DE CONFIRMATION pour ${email} :\n${confirmLink}\n`);
+async sendConfirmationEmail(email: string, token: string) {
+    // ✅ CHANGEMENT ICI : lien direct vers /confirmation (pas /auth/confirm)
+   const confirmLink = `${this.baseUrl}/confirmation?token=${token}`;
+  console.log(`\n📧 LIEN DE CONFIRMATION pour ${email} :\n${confirmLink}\n`);
     this.logger.log(`Lien : ${confirmLink}`);
 
     const content = `
@@ -117,6 +119,36 @@ export class MailService {
     await this.sendEmail(this.adminEmail, `Nouvelle inscription ${role}`, html);
   }
 
+  // ✅ Activation de compte (après validation admin)
+  async sendAccountActivatedEmail(to: string, userName: string) {
+    const loginUrl = `${this.baseUrl}/connexion`;
+    
+    const content = `
+      <h2 style="color: #0A2540; font-size: 20px; margin-bottom: 12px;">Félicitations, ${userName} ! 🎉</h2>
+      <p style="color: #475569; font-size: 15px; line-height: 1.6;">Votre compte a été validé par notre équipe administrative. Vous pouvez désormais accéder à votre espace et profiter de toutes les fonctionnalités de BEH.</p>
+      <p style="color: #64748B; font-size: 13px; margin-top: 16px;">Connectez-vous dès maintenant pour découvrir nos services.</p>
+    `;
+
+    const html = this.getBaseHtml(content, { url: loginUrl, text: '🔑 Se connecter' });
+    await this.sendEmail(to, '✅ Votre compte BEH est activé', html);
+    this.logger.log(`Email d'activation envoyé à ${to}`);
+  }
+
+  // ✅ Refus de compte
+  async sendAccountRejectedEmail(to: string, userName: string) {
+    const contactUrl = `${this.baseUrl}/contact`;
+    
+    const content = `
+      <h2 style="color: #0A2540; font-size: 20px; margin-bottom: 12px;">Bonjour ${userName},</h2>
+      <p style="color: #475569; font-size: 15px; line-height: 1.6;">Nous avons examiné votre inscription avec attention. Malheureusement, elle n’a pas été retenue à ce stade.</p>
+      <p style="color: #64748B; font-size: 13px; margin-top: 16px;">N’hésitez pas à nous contacter pour plus d’informations. L’équipe BEH reste à votre disposition.</p>
+    `;
+
+    const html = this.getBaseHtml(content, { url: contactUrl, text: '📞 Nous contacter' });
+    await this.sendEmail(to, '📋 Mise à jour de votre inscription BEH', html);
+    this.logger.log(`Email de rejet envoyé à ${to}`);
+  }
+
   // ==================== NOTIFICATION DEMANDE DE SERVICE ====================
   async sendDemandeServiceNotification(
     userNom: string,
@@ -137,7 +169,8 @@ export class MailService {
       'consulting': 'Consulting Stratégique',
       'audit-sur-site': 'Audit sur site',
       'nos-plateformes': 'Nos Plateformes (Développement)',
-      'formations': 'Formation sur mesure',
+      'formation-sur-mesure': 'Formation sur mesure',
+      'formations': 'Formation existante',
       'formation': 'Formation existante',
     };
     const serviceLabel = serviceLabels[serviceType] || serviceType;
@@ -185,11 +218,6 @@ export class MailService {
     domaine: string,
     description: string
   ) {
-    console.log('📧 [FORMATION] sendFormationProposeeNotification');
-    console.log(`   Expert: ${expertPrenom} ${expertNom} (${expertEmail})`);
-    console.log(`   Formation: ${formationTitre}`);
-    console.log(`   Destinataire admin: ${this.adminEmail}`);
-    
     this.logger.log(`🔔 Nouvelle formation proposée par expert ${expertPrenom} ${expertNom}`);
 
     const content = `
@@ -216,7 +244,6 @@ export class MailService {
     const html = this.getBaseHtml(content, { url: adminFormationsUrl, text: '📊 Gérer les formations' });
     
     await this.sendEmail(this.adminEmail, `📚 Nouvelle formation proposée - ${formationTitre}`, html);
-    console.log('✅ Email formation envoyé avec succès!');
   }
 
   // ==================== NOTIFICATION PODCAST PROPOSÉ PAR EXPERT ====================
@@ -228,11 +255,6 @@ export class MailService {
     domaine: string,
     description: string
   ) {
-    console.log('📧 [PODCAST] sendPodcastProposeeNotification');
-    console.log(`   Expert: ${expertPrenom} ${expertNom} (${expertEmail})`);
-    console.log(`   Podcast: ${podcastTitre}`);
-    console.log(`   Destinataire admin: ${this.adminEmail}`);
-    
     this.logger.log(`🔔 Nouveau podcast proposé par expert ${expertPrenom} ${expertNom}`);
 
     const content = `
@@ -259,7 +281,6 @@ export class MailService {
     const html = this.getBaseHtml(content, { url: adminPodcastsUrl, text: '📊 Gérer les podcasts' });
     
     await this.sendEmail(this.adminEmail, `🎙️ Nouveau podcast proposé - ${podcastTitre}`, html);
-    console.log('✅ Email podcast envoyé avec succès!');
   }
 
   // ==================== VALIDATION DU COMPTE ====================

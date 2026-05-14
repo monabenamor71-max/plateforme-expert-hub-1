@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Media } from './media.entity';
 import { CreateMediaDto, UpdateMediaDto } from './dto/media.dto';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class MediaService {
@@ -14,13 +16,18 @@ export class MediaService {
     private mediaRepo: Repository<Media>,
   ) {}
 
-  async create(createDto: CreateMediaDto, miniatureFile?: Express.Multer.File): Promise<Media> {
+  async create(
+    createDto: CreateMediaDto,
+    miniatureFile?: Express.Multer.File,
+    videoFile?: Express.Multer.File,
+  ): Promise<Media> {
     const mediaData: Partial<Media> = {
       titre: createDto.titre,
       description: createDto.description,
       url: createDto.url,
       type: createDto.type || 'youtube',
       miniature: miniatureFile?.filename || createDto.miniature,
+      videoPath: videoFile?.filename || undefined,   // ✅ correction : null → undefined
       emission: createDto.emission,
       date_publication: createDto.date_publication ? new Date(createDto.date_publication) : null,
       categorie: createDto.categorie || 'interview',
@@ -46,9 +53,15 @@ export class MediaService {
     return media;
   }
 
-  async update(id: number, updateDto: UpdateMediaDto, miniatureFile?: Express.Multer.File): Promise<Media> {
+  async update(
+    id: number,
+    updateDto: UpdateMediaDto,
+    miniatureFile?: Express.Multer.File,
+    videoFile?: Express.Multer.File,
+  ): Promise<Media> {
     const media = await this.findOne(id);
     if (miniatureFile) updateDto.miniature = miniatureFile.filename;
+    if (videoFile) updateDto.videoPath = videoFile.filename;
     if (updateDto.date_publication) updateDto.date_publication = new Date(updateDto.date_publication) as any;
     Object.assign(media, updateDto);
     const updated = await this.mediaRepo.save(media);
@@ -61,6 +74,14 @@ export class MediaService {
 
   async delete(id: number): Promise<void> {
     const media = await this.findOne(id);
+    if (media.videoPath) {
+      const videoFullPath = path.join(process.cwd(), 'uploads', 'videos', media.videoPath);
+      if (fs.existsSync(videoFullPath)) fs.unlinkSync(videoFullPath);
+    }
+    if (media.miniature) {
+      const miniFullPath = path.join(process.cwd(), 'uploads', 'videos-miniatures', media.miniature);
+      if (fs.existsSync(miniFullPath)) fs.unlinkSync(miniFullPath);
+    }
     const removed = await this.mediaRepo.remove(media);
     if (!removed) {
       throw new BadRequestException('Erreur lors de la suppression du média');

@@ -14,19 +14,19 @@ function ConfirmationContent() {
   useEffect(() => {
     if (!token) {
       setStatus("error");
-      setMessage("Token de confirmation manquant");
+      setMessage("Token de confirmation manquant.");
       return;
     }
 
     const confirmEmail = async () => {
       try {
+        // ✅ Appel direct au backend (port 3001)
         const res = await fetch(`http://localhost:3001/auth/confirm?token=${token}`);
         const data = await res.json();
-        
+
         if (res.ok) {
           setStatus("success");
           setMessage(data.message || "Email confirmé avec succès !");
-          // Rediriger vers la page d'attente après 3 secondes
           setTimeout(() => {
             router.push("/attente-validation");
           }, 3000);
@@ -35,8 +35,9 @@ function ConfirmationContent() {
           setMessage(data.message || "Erreur lors de la confirmation");
         }
       } catch (error) {
+        console.error("Erreur réseau:", error);
         setStatus("error");
-        setMessage("Erreur de connexion au serveur");
+        setMessage("Impossible de contacter le serveur. Vérifiez que le backend est démarré.");
       }
     };
 
@@ -61,12 +62,8 @@ function ConfirmationContent() {
           </svg>
         </div>
         <h1 style={{ color: "#0A2540", fontSize: 24, fontWeight: 800, marginTop: 20 }}>Email confirmé !</h1>
-        <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.6, marginBottom: 16 }}>
-          {message}
-        </p>
-        <p style={{ fontSize: 13, color: "#8A9AB5", marginBottom: 24 }}>
-          Vous allez être redirigé vers la page d'attente de validation...
-        </p>
+        <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.6, marginBottom: 16 }}>{message}</p>
+        <p style={{ fontSize: 13, color: "#8A9AB5", marginBottom: 24 }}>Vous allez être redirigé vers la page d'attente de validation...</p>
         <Link href="/attente-validation" style={{ display: "inline-block", background: "#F7B500", color: "#0A2540", padding: "12px 28px", borderRadius: 30, fontWeight: 700, textDecoration: "none" }}>
           Attente validation →
         </Link>
@@ -83,12 +80,8 @@ function ConfirmationContent() {
         </svg>
       </div>
       <h1 style={{ color: "#0A2540", fontSize: 24, fontWeight: 800, marginTop: 20 }}>Échec de la confirmation</h1>
-      <p style={{ fontSize: 15, color: "#DC2626", lineHeight: 1.6, marginBottom: 16 }}>
-        {message}
-      </p>
-      <p style={{ fontSize: 13, color: "#8A9AB5", marginBottom: 24 }}>
-        Le lien de confirmation est invalide ou a expiré. Veuillez contacter le support.
-      </p>
+      <p style={{ fontSize: 15, color: "#DC2626", lineHeight: 1.6, marginBottom: 16 }}>{message}</p>
+      <p style={{ fontSize: 13, color: "#8A9AB5", marginBottom: 24 }}>Le lien de confirmation est invalide ou a expiré. Veuillez contacter le support.</p>
       <Link href="/connexion" style={{ display: "inline-block", background: "#F7B500", color: "#0A2540", padding: "12px 28px", borderRadius: 30, fontWeight: 700, textDecoration: "none" }}>
         Retour à la connexion
       </Link>

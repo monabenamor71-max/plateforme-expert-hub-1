@@ -1,3 +1,4 @@
+// src/auth/auth.service.ts
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -59,7 +60,7 @@ export class AuthService {
       prenom,
       telephone: telephone || '',
       role: 'expert',
-      statut: 'en_attente',
+      statut: 'en_attente_verification',
       photo: this.extractFileName(photoPath),
       email_verified: false,
     });
@@ -85,8 +86,8 @@ export class AuthService {
     savedUser.email_verified = false;
     await this.userRepo.save(savedUser);
 
-    // ✅ UNIQUEMENT EMAIL DE CONFIRMATION (PAS À L'ADMIN)
     await this.mailService.sendConfirmationEmail(email, confirmationToken);
+    this.logger.log(`Email de confirmation envoyé à ${email}`);
 
     return { message: 'Inscription réussie. Veuillez confirmer votre email.' };
   }
@@ -108,7 +109,7 @@ export class AuthService {
       prenom,
       telephone: telephone || '',
       role: 'startup',
-      statut: 'en_attente',
+      statut: 'en_attente_verification',
       email_verified: false,
     });
     const savedUser = await this.userRepo.save(user);
@@ -134,10 +135,141 @@ export class AuthService {
     savedUser.email_verified = false;
     await this.userRepo.save(savedUser);
 
-    // ✅ UNIQUEMENT EMAIL DE CONFIRMATION (PAS À L'ADMIN)
     await this.mailService.sendConfirmationEmail(email, confirmationToken);
+    this.logger.log(`Email de confirmation envoyé à ${email}`);
 
     return { message: 'Inscription réussie. Veuillez confirmer votre email.' };
+  }
+
+  async confirmEmail(token: string) {
+    this.logger.log(`Tentative de confirmation email avec token: ${token}`);
+    
+    if (!token) {
+      throw new BadRequestException('Token de confirmation manquant');
+    }
+    
+    try {
+      const payload = this.jwtService.verify(token);
+      this.logger.log(`Payload décodé: ${JSON.stringify(payload)}`);
+      
+      const user = await this.userRepo.findOne({ where: { id: payload.id } });
+      if (!user) throw new BadRequestException('Utilisateur non trouvé');
+      if (user.email_verified) throw new BadRequestException('Email déjà confirmé');
+      
+      user.email_verified = true;
+      user.statut = 'en_attente_approbation';
+      user.reset_code = '';
+      await this.userRepo.save(user);
+      this.logger.log(`Email confirmé pour user ${user.id} - Statut: en_attente_approbation`);
+
+      try {
+        if (user.role === 'expert') {
+          const expert = await this.expertRepo.findOne({ where: { user_id: user.id } });
+          if (expert) {
+            await this.mailService.sendAdminNotification(
+              `${user.prenom} ${user.nom}`,
+              'expert',
+              user.email
+            );
+          }
+        } else if (user.role === 'startup') {
+          const startup = await this.startupRepo.findOne({ where: { user_id: user.id } });
+          if (startup) {
+            await this.mailService.sendAdminNotification(
+              `${user.prenom} ${user.nom} (${startup.nom_startup})`,
+              'startup',
+              user.email
+            );
+          }
+        }
+      } catch (error) {
+        this.logger.error(`Erreur envoi notification admin: ${error.message}`);
+      }
+
+      return { message: 'Email confirmé avec succès. Votre compte sera activé par l\'administrateur.' };
+    } catch (err) {
+      this.logger.error(`Erreur lors de la confirmation: ${err.message}`);
+      throw new BadRequestException('Lien de confirmation invalide ou expiré');
+    }
+  }
+
+  async validateUserByAdmin(userId: number) {
+    this.logger.log(`Admin validation pour user ${userId}`);
+    
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Utilisateur non trouvé');
+    }
+    
+    if (user.statut !== 'en_attente_approbation') {
+      throw new BadRequestException(`L'utilisateur est en statut ${user.statut}, ne peut pas être validé`);
+    }
+    
+    user.statut = 'actif';
+    await this.userRepo.save(user);
+    this.logger.log(`✅ User ${userId} activé par admin`);
+    
+    await this.mailService.sendAccountActivatedEmail(user.email, `${user.prenom} ${user.nom}`);
+    
+    return { message: 'Compte activé avec succès', user: { id: user.id, email: user.email, statut: user.statut } };
+  }
+
+  async rejectUserByAdmin(userId: number) {
+    this.logger.log(`Admin rejection pour user ${userId}`);
+    
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Utilisateur non trouvé');
+    }
+    
+    if (user.statut !== 'en_attente_approbation') {
+      throw new BadRequestException(`L'utilisateur est en statut ${user.statut}, ne peut pas être refusé`);
+    }
+    
+    user.statut = 'refuse';
+    await this.userRepo.save(user);
+    this.logger.log(`❌ User ${userId} refusé par admin`);
+    
+    await this.mailService.sendAccountRejectedEmail(user.email, `${user.prenom} ${user.nom}`);
+    
+    return { message: 'Compte refusé', user: { id: user.id, email: user.email, statut: user.statut } };
+  }
+
+  async getPendingUsers() {
+    const users = await this.userRepo.find({
+      where: { statut: 'en_attente_approbation' },
+      relations: ['expert', 'startup'],
+    });
+    
+    const result: any[] = [];
+    
+    for (const user of users) {
+      if (user.role === 'expert' && user.expert) {
+        result.push({
+          id: user.id,
+          email: user.email,
+          prenom: user.prenom,
+          nom: user.nom,
+          role: user.role,
+          domaine: user.expert.domaine,
+          localisation: user.expert.localisation,
+          createdAt: user.createdAt,
+        });
+      } else if (user.role === 'startup' && user.startup) {
+        result.push({
+          id: user.id,
+          email: user.email,
+          prenom: user.prenom,
+          nom: user.nom,
+          role: user.role,
+          nom_startup: user.startup.nom_startup,
+          secteur: user.startup.secteur,
+          createdAt: user.createdAt,
+        });
+      }
+    }
+    
+    return result;
   }
 
   async login(dto: LoginDto) {
@@ -145,12 +277,26 @@ export class AuthService {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) throw new BadRequestException('Identifiants incorrects');
     if (!await bcrypt.compare(password, user.password)) throw new BadRequestException('Identifiants incorrects');
-    if (user.statut !== 'actif') throw new BadRequestException('Compte non activé par l’administrateur');
-    if (!user.email_verified) throw new BadRequestException('Veuillez confirmer votre email avant de vous connecter');
+    
+    if (user.statut === 'en_attente_verification') {
+      throw new BadRequestException('Veuillez confirmer votre email avant de vous connecter');
+    }
+    if (user.statut === 'en_attente_approbation') {
+      throw new BadRequestException('Votre compte est en attente de validation par l\'administrateur');
+    }
+    if (user.statut === 'refuse') {
+      throw new BadRequestException('Votre compte a été refusé par l\'administrateur');
+    }
+    if (user.statut !== 'actif') {
+      throw new BadRequestException('Compte non activé');
+    }
+    if (!user.email_verified) {
+      throw new BadRequestException('Veuillez confirmer votre email avant de vous connecter');
+    }
 
     const token = this.jwtService.sign(
       { id: user.id, email: user.email, role: user.role },
-      { expiresIn: '1h' }
+      { expiresIn: '7d' }
     );
 
     return {
@@ -161,55 +307,9 @@ export class AuthService {
         role: user.role,
         prenom: user.prenom,
         nom: user.nom,
+        statut: user.statut,
       },
     };
-  }
-
-  // ✅ CORRECTION CRUCIALE : Notification à l'admin APRÈS confirmation email
-  async confirmEmail(token: string) {
-    this.logger.log(`Tentative de confirmation email`);
-    try {
-      const payload = this.jwtService.verify(token);
-      const user = await this.userRepo.findOne({ where: { id: payload.id } });
-      if (!user) throw new BadRequestException('Utilisateur non trouvé');
-      if (user.email_verified) throw new BadRequestException('Email déjà confirmé');
-      
-      user.email_verified = true;
-      user.reset_code = '';
-      await this.userRepo.save(user);
-      this.logger.log(`Email confirmé pour user ${user.id}`);
-
-      // 🔔 NOTIFICATION À L'ADMIN - UNIQUEMENT MAINTENANT
-      try {
-        if (user.role === 'expert') {
-          const expert = await this.expertRepo.findOne({ where: { user_id: user.id } });
-          if (expert) {
-            await this.mailService.sendAdminNotification(
-              `${user.prenom} ${user.nom}`,
-              'expert',
-              user.email
-            );
-            this.logger.log(`📧 Notification admin envoyée pour expert ${user.email}`);
-          }
-        } else if (user.role === 'startup') {
-          const startup = await this.startupRepo.findOne({ where: { user_id: user.id } });
-          if (startup) {
-            await this.mailService.sendAdminNotification(
-              `${user.prenom} ${user.nom} (${startup.nom_startup})`,
-              'startup',
-              user.email
-            );
-            this.logger.log(`📧 Notification admin envoyée pour startup ${user.email}`);
-          }
-        }
-      } catch (error) {
-        this.logger.error(`❌ Erreur envoi notification admin: ${error.message}`);
-      }
-
-      return { message: 'Email confirmé avec succès.' };
-    } catch (err) {
-      throw new BadRequestException('Lien de confirmation invalide ou expiré');
-    }
   }
 
   async forgotPassword(email: string) {

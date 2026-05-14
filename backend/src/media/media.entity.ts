@@ -1,3 +1,4 @@
+// src/media/media.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -17,11 +18,14 @@ export class Media {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column()
-  url!: string;
+  @Column({ nullable: true })
+  url?: string;                     // optionnel (pour les liens externes)
+
+  @Column({ nullable: true })
+  videoPath?: string;               // ✅ AJOUT : chemin du fichier vidéo uploadé
 
   @Column({ type: 'enum', enum: ['youtube', 'vimeo', 'upload', 'external'], default: 'youtube' })
-  type!: string;
+  type!: string;                    // 'upload' pour un fichier local
 
   @Column({ nullable: true })
   miniature?: string;

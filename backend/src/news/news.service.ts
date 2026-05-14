@@ -1,3 +1,4 @@
+// src/news/news.service.ts
 import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
@@ -20,7 +21,11 @@ export class NewsService {
     private newsletterService: NewsletterService,
   ) {}
 
-  async create(dto: CreateNewsDto, imageFile?: Express.Multer.File): Promise<News> {
+  async create(
+    dto: CreateNewsDto,
+    imageFile?: Express.Multer.File,
+    attachmentFile?: Express.Multer.File,
+  ): Promise<News> {
     const news = this.repo.create({
       titre: dto.titre,
       description: dto.description || '',
@@ -28,8 +33,8 @@ export class NewsService {
       statut: dto.statut || 'brouillon',
       newsletter_envoye: dto.newsletter_envoye || false,
       image: imageFile ? imageFile.filename : '',
+      attachment: attachmentFile ? attachmentFile.filename : '',
     });
-    
     const saved = await this.repo.save(news);
     this.logger.log(`Nouvelle annonce créée: ${saved.titre}`);
     return saved;
@@ -46,35 +51,20 @@ export class NewsService {
     });
   }
 
-  // ==================== MÉTHODE UNIQUE POUR TOUS LES UTILISATEURS ====================
-  // Récupère les news UNIQUEMENT si l'utilisateur (startup OU expert) est abonné à la newsletter
   async getNewsForUser(userId: number): Promise<{ canView: boolean; news: News[]; message?: string }> {
     const isSubscribed = await this.newsletterService.isSubscribedByUserId(userId);
-    
     if (!isSubscribed) {
-      this.logger.log(`Utilisateur ${userId} non abonné - accès aux news refusé`);
       return { 
         canView: false, 
         news: [],
         message: "Vous devez vous abonner à la newsletter pour voir les actualités."
       };
     }
-    
-    this.logger.log(`Utilisateur ${userId} abonné - retour des news`);
     const news = await this.repo.find({ 
       where: { statut: In(['publie', 'envoye']) }, 
       order: { createdAt: 'DESC' } 
     });
-    
-    return { 
-      canView: true, 
-      news 
-    };
-  }
-
-  // Compatibilité avec l'ancien nom (appelé par l'espace startup)
-  async getNewsForStartup(userId: number): Promise<{ canView: boolean; news: News[]; message?: string }> {
-    return this.getNewsForUser(userId);
+    return { canView: true, news };
   }
 
   async findOne(id: number): Promise<News> {
@@ -105,29 +95,35 @@ export class NewsService {
     });
   }
 
-  async update(id: number, dto: UpdateNewsDto, imageFile?: Express.Multer.File): Promise<News> {
+  async update(
+    id: number,
+    dto: UpdateNewsDto,
+    imageFile?: Express.Multer.File,
+    attachmentFile?: Express.Multer.File,
+  ): Promise<News> {
     const news = await this.findOne(id);
-    
+
     if (imageFile) {
       if (news.image) {
         const oldPath = path.join(process.cwd(), 'uploads/news', news.image);
-        if (fs.existsSync(oldPath)) {
-          try {
-            fs.unlinkSync(oldPath);
-          } catch (err) {
-            this.logger.warn(`Impossible de supprimer l'ancienne image: ${oldPath}`);
-          }
-        }
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
       news.image = imageFile.filename;
     }
-    
+    if (attachmentFile) {
+      if (news.attachment) {
+        const oldPath = path.join(process.cwd(), 'uploads/news', news.attachment);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      news.attachment = attachmentFile.filename;
+    }
+
     if (dto.titre !== undefined) news.titre = dto.titre;
     if (dto.description !== undefined) news.description = dto.description;
     if (dto.categorie !== undefined) news.categorie = dto.categorie;
     if (dto.statut !== undefined) news.statut = dto.statut;
     if (dto.newsletter_envoye !== undefined) news.newsletter_envoye = dto.newsletter_envoye;
-    
+
     const updated = await this.repo.save(news);
     this.logger.log(`Annonce mise à jour: ${updated.titre}`);
     return updated;
@@ -137,13 +133,11 @@ export class NewsService {
     const news = await this.findOne(id);
     if (news.image) {
       const imagePath = path.join(process.cwd(), 'uploads/news', news.image);
-      if (fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-        } catch (err) {
-          this.logger.warn(`Impossible de supprimer l'image: ${imagePath}`);
-        }
-      }
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    }
+    if (news.attachment) {
+      const attachPath = path.join(process.cwd(), 'uploads/news', news.attachment);
+      if (fs.existsSync(attachPath)) fs.unlinkSync(attachPath);
     }
     await this.repo.delete(id);
     this.logger.log(`Annonce supprimée: id ${id}`);
@@ -160,16 +154,13 @@ export class NewsService {
     return updated;
   }
 
-  // ==================== ENVOI DE NEWSLETTER ====================
   async sendNewsletter(id: number): Promise<{ success: boolean; message: string; sent?: number; total?: number }> {
     const news = await this.findOne(id);
-    
     if (news.newsletter_envoye) {
       return { success: false, message: 'Cette annonce a déjà été envoyée par newsletter' };
     }
 
     const subscribers = await this.newsletterService.getAll();
-    
     if (subscribers.length === 0) {
       return { success: false, message: 'Aucun abonné actif' };
     }
@@ -177,9 +168,12 @@ export class NewsService {
     const imageUrl = news.image 
       ? `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/news/${news.image}`
       : null;
-
+    const attachmentUrl = news.attachment
+      ? `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/news/${news.attachment}`
+      : null;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const htmlContent = this.buildEmailTemplate(news, imageUrl, frontendUrl);
+
+    const htmlContent = this.buildEmailTemplate(news, imageUrl, attachmentUrl, frontendUrl);
 
     let sent = 0;
     for (const subscriber of subscribers) {
@@ -203,7 +197,6 @@ export class NewsService {
     await this.repo.save(news);
 
     this.logger.log(`Newsletter "${news.titre}" envoyée à ${sent}/${subscribers.length} abonnés`);
-    
     return { 
       success: true, 
       message: `Newsletter envoyée à ${sent} abonné(s) sur ${subscribers.length}`,
@@ -212,7 +205,20 @@ export class NewsService {
     };
   }
 
-  private buildEmailTemplate(news: News, imageUrl: string | null, frontendUrl: string): string {
+  private buildEmailTemplate(
+    news: News,
+    imageUrl: string | null,
+    attachmentUrl: string | null,
+    frontendUrl: string,
+  ): string {
+    const attachmentHtml = attachmentUrl
+      ? `<div style="text-align: center; margin: 20px 0;">
+          <a href="${attachmentUrl}" style="background: #E2E8F0; color: #1A2B3C; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+            📎 Télécharger le document joint
+          </a>
+         </div>`
+      : '';
+
     return `
       <!DOCTYPE html>
       <html>
@@ -249,6 +255,7 @@ export class NewsService {
               <div class="title">${this.escapeHtml(news.titre)}</div>
               ${imageUrl ? `<div class="image"><img src="${imageUrl}" alt="${this.escapeHtml(news.titre)}"/></div>` : ''}
               <div class="description">${this.escapeHtml(news.description || '').replace(/\n/g, '<br/>')}</div>
+              ${attachmentHtml}
               <div class="btn-container">
                 <a href="${frontendUrl}/actualites" class="btn">Lire la suite</a>
               </div>

@@ -9,16 +9,17 @@ import { Startup } from '../user/startup.entity';
 import { Blog } from '../blog/blog.entity';
 import { MailModule } from '../mail/mail.module';
 import { MediaModule } from '../media/media.module';
-import { PodcastModule } from '../podcast/podcast.module';   // ← AJOUT
+import { PodcastModule } from '../podcast/podcast.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Expert, Startup, Blog]),
     MailModule,
     MediaModule,
-    PodcastModule,                                            // ← AJOUT
+    PodcastModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],
+  exports: [AdminService], // ✅ AJOUTER CETTE LIGNE - Exporte AdminService
 })
 export class AdminModule {}

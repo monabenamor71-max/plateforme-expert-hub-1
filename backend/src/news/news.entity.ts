@@ -1,3 +1,4 @@
+// news.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('news')
@@ -16,6 +17,9 @@ export class News {
 
   @Column({ length: 255, nullable: true })
   image!: string;
+
+  @Column({ length: 255, nullable: true })
+  attachment!: string;   // ✅ AJOUTÉ
 
   @Column({ default: 'brouillon' })
   statut!: string;

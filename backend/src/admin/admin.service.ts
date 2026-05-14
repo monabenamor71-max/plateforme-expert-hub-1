@@ -118,7 +118,6 @@ export class AdminService {
       const expert = await queryRunner.manager.findOne(Expert, { where: { id }, relations: ['user'] });
       if (!expert) throw new NotFoundException('Expert non trouvé');
 
-      // Vérifier que l'utilisateur existe
       if (!expert.user) {
         throw new BadRequestException('Utilisateur associé à l\'expert introuvable');
       }
@@ -130,7 +129,6 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, expert.user_id, { statut: 'actif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      // Envoyer l'email avec vérification que les champs existent
       await this.mailService.sendValidationEmail(
         expert.user.nom || '',
         expert.user.email || ''
@@ -157,7 +155,6 @@ export class AdminService {
       const expert = await queryRunner.manager.findOne(Expert, { where: { id }, relations: ['user'] });
       if (!expert) throw new NotFoundException('Expert non trouvé');
 
-      // Vérifier que l'utilisateur existe
       if (!expert.user) {
         throw new BadRequestException('Utilisateur associé à l\'expert introuvable');
       }
@@ -169,7 +166,6 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, expert.user_id, { statut: 'inactif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      // Envoyer l'email avec vérification que les champs existent
       await this.mailService.sendRefusEmail(
         expert.user.nom || '',
         expert.user.email || ''
@@ -205,7 +201,6 @@ export class AdminService {
       const startup = await queryRunner.manager.findOne(Startup, { where: { id }, relations: ['user'] });
       if (!startup) throw new NotFoundException('Startup non trouvée');
 
-      // Vérifier que l'utilisateur existe
       if (!startup.user) {
         throw new BadRequestException('Utilisateur associé à la startup introuvable');
       }
@@ -217,7 +212,6 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, startup.user_id, { statut: 'actif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      // Envoyer l'email avec vérification que les champs existent
       await this.mailService.sendValidationEmail(
         startup.user.nom || '',
         startup.user.email || ''
@@ -244,7 +238,6 @@ export class AdminService {
       const startup = await queryRunner.manager.findOne(Startup, { where: { id }, relations: ['user'] });
       if (!startup) throw new NotFoundException('Startup non trouvée');
 
-      // Vérifier que l'utilisateur existe
       if (!startup.user) {
         throw new BadRequestException('Utilisateur associé à la startup introuvable');
       }
@@ -256,7 +249,6 @@ export class AdminService {
       const userUpdate = await queryRunner.manager.update(User, startup.user_id, { statut: 'inactif' });
       if (userUpdate.affected === 0) throw new BadRequestException('Impossible de mettre à jour l’utilisateur');
 
-      // Envoyer l'email avec vérification que les champs existent
       await this.mailService.sendRefusEmail(
         startup.user.nom || '',
         startup.user.email || ''
@@ -272,6 +264,87 @@ export class AdminService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // ==================== VALIDATION ADMIN POUR NOUVEAUX COMPTES ====================
+
+  async validateUserByAdmin(userId: number) {
+    this.logger.log(`Admin validation pour user ${userId}`);
+    
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+    
+    if (user.statut !== 'en_attente_approbation') {
+      throw new BadRequestException(`L'utilisateur est en statut ${user.statut}, ne peut pas être validé`);
+    }
+    
+    user.statut = 'actif';
+    await this.userRepo.save(user);
+    this.logger.log(`✅ User ${userId} activé par admin`);
+    
+    await this.mailService.sendAccountActivatedEmail(user.email, `${user.prenom} ${user.nom}`);
+    
+    return { message: 'Compte activé avec succès', user: { id: user.id, email: user.email, statut: user.statut } };
+  }
+
+  async rejectUserByAdmin(userId: number) {
+    this.logger.log(`Admin rejection pour user ${userId}`);
+    
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+    
+    if (user.statut !== 'en_attente_approbation') {
+      throw new BadRequestException(`L'utilisateur est en statut ${user.statut}, ne peut pas être refusé`);
+    }
+    
+    user.statut = 'refuse';
+    await this.userRepo.save(user);
+    this.logger.log(`❌ User ${userId} refusé par admin`);
+    
+    await this.mailService.sendAccountRejectedEmail(user.email, `${user.prenom} ${user.nom}`);
+    
+    return { message: 'Compte refusé', user: { id: user.id, email: user.email, statut: user.statut } };
+  }
+
+  async getPendingUsers() {
+    const users = await this.userRepo.find({
+      where: { statut: 'en_attente_approbation' },
+      relations: ['expert', 'startup'],
+    });
+    
+    const result: any[] = [];
+    
+    for (const user of users) {
+      if (user.role === 'expert' && user.expert) {
+        result.push({
+          id: user.id,
+          email: user.email,
+          prenom: user.prenom,
+          nom: user.nom,
+          role: user.role,
+          domaine: user.expert.domaine,
+          localisation: user.expert.localisation,
+          createdAt: user.createdAt,
+        });
+      } else if (user.role === 'startup' && user.startup) {
+        result.push({
+          id: user.id,
+          email: user.email,
+          prenom: user.prenom,
+          nom: user.nom,
+          role: user.role,
+          nom_startup: user.startup.nom_startup,
+          secteur: user.startup.secteur,
+          createdAt: user.createdAt,
+        });
+      }
+    }
+    
+    return result;
   }
 
   // ==================== STATS ====================
