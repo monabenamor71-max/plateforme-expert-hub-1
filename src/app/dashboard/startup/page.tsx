@@ -15,7 +15,7 @@ import {
   FaBuilding, FaCalendarAlt, FaTag, FaMedal,
   FaInfoCircle, FaPlayCircle, FaDownload, FaChevronDown, FaPhone,
   FaVideo, FaBell, FaEnvelope, FaNewspaper, FaEye, FaEyeSlash,
-  FaUser, FaLaptop, FaFilter, FaSync, FaFileAlt,
+  FaUser, FaLaptop, FaFilter, FaSync, FaFileAlt, FaArrowUp,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
@@ -519,6 +519,7 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
     </div>
   );
 }
+
 function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeFormation, onVoirDetail }: {
   f: any; demanderFormation: (id: number, titre: string) => void;
   demandeExiste: boolean; annulerDemandeFormation: (id: number) => void;
@@ -570,6 +571,21 @@ export default function DashboardStartup() {
   const [tab, setTab] = useState<Tab>("accueil");
   const [activeService, setActiveService] = useState<ServiceSlug>("consulting");
   const [isOnline, setIsOnline] = useState(true);
+
+  // ==================== BOUTON RETOUR EN HAUT ====================
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Modals demandes
   const [showConsultingModal, setShowConsultingModal] = useState(false);
@@ -1017,6 +1033,8 @@ export default function DashboardStartup() {
   // ==================== CHANGEMENT D'ONGLET ====================
   const handleTabChange = useCallback((t: Tab) => {
     setTab(t);
+    // Scroll en haut lors du changement d'onglet
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (t === "messages") { fetch(`${BASE}/messages/mark-all-read`, { method: "PATCH", headers: hdr() }).catch(() => { }); setAllMessages(prev => prev.map(m => ({ ...m, lu: true }))); }
     if (t === "rdv") { setPropositionsVues(prev => { const n = new Set(prev); propositions.forEach(p => n.add(p.id)); return n; }); }
     if (t === "notifications") { loadNotifications(); }
@@ -1131,10 +1149,50 @@ export default function DashboardStartup() {
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes fadeInUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+        @keyframes scrollTopIn{from{opacity:0;transform:translateY(12px) scale(.85)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .scroll-top-btn{
+          position:fixed;
+          bottom:28px;
+          right:28px;
+          z-index:200;
+          width:46px;
+          height:46px;
+          border-radius:50%;
+          background:linear-gradient(135deg,#0A2540,#1a3f6f);
+          border:2px solid rgba(245,158,11,.5);
+          color:#F59E0B;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          cursor:pointer;
+          box-shadow:0 6px 24px rgba(10,37,64,.28);
+          transition:transform .2s,box-shadow .2s,border-color .2s;
+          animation:scrollTopIn .25s ease;
+        }
+        .scroll-top-btn:hover{
+          transform:translateY(-3px) scale(1.07);
+          box-shadow:0 10px 32px rgba(10,37,64,.38);
+          border-color:rgba(245,158,11,.9);
+        }
+        .scroll-top-btn:active{
+          transform:scale(.95);
+        }
       `}</style>
 
       {toast.text && (
         <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, background: toast.ok ? "#ECFDF5" : "#FEF2F2", border: `1.5px solid ${toast.ok ? "#A7F3D0" : "#FECACA"}`, borderLeft: `4px solid ${toast.ok ? "#059669" : "#DC2626"}`, color: toast.ok ? "#059669" : "#DC2626", borderRadius: 11, padding: "12px 18px", fontWeight: 700, fontSize: 13, boxShadow: "0 8px 28px rgba(0,0,0,.1)", animation: "fadeInUp .3s ease" }}>{toast.text}</div>
+      )}
+
+      {/* ==================== BOUTON RETOUR EN HAUT ==================== */}
+      {showScrollTop && (
+        <button
+          className="scroll-top-btn"
+          onClick={scrollToTop}
+          title="Retour en haut"
+          aria-label="Retour en haut de la page"
+        >
+          <FaArrowUp size={16} />
+        </button>
       )}
 
       {selectedFormationId !== null && <FormationDetailModal formationId={selectedFormationId} onClose={() => setSelectedFormationId(null)} />}

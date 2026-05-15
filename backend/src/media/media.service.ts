@@ -1,4 +1,3 @@
-// src/media/media.service.ts
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,10 +23,9 @@ export class MediaService {
     const mediaData: Partial<Media> = {
       titre: createDto.titre,
       description: createDto.description,
-      url: createDto.url,
+      url: videoFile?.filename || createDto.url,
       type: createDto.type || 'youtube',
       miniature: miniatureFile?.filename || createDto.miniature,
-      videoPath: videoFile?.filename || undefined,   // ✅ correction : null → undefined
       emission: createDto.emission,
       date_publication: createDto.date_publication ? new Date(createDto.date_publication) : null,
       categorie: createDto.categorie || 'interview',
@@ -61,7 +59,7 @@ export class MediaService {
   ): Promise<Media> {
     const media = await this.findOne(id);
     if (miniatureFile) updateDto.miniature = miniatureFile.filename;
-    if (videoFile) updateDto.videoPath = videoFile.filename;
+    if (videoFile) updateDto.url = videoFile.filename;
     if (updateDto.date_publication) updateDto.date_publication = new Date(updateDto.date_publication) as any;
     Object.assign(media, updateDto);
     const updated = await this.mediaRepo.save(media);
@@ -74,13 +72,21 @@ export class MediaService {
 
   async delete(id: number): Promise<void> {
     const media = await this.findOne(id);
-    if (media.videoPath) {
-      const videoFullPath = path.join(process.cwd(), 'uploads', 'videos', media.videoPath);
-      if (fs.existsSync(videoFullPath)) fs.unlinkSync(videoFullPath);
+    // Supprimer le fichier vidéo si c'est un upload local (pas une URL externe)
+    if (media.url && !media.url.startsWith('http')) {
+      const videoFullPath = path.join(process.cwd(), 'uploads', 'videos', media.url);
+      if (fs.existsSync(videoFullPath)) {
+        fs.unlinkSync(videoFullPath);
+        this.logger.log(`Fichier vidéo supprimé : ${media.url}`);
+      }
     }
+    // Supprimer la miniature
     if (media.miniature) {
       const miniFullPath = path.join(process.cwd(), 'uploads', 'videos-miniatures', media.miniature);
-      if (fs.existsSync(miniFullPath)) fs.unlinkSync(miniFullPath);
+      if (fs.existsSync(miniFullPath)) {
+        fs.unlinkSync(miniFullPath);
+        this.logger.log(`Miniature supprimée : ${media.miniature}`);
+      }
     }
     const removed = await this.mediaRepo.remove(media);
     if (!removed) {

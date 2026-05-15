@@ -1,4 +1,3 @@
-// src/media/dto/media.dto.ts
 import { IsOptional, IsString, IsEnum, IsBoolean, IsUrl, IsDateString } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
 
@@ -13,10 +12,6 @@ export class CreateMediaDto {
   @IsOptional()
   @IsUrl()
   url?: string;
-
-  @IsOptional()
-  @IsString()
-  videoPath?: string;               // ✅ AJOUT : reçu par l'upload
 
   @IsOptional()
   @IsEnum(['youtube', 'vimeo', 'upload', 'external'])
