@@ -32,7 +32,6 @@ export class CreateArticleDto {
   @IsOptional()
   duree_lecture?: string;
 
-  // ✅ Correction : accepter les valeurs communes du frontend
   @IsEnum(['brouillon', 'publié', 'archive', 'en_attente', 'publie'])
   @IsOptional()
   statut?: string;
@@ -119,6 +118,7 @@ export class BlogService {
     return this.findOneOrFail(id);
   }
 
+  // Méthode update modifiée pour accepter les appels sans fichiers
   async update(id: number, dto: UpdateArticleDto, imageFile?: Express.Multer.File, pdfFile?: Express.Multer.File): Promise<Blog> {
     const article = await this.findOneOrFail(id);
     if (imageFile) article.image = imageFile.filename;
@@ -177,10 +177,7 @@ export class BlogService {
     });
     if (!article) throw new NotFoundException('Article non trouvé ou non publié');
     article.vues += 1;
-    const saved = await this.blogRepo.save(article);
-    if (!saved) {
-      this.logger.error(`Impossible d'incrémenter les vues pour l'article ${id}`);
-    }
+    await this.blogRepo.save(article);
     return article;
   }
 

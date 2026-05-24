@@ -22,4 +22,9 @@ export class UserService {
     }
     return user;
   }
+
+  // Nouvelle méthode pour trouver un utilisateur par email
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { email } });
+  }
 }

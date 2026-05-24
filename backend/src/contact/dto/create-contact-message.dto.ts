@@ -3,15 +3,15 @@ import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class CreateContactMessageDto {
   @IsNotEmpty()
   @IsString()
-  nom: string;
+  nom!: string;
 
   @IsNotEmpty()
   @IsString()
-  prenom: string;
+  prenom!: string;
 
   @IsNotEmpty()
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsOptional()
   @IsString()
@@ -19,11 +19,11 @@ export class CreateContactMessageDto {
 
   @IsNotEmpty()
   @IsString()
-  subject: string;
+  subject!: string;
 
   @IsNotEmpty()
   @IsString()
-  message: string;
+  message!: string;
 
   @IsOptional()
   @IsString()

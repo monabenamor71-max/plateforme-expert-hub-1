@@ -1,3 +1,4 @@
+// src/podcast/podcast.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Podcast } from './podcast.entity';
@@ -9,7 +10,7 @@ import { MailModule } from '../mail/mail.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Podcast, Expert]),
-    MailModule,  // ← IMPORTANT: MailModule doit être importé
+    MailModule,
   ],
   controllers: [PodcastController],
   providers: [PodcastService],

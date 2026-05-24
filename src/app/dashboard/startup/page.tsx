@@ -16,11 +16,11 @@ import {
   FaInfoCircle, FaPlayCircle, FaDownload, FaChevronDown, FaPhone,
   FaVideo, FaBell, FaEnvelope, FaNewspaper, FaEye, FaEyeSlash,
   FaUser, FaLaptop, FaFilter, FaSync, FaFileAlt, FaArrowUp,
+  FaHeadset, FaExclamationTriangle, FaSpinner,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
 
-// ==================== DONNÉES STATIQUES ====================
 const SERVICES_INFO: Record<string, any> = {
   consulting: {
     label: "Consulting Stratégique", icon: <FaChartLine />, color: "#3B82F6",
@@ -75,9 +75,8 @@ const S_COLOR: Record<string, string> = {
 };
 
 type ServiceSlug = "consulting" | "audit-sur-site" | "nos-plateformes" | "formation-sur-mesure" | "podcasts";
-type Tab = "accueil" | "services" | "profil" | "experts" | "rdv" | "messages" | "temoignages" | "mes-demandes" | "mes-devis" | "notifications";
+type Tab = "accueil" | "services" | "profil" | "experts" | "rdv" | "messages" | "temoignages" | "mes-demandes" | "mes-devis" | "notifications" | "contact_admin";
 
-// ==================== COMPOSANTS DE BADGES ====================
 function RdvStatusBadge({ statut }: { statut: string }) {
   const c: Record<string, any> = {
     en_attente: { bg: "#FFFBEB", color: "#92400E", border: "#FDE68A", icon: "⏳", label: "En attente" },
@@ -112,7 +111,6 @@ function DemandStatutBadge({ statut }: { statut: string }) {
   return <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, borderRadius: 99, padding: "5px 13px", fontSize: 12, fontWeight: 700 }}><span>{cfg.icon}</span> {cfg.label}</span>;
 }
 
-// ==================== HELPERS FORMULAIRES ====================
 function FL({ label, required, children, hint }: { label: string; required?: boolean; children: React.ReactNode; hint?: string }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -152,14 +150,7 @@ function AutoField({ label, icon, value, onChange }: { label: string; icon: Reac
 }
 
 // ==================== MODALES ====================
-function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending, demandeEdit }: {
-  slug: ServiceSlug;
-  startup: any; realUser: any;
-  onClose: () => void;
-  onSubmit: (data: any) => void;
-  sending: boolean;
-  demandeEdit?: any;
-}) {
+function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending, demandeEdit }: any) {
   const svc = SERVICES_INFO[slug];
   const [domaine, setDomaine] = useState(demandeEdit?.domaine || "");
   const [domaineAutre, setDomaineAutre] = useState("");
@@ -263,13 +254,7 @@ function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending,
   );
 }
 
-function PlateformeFormModal({ startup, realUser, onClose, onSubmit, sending, demandeEdit }: {
-  startup: any; realUser: any;
-  onClose: () => void;
-  onSubmit: (data: any) => void;
-  sending: boolean;
-  demandeEdit?: any;
-}) {
+function PlateformeFormModal({ startup, realUser, onClose, onSubmit, sending, demandeEdit }: any) {
   const svc = SERVICES_INFO["nos-plateformes"];
   const [typeApp, setTypeApp] = useState<"web-app" | "mobile" | "">(demandeEdit?.type_application || "");
   const [description, setDescription] = useState(demandeEdit?.description || "");
@@ -437,33 +422,21 @@ function FormationDetailModal({ formationId, onClose }: { formationId: number; o
   );
 }
 
-// ==================== COMPOSANT PODCAST CORRIGÉ ====================
 function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () => void }) {
-  console.log("Podcast reçu :", podcast);
-  
-  // Récupère l'URL depuis n'importe quel champ
-  let rawUrl = podcast.url_audio || podcast.url_video || podcast.video_url || podcast.url || podcast.lien || podcast.fichier || podcast.chemin || null;
-  
-  // Convertir les URLs YouTube en format embed
+  let rawUrl = podcast.url_audio || podcast.url_video || podcast.video_url || podcast.url || podcast.lien || podcast.fichier || null;
   let videoUrl = rawUrl;
   if (rawUrl) {
-    // YouTube
     if (rawUrl.includes('youtube.com/watch?v=')) {
       const videoId = rawUrl.split('v=')[1]?.split('&')[0];
       if (videoId) videoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
-    }
-    // youtu.be
-    else if (rawUrl.includes('youtu.be/')) {
+    } else if (rawUrl.includes('youtu.be/')) {
       const videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0];
       if (videoId) videoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
-    }
-    // Vimeo
-    else if (rawUrl.includes('vimeo.com/') && !rawUrl.includes('player.vimeo.com')) {
+    } else if (rawUrl.includes('vimeo.com/') && !rawUrl.includes('player.vimeo.com')) {
       const videoId = rawUrl.split('vimeo.com/')[1]?.split('?')[0];
       if (videoId) videoUrl = `https://player.vimeo.com/video/${videoId}`;
     }
   }
-
   const isLocalVideo = videoUrl && videoUrl.match(/\.(mp4|webm|ogg)$/i);
   const isEmbed = videoUrl && (videoUrl.includes('youtube.com/embed') || videoUrl.includes('player.vimeo.com') || videoUrl.includes('dailymotion.com/embed'));
 
@@ -474,13 +447,11 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{podcast.titre}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>×</button>
         </div>
-        
         {podcast.description && (
           <div style={{ padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
             <p style={{ margin: 0, fontSize: 13, color: "#475569" }}>{podcast.description}</p>
           </div>
         )}
-        
         <div style={{ padding: 20 }}>
           {videoUrl ? (
             <div style={{ borderRadius: 12, overflow: "hidden", background: "#000" }}>
@@ -505,13 +476,9 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
               <div style={{ fontSize: 48, marginBottom: 12 }}>🎬</div>
               <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Aucune vidéo trouvée</div>
               <div style={{ fontSize: 12, color: "#64748B" }}>Ce podcast n'a pas de fichier vidéo associé.</div>
-              <div style={{ fontSize: 11, marginTop: 12, background: "#fff", padding: 10, borderRadius: 8, textAlign: "left", wordBreak: "break-all" }}>
-                <strong>Champs reçus :</strong> {Object.keys(podcast).join(", ")}
-              </div>
             </div>
           )}
         </div>
-        
         <div style={{ padding: "12px 20px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ background: "#F1F5F9", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontWeight: 600 }}>Fermer</button>
         </div>
@@ -520,11 +487,7 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
   );
 }
 
-function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeFormation, onVoirDetail }: {
-  f: any; demanderFormation: (id: number, titre: string) => void;
-  demandeExiste: boolean; annulerDemandeFormation: (id: number) => void;
-  onVoirDetail: (id: number) => void;
-}) {
+function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeFormation, onVoirDetail }: any) {
   const full = f.places_limitees && f.places_disponibles <= 0;
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1.5px solid #E8EEF6", overflow: "hidden", cursor: "pointer", transition: "all .25s" }}
@@ -571,21 +534,7 @@ export default function DashboardStartup() {
   const [tab, setTab] = useState<Tab>("accueil");
   const [activeService, setActiveService] = useState<ServiceSlug>("consulting");
   const [isOnline, setIsOnline] = useState(true);
-
-  // ==================== BOUTON RETOUR EN HAUT ====================
   const [showScrollTop, setShowScrollTop] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   // Modals demandes
   const [showConsultingModal, setShowConsultingModal] = useState(false);
@@ -642,7 +591,7 @@ export default function DashboardStartup() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [editProfil, setEditProfil] = useState({ nom_startup: "", secteur: "", taille: "", site_web: "", description: "", fonction: "", localisation: "" });
 
-  // Newsletter & NOTIFICATIONS
+  // Newsletter & Notifications (News)
   const [nlEmail, setNlEmail] = useState("");
   const [nlSent, setNlSent] = useState(false);
   const [nlLoading, setNlLoading] = useState(false);
@@ -650,10 +599,92 @@ export default function DashboardStartup() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState("");
-
-  // Gestion des lectures news
   const [readNewsIds, setReadNewsIds] = useState<Set<number>>(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Contact Admin (avec historique)
+  const [adminMessages, setAdminMessages] = useState<any[]>([]);
+  const [adminNewReplyCount, setAdminNewReplyCount] = useState(0);
+  const [contactAdminForm, setContactAdminForm] = useState({ sujet: "", message: "" });
+  const [sendingContactAdmin, setSendingContactAdmin] = useState(false);
+  const [contactAdminStatus, setContactAdminStatus] = useState<"idle" | "success" | "error">("idle");
+  const [contactInfo, setContactInfo] = useState<{ email?: string; telephone?: string } | null>(null);
+
+  // Scroll top
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const tk = useCallback(() => localStorage.getItem("access_token") || "", []);
+  const hdr = useCallback(() => ({ Authorization: `Bearer ${tk()}` }), [tk]);
+  const hdrJ = useCallback(() => ({ Authorization: `Bearer ${tk()}`, "Content-Type": "application/json" }), [tk]);
+
+  useEffect(() => {
+    const ho = () => setIsOnline(true), hf = () => setIsOnline(false);
+    window.addEventListener("online", ho); window.addEventListener("offline", hf);
+    setIsOnline(navigator.onLine);
+    return () => { window.removeEventListener("online", ho); window.removeEventListener("offline", hf); };
+  }, []);
+
+  function notify(text: string, ok = true) {
+    const toastDiv = document.createElement("div");
+    toastDiv.style.position = "fixed";
+    toastDiv.style.top = "20px";
+    toastDiv.style.right = "20px";
+    toastDiv.style.zIndex = "9999";
+    toastDiv.style.background = ok ? "#ECFDF5" : "#FEF2F2";
+    toastDiv.style.border = `1.5px solid ${ok ? "#A7F3D0" : "#FECACA"}`;
+    toastDiv.style.borderLeft = `4px solid ${ok ? "#059669" : "#DC2626"}`;
+    toastDiv.style.color = ok ? "#059669" : "#DC2626";
+    toastDiv.style.borderRadius = "11px";
+    toastDiv.style.padding = "12px 18px";
+    toastDiv.style.fontWeight = "700";
+    toastDiv.style.fontSize = "13px";
+    toastDiv.style.boxShadow = "0 8px 28px rgba(0,0,0,.1)";
+    toastDiv.innerText = text;
+    document.body.appendChild(toastDiv);
+    setTimeout(() => toastDiv.remove(), 3500);
+  }
+  const forceLogout = useCallback(() => { localStorage.removeItem("access_token"); localStorage.removeItem("user"); window.location.href = "/connexion"; }, []);
+
+  // Chargement des actualités (News)
+  const loadNotifications = useCallback(async () => {
+    setNotifLoading(true);
+    setNotifError("");
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${BASE}/news/startup`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await response.json();
+      if (data.canView === false) {
+        setNotifError("non_abonne");
+        setNotifications([]);
+      } else {
+        setNotifications(data.news || []);
+        setNotifError("");
+      }
+    } catch (err) {
+      setNotifications([]);
+      setNotifError("");
+    } finally {
+      setNotifLoading(false);
+    }
+  }, []);
+
+  const markNewsAsRead = (id: number) => {
+    if (!readNewsIds.has(id)) {
+      setReadNewsIds(prev => new Set(prev).add(id));
+    }
+  };
+
+  const markAllAsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadNewsIds(new Set(allIds));
+    notify("✅ Toutes les actualités ont été marquées comme lues");
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem("startup_news_read");
@@ -674,96 +705,36 @@ export default function DashboardStartup() {
     setUnreadCount(newUnread);
   }, [notifications, readNewsIds]);
 
-  const markNewsAsRead = (id: number) => {
-    if (!readNewsIds.has(id)) {
-      setReadNewsIds(prev => new Set(prev).add(id));
-    }
-  };
-
-  const markAllAsRead = () => {
-    const allIds = notifications.map(n => n.id);
-    setReadNewsIds(new Set(allIds));
-    notify("✅ Toutes les actualités ont été marquées comme lues");
-  };
-
-  // ==================== TOAST ====================
-  const [toast, setToast] = useState({ text: "", ok: true });
-  const tk = useCallback(() => localStorage.getItem("access_token") || "", []);
-  const hdr = useCallback(() => ({ Authorization: `Bearer ${tk()}` }), [tk]);
-  const hdrJ = useCallback(() => ({ Authorization: `Bearer ${tk()}`, "Content-Type": "application/json" }), [tk]);
-
-  useEffect(() => {
-    const ho = () => setIsOnline(true), hf = () => setIsOnline(false);
-    window.addEventListener("online", ho); window.addEventListener("offline", hf);
-    setIsOnline(navigator.onLine);
-    return () => { window.removeEventListener("online", ho); window.removeEventListener("offline", hf); };
-  }, []);
-
-  function notify(text: string, ok = true) { setToast({ text, ok }); setTimeout(() => setToast({ text: "", ok: true }), 3500); }
-  const forceLogout = useCallback(() => { localStorage.removeItem("access_token"); localStorage.removeItem("user"); window.location.href = "/connexion"; }, []);
-
-  // ==================== CHARGEMENT DES NEWS ====================
-  const loadNotifications = useCallback(async () => {
-    setNotifLoading(true);
-    setNotifError("");
-    try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(`${BASE}/news/startup`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.canView === false) {
-        setNotifError("non_abonne");
-        setNotifications([]);
-      } else {
-        setNotifications(data.news || []);
-        setNotifError("");
-      }
-    } catch (err) {
-      console.error("Erreur:", err);
-      setNotifications([]);
-      setNotifError("");
-    } finally {
-      setNotifLoading(false);
-    }
-  }, []);
-
-  // ==================== NEWSLETTER ====================
+  // Newsletter
   const handleNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nlEmail.trim()) {
-      notify("Veuillez saisir votre email", false);
-      return;
-    }
+    if (!nlEmail.trim()) { notify("Veuillez saisir votre email", false); return; }
     setNlLoading(true);
     setNlError("");
     try {
-      const r = await fetch(`${BASE}/newsletter/subscribe`, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ 
-          email: nlEmail, 
-          nom: startup?.nom_startup || `${realUser?.prenom} ${realUser?.nom}` 
-        }) 
+      const r = await fetch(`${BASE}/newsletter/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: nlEmail, nom: startup?.nom_startup || `${realUser?.prenom} ${realUser?.nom}` })
       });
       const result = await r.json();
-      if (r.ok && result.success) { 
-        setNlSent(true); 
-        setNlEmail(""); 
-        notify("✅ Inscription newsletter réussie !"); 
+      if (r.ok && result.success) {
+        setNlSent(true);
+        setNlEmail("");
+        notify("✅ Inscription newsletter réussie !");
         setTimeout(() => setNlSent(false), 5000);
         setTimeout(() => loadNotifications(), 1000);
-      } else { 
-        setNlError(result.message || "Erreur lors de l'inscription."); 
+      } else {
+        setNlError(result.message || "Erreur lors de l'inscription.");
       }
-    } catch { 
-      setNlError("Erreur réseau."); 
-    } finally { 
-      setNlLoading(false); 
+    } catch {
+      setNlError("Erreur réseau.");
+    } finally {
+      setNlLoading(false);
     }
   };
 
-  // ==================== CHARGEMENT DES DONNÉES STARTUP ====================
+  // Chargement des données startup
   const loadStartupData = useCallback(async (token: string) => {
     const aHdr = { Authorization: `Bearer ${token}` };
     const ts = `?_=${Date.now()}`;
@@ -783,23 +754,35 @@ export default function DashboardStartup() {
     return s;
   }, []);
 
-  // ==================== EXPERTS RECOMMANDÉS ====================
+  // Experts recommandés
   const loadRecommendedExperts = useCallback(async () => {
     setLoadingExperts(true); setExpertsError(null);
     let list: any[] = [];
     try {
-      if (!startup?.secteur) { const fb = await fetch(`${BASE}/experts/liste`); if (fb.ok) list = await fb.json(); }
-      else { const r = await fetch(`${BASE}/startups/experts-recommandes`, { headers: hdr() }); if (r.ok) { list = await r.json(); if (!Array.isArray(list)) list = []; } }
-    } catch { try { const fb = await fetch(`${BASE}/experts/liste`); if (fb.ok) list = await fb.json(); } catch { setExpertsError("Impossible de charger les experts."); setLoadingExperts(false); return; } }
+      if (!startup?.secteur) {
+        const fb = await fetch(`${BASE}/experts/liste`);
+        if (fb.ok) list = await fb.json();
+      } else {
+        const r = await fetch(`${BASE}/startups/experts-recommandes`, { headers: hdr() });
+        if (r.ok) { list = await r.json(); if (!Array.isArray(list)) list = []; }
+      }
+    } catch {
+      try {
+        const fb = await fetch(`${BASE}/experts/liste`);
+        if (fb.ok) list = await fb.json();
+      } catch { setExpertsError("Impossible de charger les experts."); setLoadingExperts(false); return; }
+    }
     if (startup?.secteur && list.length) {
       const s = startup.secteur.toLowerCase().trim();
       const m = list.filter(ex => (ex.domaine || "").toLowerCase().includes(s) || s.includes((ex.domaine || "").toLowerCase()));
       list = [...m, ...list.filter(ex => !m.find((mm: any) => mm.id === ex.id))];
     }
-    setExperts(list); setPubExperts(list.slice(0, 4)); setLoadingExperts(false);
+    setExperts(list);
+    setPubExperts(list.slice(0, 4));
+    setLoadingExperts(false);
   }, [hdr, startup?.secteur]);
 
-  // ==================== MESSAGES ====================
+  // Messages avec experts
   const loadAllMessages = useCallback(async () => {
     try {
       const r = await fetch(`${BASE}/messages/mes-messages`, { headers: hdr() }); if (!r.ok) return;
@@ -818,7 +801,7 @@ export default function DashboardStartup() {
     if (ex) { setSelectedExpert(ex); await loadAllMessages(); }
   }, [experts, loadAllMessages]);
 
-  // ==================== PROPOSITIONS DE RDV ====================
+  // Propositions de RDV
   const loadPropositions = useCallback(async () => {
     try {
       const r = await fetch(`${BASE}/messages/mes-messages`, { headers: hdr() }); if (!r.ok) return;
@@ -858,7 +841,7 @@ export default function DashboardStartup() {
     setPropositionsVues(prev => { const n = new Set(prev); n.add(p.id); return n; });
   }, [hdrJ, tk, loadStartupData]);
 
-  // ==================== DEMANDES SERVICE ====================
+  // Demandes service
   const envoyerDemande = async (payload: any) => {
     setSendingDemande(true);
     try {
@@ -883,22 +866,23 @@ export default function DashboardStartup() {
 
   const ouvrirModificationDemande = (demande: any) => {
     setEditingDemande(demande);
-    if (demande.service === "nos-plateformes") {
-      setShowPlateformeModal(true);
-    } else if (demande.service === "consulting") {
-      setShowConsultingModal(true);
-    } else if (demande.service === "audit-sur-site") {
-      setShowAuditModal(true);
-    } else if (demande.service === "formation-sur-mesure") {
-      setShowFormationModal(true);
-    }
+    if (demande.service === "nos-plateformes") setShowPlateformeModal(true);
+    else if (demande.service === "consulting") setShowConsultingModal(true);
+    else if (demande.service === "audit-sur-site") setShowAuditModal(true);
+    else if (demande.service === "formation-sur-mesure") setShowFormationModal(true);
   };
 
-  // ==================== RDV ====================
+  const supprimerDemande = async (id: number) => {
+    if (!confirm("Supprimer cette demande ?")) return;
+    const r = await fetch(`${BASE}/demandes-service/client/${id}`, { method: "DELETE", headers: hdr() });
+    if (r.ok) { notify("✅ Supprimée"); const res = await fetch(`${BASE}/demandes-service/mes-demandes`, { headers: hdr() }); if (res.ok) setDemandes(await res.json()); } else notify("❌ Erreur", false);
+  };
+
+  // RDV
   const prendreRdv = async () => {
     if (!rdvForm.expert_id || !rdvForm.date_rdv || !rdvForm.sujet) { notify("Remplissez tous les champs", false); return; }
     let expertId = parseInt(rdvForm.expert_id, 10);
-    if (isNaN(expertId)) { 
+    if (isNaN(expertId)) {
       const expert = experts.find(e => e.user_id === parseInt(rdvForm.expert_id, 10));
       if (expert) expertId = expert.id;
       else { notify("Expert invalide", false); return; }
@@ -913,7 +897,7 @@ export default function DashboardStartup() {
     if (r.ok) { notify("✅ RDV annulé"); await loadStartupData(tk()); } else notify("❌ Erreur", false);
   };
 
-  // ==================== TÉMOIGNAGES ====================
+  // Témoignages
   const envoyerTemoignage = async () => {
     if (!newTemo.trim()) { notify("Veuillez écrire votre témoignage", false); return; }
     setSendingTemo(true);
@@ -926,27 +910,22 @@ export default function DashboardStartup() {
 
   const loadPublicTestimonials = useCallback(async () => { const r = await fetch(`${BASE}/temoignages/publics`); if (r.ok) setPubTemos(await r.json()); }, []);
 
-  // ==================== FORMATIONS & PODCASTS (CORRIGÉ) ====================
+  // Formations & Podcasts
   const loadFormationsData = useCallback(async () => {
     setFormationsLoading(true);
     try {
       const f = await fetch(`${BASE}/formations/public`);
       if (f.ok) setFormations(await f.json());
       else setFormations([]);
-
       const p = await fetch(`${BASE}/podcasts/public`);
       if (p.ok) {
         let podcastsData = await p.json();
         podcastsData = podcastsData.map((pod: any) => {
           let rawUrl = pod.url_audio || pod.url_video || pod.video_url || pod.url || '';
           if (rawUrl && !rawUrl.startsWith('http')) {
-            if (rawUrl.startsWith('/')) {
-              rawUrl = `${BASE}${rawUrl}`;
-            } else {
-              rawUrl = `${BASE}/uploads/podcasts-audio/${rawUrl}`;
-            }
+            if (rawUrl.startsWith('/')) rawUrl = `${BASE}${rawUrl}`;
+            else rawUrl = `${BASE}/uploads/podcasts-audio/${rawUrl}`;
           }
-          console.log(`Podcast "${pod.titre}" -> URL finale:`, rawUrl);
           return { ...pod, url_audio: rawUrl };
         });
         setPodcasts(podcastsData);
@@ -954,7 +933,6 @@ export default function DashboardStartup() {
         setPodcasts([]);
       }
     } catch (err) {
-      console.error("Erreur chargement formations/podcasts", err);
       setFormations([]);
       setPodcasts([]);
     } finally {
@@ -977,7 +955,7 @@ export default function DashboardStartup() {
 
   const demandeExistePourFormation = (id: number) => demandes.some(d => d.service === "formation" && (d.formationId === id || d.formation?.id === id));
 
-  // ==================== DEVIS ====================
+  // Devis
   const loadMesDevis = useCallback(async () => {
     try { const r = await fetch(`${BASE}/devis/client/mes-devis`, { headers: hdr() }); setMesDevis(r.ok ? await r.json() : []); } catch { setMesDevis([]); }
   }, [hdr]);
@@ -985,23 +963,21 @@ export default function DashboardStartup() {
   const accepterDevis = async (id: number, expertData?: any) => {
     try {
       const r = await fetch(`${BASE}/devis/${id}/client-statut`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify({ statut: "accepte" }) });
-      if (r.ok) { 
-        notify("✅ Devis accepté !"); 
+      if (r.ok) {
+        notify("✅ Devis accepté !");
         await loadMesDevis();
         await loadStartupData(tk());
         setTimeout(() => {
           if (confirm("Souhaitez-vous contacter l'expert pour démarrer la collaboration ?")) {
             if (expertData) {
               setSelectedExpert(expertData);
-              handleTabChange("messages");
+              setTab("messages");
               loadConversation(expertData.user_id || expertData.user?.id);
             }
           }
         }, 500);
       } else notify("❌ Erreur", false);
-    } catch (err) {
-      notify("❌ Erreur réseau", false);
-    }
+    } catch (err) { notify("❌ Erreur réseau", false); }
   };
 
   const refuserDevis = async (id: number) => {
@@ -1010,14 +986,7 @@ export default function DashboardStartup() {
     if (r.ok) { notify("Devis refusé"); await loadMesDevis(); } else notify("Erreur", false);
   };
 
-  // ==================== SUPPRESSION DEMANDE ====================
-  const supprimerDemande = async (id: number) => {
-    if (!confirm("Supprimer cette demande ?")) return;
-    const r = await fetch(`${BASE}/demandes-service/client/${id}`, { method: "DELETE", headers: hdr() });
-    if (r.ok) { notify("✅ Supprimée"); const res = await fetch(`${BASE}/demandes-service/mes-demandes`, { headers: hdr() }); if (res.ok) setDemandes(await res.json()); } else notify("❌ Erreur", false);
-  };
-
-  // ==================== PROFIL ====================
+  // Profil
   const saveProfil = async () => {
     const r = await fetch(`${BASE}/startups/profil`, { method: "PUT", headers: hdrJ(), body: JSON.stringify(editProfil) });
     if (r.ok) { notify("✅ Profil sauvegardé !"); await loadStartupData(tk()); } else notify("❌ Erreur", false);
@@ -1030,30 +999,89 @@ export default function DashboardStartup() {
     if (r.ok) { notify("✅ Photo mise à jour !"); await loadStartupData(tk()); setPhotoFile(null); setPhotoPreview(""); } else notify("Erreur upload", false);
   };
 
-  // ==================== CHANGEMENT D'ONGLET ====================
+  // ==================== GESTION DES MESSAGES AVEC L'ADMIN ====================
+  const loadAdminMessages = useCallback(async () => {
+    if (!realUser?.email) return;
+    try {
+      const r = await fetch(`${BASE}/contact/messages`, { headers: hdr() });
+      if (r.ok) {
+        const all = await r.json();
+        const userEmail = realUser.email;
+        const filtered = all.filter((msg: any) => msg.email === userEmail);
+        setAdminMessages(filtered);
+        const unreadReplies = filtered.filter((msg: any) => msg.admin_reply && !msg.is_read).length;
+        setAdminNewReplyCount(unreadReplies);
+      }
+    } catch (err) {
+      console.error("Erreur chargement messages admin", err);
+    }
+  }, [realUser?.email, hdr]);
+
+  const envoyerMessageAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactAdminForm.message.trim()) return;
+    setSendingContactAdmin(true);
+    try {
+      const r = await fetch(`${BASE}/contact/message`, {
+        method: "POST",
+        headers: hdrJ(),
+        body: JSON.stringify({
+          nom: startup?.nom_startup || "",
+          prenom: realUser?.prenom || "",
+          email: realUser?.email || "",
+          subject: contactAdminForm.sujet || "Message d'une startup",
+          message: contactAdminForm.message,
+          client_type: "startup"
+        })
+      });
+      if (r.ok) {
+        setContactAdminStatus("success");
+        setContactAdminForm({ sujet: "", message: "" });
+        setTimeout(() => setContactAdminStatus("idle"), 5000);
+        await loadAdminMessages();
+        notify("✅ Message envoyé à l'administrateur");
+      } else {
+        setContactAdminStatus("error");
+        notify("❌ Erreur lors de l'envoi", false);
+      }
+    } catch {
+      setContactAdminStatus("error");
+      notify("❌ Erreur réseau", false);
+    } finally {
+      setSendingContactAdmin(false);
+    }
+  };
+
+  const loadContactInfo = useCallback(async () => {
+    try {
+      const r = await fetch(`${BASE}/histoire`);
+      if (r.ok) {
+        const d = await r.json();
+        setContactInfo({ email: d.email_contact || "plateformebeh@gmail.com", telephone: d.telephone_contact || "29524360" });
+      } else setContactInfo({ email: "plateformebeh@gmail.com", telephone: "29524360" });
+    } catch { setContactInfo({ email: "plateformebeh@gmail.com", telephone: "29524360" }); }
+  }, []);
+
+  // Changement d'onglet
   const handleTabChange = useCallback((t: Tab) => {
     setTab(t);
-    // Scroll en haut lors du changement d'onglet
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (t === "messages") { fetch(`${BASE}/messages/mark-all-read`, { method: "PATCH", headers: hdr() }).catch(() => { }); setAllMessages(prev => prev.map(m => ({ ...m, lu: true }))); }
+    if (t === "messages") { fetch(`${BASE}/messages/mark-all-read`, { method: "PATCH", headers: hdr() }).catch(() => {}); setAllMessages(prev => prev.map(m => ({ ...m, lu: true }))); }
     if (t === "rdv") { setPropositionsVues(prev => { const n = new Set(prev); propositions.forEach(p => n.add(p.id)); return n; }); }
-    if (t === "notifications") { loadNotifications(); }
-  }, [hdr, propositions, loadNotifications]);
+    if (t === "notifications") loadNotifications();
+    if (t === "contact_admin") { loadContactInfo(); loadAdminMessages(); }
+  }, [hdr, propositions, loadNotifications, loadContactInfo, loadAdminMessages]);
 
-  // ==================== CHARGEMENT INITIAL ====================
+  // Initialisation
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if (!token) {
-      router.replace("/connexion");
-      return;
-    }
+    if (!token) { router.replace("/connexion"); return; }
     fetch(`${BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async r => {
         if (!r.ok) throw new Error("Auth failed");
         const user = await r.json();
         const normalizedRole = user.role?.toLowerCase();
         if (normalizedRole !== "startup") {
-          console.warn("Rôle reçu :", user.role);
           localStorage.removeItem("access_token");
           localStorage.removeItem("user");
           if (normalizedRole === "expert") router.replace("/dashboard/expert");
@@ -1066,7 +1094,6 @@ export default function DashboardStartup() {
         await loadStartupData(token);
       })
       .catch(err => {
-        console.error("Erreur chargement startup :", err);
         setError("Impossible de charger vos données. Vérifiez votre connexion ou reconnectez-vous.");
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
@@ -1074,17 +1101,13 @@ export default function DashboardStartup() {
       .finally(() => setLoadingAuth(false));
   }, []);
 
-  useEffect(() => {
-    if (realUser) loadNotifications();
-  }, [realUser]);
-
+  useEffect(() => { if (realUser) loadNotifications(); }, [realUser]);
   useEffect(() => { if (startup?.secteur) loadRecommendedExperts(); }, [startup?.secteur, loadRecommendedExperts]);
   useEffect(() => { if (realUser?.id) loadPropositions(); }, [realUser?.id, loadPropositions]);
   useEffect(() => { if (tab === "messages") { loadAllMessages(); const i = setInterval(() => loadAllMessages(), 5000); return () => clearInterval(i); } }, [tab, loadAllMessages]);
   useEffect(() => { loadFormationsData(); loadPublicTestimonials(); loadMesDevis(); }, []);
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [conversation]);
 
-  // ==================== CALCULS ====================
   const unreadMsgCount = allMessages.filter(m => m.receiver_id === realUser?.id && !m.lu).length;
   const unreadPropositions = propositions.filter(p => !propositionsVues.has(p.id)).length;
   const pendingRdvCount = rdvs.filter(r => r.statut === "en_attente").length;
@@ -1102,9 +1125,17 @@ export default function DashboardStartup() {
 
   const SERVICE_TABS: ServiceSlug[] = ["consulting", "audit-sur-site", "nos-plateformes", "formation-sur-mesure", "podcasts"];
   const TABS: { id: Tab; label: string }[] = [
-    { id: "accueil", label: "Accueil" }, { id: "services", label: "Services" }, { id: "experts", label: "Experts" },
-    { id: "rdv", label: "Rendez-vous" }, { id: "messages", label: "Messages" }, { id: "temoignages", label: "Témoignages" },
-    { id: "mes-demandes", label: "Mes Demandes" }, { id: "mes-devis", label: "Mes Devis" }, { id: "notifications", label: "Notifications" }, { id: "profil", label: "Profil" },
+    { id: "accueil", label: "Accueil" },
+    { id: "services", label: "Services" },
+    { id: "experts", label: "Experts" },
+    { id: "rdv", label: "Rendez-vous" },
+    { id: "messages", label: "Messages" },
+    { id: "temoignages", label: "Témoignages" },
+    { id: "mes-demandes", label: "Mes Demandes" },
+    { id: "mes-devis", label: "Mes Devis" },
+    { id: "notifications", label: "News" },
+    { id: "profil", label: "Profil" },
+    { id: "contact_admin", label: "Contacter administrateur" },
   ];
 
   const photoUrl = startup?.photo ? `${BASE}/uploads/photos/${startup.photo}` : null;
@@ -1112,28 +1143,10 @@ export default function DashboardStartup() {
   const showMsgBadge = tab !== "messages" && unreadMsgCount > 0;
   const showRdvBadge = tab !== "rdv" && (unreadPropositions > 0 || pendingRdvCount > 0);
   const showNotifBadge = tab !== "notifications" && unreadCount > 0;
+  const showAdminReplyBadge = tab !== "contact_admin" && adminNewReplyCount > 0;
 
-  // ==================== RENDU (LONG MAIS COMPLET) ====================
-  if (loadingAuth) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
-      <div style={{ textAlign: "center" }}><div style={{ width: 44, height: 44, border: "4px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 14px" }} /><div style={{ color: "#0A2540", fontWeight: 600, fontSize: 14 }}>Vérification des accès...</div></div>
-    </div>
-  );
-
-  if (error) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: 32, maxWidth: 480, textAlign: "center" }}>
-        <div style={{ fontSize: 44, marginBottom: 14 }}>⚠️</div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#DC2626", marginBottom: 7 }}>Erreur</div>
-        <div style={{ color: "#64748B", marginBottom: 22 }}>{error}</div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-          <button onClick={() => window.location.reload()} style={{ background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Réessayer</button>
-          <button onClick={() => { localStorage.removeItem("access_token"); window.location.href = "/connexion"; }} style={{ background: "#0A2540", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Se reconnecter</button>
-        </div>
-      </div>
-    </div>
-  );
-
+  if (loadingAuth) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ textAlign: "center" }}><div style={{ width: 44, height: 44, border: "4px solid #F59E0B", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 14px" }} /><div style={{ color: "#0A2540", fontWeight: 600, fontSize: 14 }}>Vérification des accès...</div></div></div>;
+  if (error) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ background: "#fff", borderRadius: 16, padding: 32, maxWidth: 480, textAlign: "center" }}><div style={{ fontSize: 44, marginBottom: 14 }}>⚠️</div><div style={{ fontSize: 17, fontWeight: 700, color: "#DC2626", marginBottom: 7 }}>Erreur</div><div style={{ color: "#64748B", marginBottom: 22 }}>{error}</div><div style={{ display: "flex", gap: 10, justifyContent: "center" }}><button onClick={() => window.location.reload()} style={{ background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Réessayer</button><button onClick={() => { localStorage.removeItem("access_token"); window.location.href = "/connexion"; }} style={{ background: "#0A2540", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Se reconnecter</button></div></div></div>;
   if (!realUser || !startup) return null;
 
   return (
@@ -1177,23 +1190,16 @@ export default function DashboardStartup() {
         .scroll-top-btn:active{
           transform:scale(.95);
         }
+        .admin-message-item{
+          transition:all .18s;
+        }
+        .admin-message-item:hover{
+          transform:translateX(5px);
+          background:#FEFCE8;
+        }
       `}</style>
 
-      {toast.text && (
-        <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, background: toast.ok ? "#ECFDF5" : "#FEF2F2", border: `1.5px solid ${toast.ok ? "#A7F3D0" : "#FECACA"}`, borderLeft: `4px solid ${toast.ok ? "#059669" : "#DC2626"}`, color: toast.ok ? "#059669" : "#DC2626", borderRadius: 11, padding: "12px 18px", fontWeight: 700, fontSize: 13, boxShadow: "0 8px 28px rgba(0,0,0,.1)", animation: "fadeInUp .3s ease" }}>{toast.text}</div>
-      )}
-
-      {/* ==================== BOUTON RETOUR EN HAUT ==================== */}
-      {showScrollTop && (
-        <button
-          className="scroll-top-btn"
-          onClick={scrollToTop}
-          title="Retour en haut"
-          aria-label="Retour en haut de la page"
-        >
-          <FaArrowUp size={16} />
-        </button>
-      )}
+      {showScrollTop && <button className="scroll-top-btn" onClick={scrollToTop} title="Retour en haut" aria-label="Retour en haut"><FaArrowUp size={16} /></button>}
 
       {selectedFormationId !== null && <FormationDetailModal formationId={selectedFormationId} onClose={() => setSelectedFormationId(null)} />}
       {selectedPodcast && <PodcastDetailModal podcast={selectedPodcast} onClose={() => setSelectedPodcast(null)} />}
@@ -1206,18 +1212,12 @@ export default function DashboardStartup() {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#F59E0B,#D97706)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, color: "#0A2540", boxShadow: "0 2px 10px rgba(245,158,11,.35)" }}>BEH</div>
-            <div style={{ lineHeight: 1.15 }}>
-              <div style={{ color: "#fff", fontWeight: 800, fontSize: 13.5 }}>Business <span style={{ color: "#F59E0B" }}>Expert</span> Hub</div>
-              <div style={{ color: "rgba(255,255,255,.4)", fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>Espace Startup</div>
-            </div>
+            <div style={{ lineHeight: 1.15 }}><div style={{ color: "#fff", fontWeight: 800, fontSize: 13.5 }}>Business <span style={{ color: "#F59E0B" }}>Expert</span> Hub</div><div style={{ color: "rgba(255,255,255,.4)", fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>Espace Startup</div></div>
           </Link>
           <div style={{ width: 1, height: 28, background: "rgba(255,255,255,.1)" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#F59E0B" }}>{initials}</div>
-            <div>
-              <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, lineHeight: 1.2 }}>{startup?.nom_startup || `${realUser?.prenom} ${realUser?.nom}`}</div>
-              {startup?.secteur && <div style={{ color: "rgba(255,255,255,.4)", fontSize: 10, lineHeight: 1 }}>{startup.secteur}</div>}
-            </div>
+            <div><div style={{ color: "#fff", fontWeight: 700, fontSize: 13, lineHeight: 1.2 }}>{startup?.nom_startup || `${realUser?.prenom} ${realUser?.nom}`}</div>{startup?.secteur && <div style={{ color: "rgba(255,255,255,.4)", fontSize: 10, lineHeight: 1 }}>{startup.secteur}</div>}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1225,7 +1225,7 @@ export default function DashboardStartup() {
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444" }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: isOnline ? "rgba(255,255,255,.65)" : "#FCA5A5" }}>{isOnline ? "En ligne" : "Hors ligne"}</span>
           </div>
-          <button onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("user"); window.location.href = "/connexion"; }} style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", color: "rgba(255,255,255,.55)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12 }}>Déconnexion</button>
+          <button onClick={forceLogout} style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", color: "rgba(255,255,255,.55)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12 }}>Déconnexion</button>
         </div>
       </header>
 
@@ -1238,6 +1238,7 @@ export default function DashboardStartup() {
             if (t.id === "mes-demandes" && tab !== "mes-demandes" && (demandesEnAttente > 0 || demandesEnCours > 0)) badge = demandesEnAttente + demandesEnCours;
             if (t.id === "mes-devis" && tab !== "mes-devis" && mesDevisEnAttente > 0) badge = mesDevisEnAttente;
             if (t.id === "notifications" && showNotifBadge) badge = unreadCount;
+            if (t.id === "contact_admin" && showAdminReplyBadge) badge = adminNewReplyCount;
             const isOn = tab === t.id;
             return (
               <button key={t.id} onClick={() => handleTabChange(t.id)} style={{ background: "none", border: "none", borderBottom: `2.5px solid ${isOn ? "#F59E0B" : "transparent"}`, cursor: "pointer", padding: "14px 14px", fontSize: 12.5, fontWeight: isOn ? 800 : 500, color: isOn ? "#0A2540" : "#8A9AB5", fontFamily: "inherit", transition: "all .18s", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
@@ -1249,7 +1250,7 @@ export default function DashboardStartup() {
       </div>
 
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 28px" }}>
-        {/* ACCUEIL - REPRIS INTÉGRALEMENT */}
+        {/* ==================== ACCUEIL ==================== */}
         {tab === "accueil" && (
           <div>
             <section style={{ position: "relative", overflow: "hidden", minHeight: 400, borderRadius: 18, marginBottom: 20 }}>
@@ -1325,8 +1326,8 @@ export default function DashboardStartup() {
                                 <div style={{ fontSize: 10.5, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 6, padding: "2px 7px", display: "inline-block", marginBottom: 7 }}>{ex.domaine || "Expert"}</div>
                                 {ex.description && <p style={{ fontSize: 11.5, color: "#64748B", lineHeight: 1.65, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ex.description}</p>}
                                 <div style={{ display: "flex", gap: 7, marginTop: "auto" }}>
-                                  <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(ex); handleTabChange("messages"); loadConversation(ex.user_id || ex.user?.id); }}><FaComments size={11} /> Message</button>
-                                  <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(ex.id), sujet: "" }); handleTabChange("rdv"); }}><FaCalendar size={11} /> RDV</button>
+                                  <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(ex); setTab("messages"); loadConversation(ex.user_id || ex.user?.id); }}><FaComments size={11} /> Message</button>
+                                  <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(ex.id), sujet: "" }); setTab("rdv"); }}><FaCalendar size={11} /> RDV</button>
                                 </div>
                               </div>
                             </div>
@@ -1395,7 +1396,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* SERVICES */}
+        {/* ==================== SERVICES ==================== */}
         {tab === "services" && (
           <div>
             <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8EEF6", padding: "6px 8px", marginBottom: 24, display: "flex", gap: 4, overflowX: "auto", flexWrap: "wrap" }}>
@@ -1447,7 +1448,6 @@ export default function DashboardStartup() {
                 </div>
               </div>
             )}
-
             {activeService === "audit-sur-site" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", borderRadius: 18, border: "1.5px solid rgba(139,92,246,.18)", overflow: "hidden" }}>
@@ -1490,7 +1490,6 @@ export default function DashboardStartup() {
                 </div>
               </div>
             )}
-
             {activeService === "nos-plateformes" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", borderRadius: 18, border: "1.5px solid rgba(16,185,129,.18)", overflow: "hidden" }}>
@@ -1534,7 +1533,6 @@ export default function DashboardStartup() {
                 </div>
               </div>
             )}
-
             {activeService === "formation-sur-mesure" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -1572,7 +1570,6 @@ export default function DashboardStartup() {
                   )}
               </div>
             )}
-
             {activeService === "podcasts" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
@@ -1618,7 +1615,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* EXPERTS */}
+        {/* ==================== EXPERTS ==================== */}
         {tab === "experts" && (
           <div>
             <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
@@ -1640,8 +1637,8 @@ export default function DashboardStartup() {
                         <div style={{ fontSize: 10.5, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 6, padding: "2px 7px", display: "inline-block", marginBottom: 8 }}>{e.domaine || "Expert"}</div>
                         {e.description && <p style={{ fontSize: 11.5, color: "#64748B", lineHeight: 1.65, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.description}</p>}
                         <div style={{ display: "flex", gap: 7 }}>
-                          <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(e); handleTabChange("messages"); loadConversation(e.user_id || e.user?.id); }}><FaComments size={11} /> Message</button>
-                          <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(e.id), sujet: "" }); handleTabChange("rdv"); }}><FaCalendar size={11} /> RDV</button>
+                          <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(e); setTab("messages"); loadConversation(e.user_id || e.user?.id); }}><FaComments size={11} /> Message</button>
+                          <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(e.id), sujet: "" }); setTab("rdv"); }}><FaCalendar size={11} /> RDV</button>
                         </div>
                       </div>
                     </div>
@@ -1651,7 +1648,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* RDV */}
+        {/* ==================== RDV ==================== */}
         {tab === "rdv" && (
           <div>
             {propositions.length > 0 && (
@@ -1725,7 +1722,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* MESSAGES */}
+        {/* ==================== MESSAGES ==================== */}
         {tab === "messages" && (
           <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14, height: "calc(100vh - 210px)" }}>
             <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8EEF6", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1777,7 +1774,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* TEMOIGNAGES */}
+        {/* ==================== TEMOIGNAGES ==================== */}
         {tab === "temoignages" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
             <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8EEF6", overflow: "hidden" }}>
@@ -1809,7 +1806,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* MES DEMANDES */}
+        {/* ==================== MES DEMANDES ==================== */}
         {tab === "mes-demandes" && (
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
@@ -1862,7 +1859,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* MES DEVIS */}
+        {/* ==================== MES DEVIS ==================== */}
         {tab === "mes-devis" && (
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
@@ -1902,7 +1899,7 @@ export default function DashboardStartup() {
                             style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}
                             onClick={() => {
                               setSelectedExpert(dv.expert);
-                              handleTabChange("messages");
+                              setTab("messages");
                               loadConversation(dv.expert.user_id || dv.expert.user?.id);
                             }}
                           >
@@ -1916,7 +1913,7 @@ export default function DashboardStartup() {
                                 date_rdv: "", 
                                 sujet: `Suite au devis #${dv.id} - ${dv.expert.domaine || "Collaboration"}` 
                               });
-                              handleTabChange("rdv");
+                              setTab("rdv");
                             }}
                           >
                             <FaCalendar size={14} /> Planifier un RDV
@@ -1930,7 +1927,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* NOTIFICATIONS */}
+        {/* ==================== NOTIFICATIONS (NEWS) ==================== */}
         {tab === "notifications" && (
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
@@ -2039,7 +2036,7 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* PROFIL */}
+        {/* ==================== PROFIL ==================== */}
         {tab === "profil" && (
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
             <div style={{ background: "#fff", borderRadius: 18, border: "1px solid #E8EEF6", overflow: "hidden" }}>
@@ -2077,6 +2074,138 @@ export default function DashboardStartup() {
                   <textarea className="inp" rows={3} value={editProfil.description || ""} onChange={e => setEditProfil({ ...editProfil, description: e.target.value })} style={{ resize: "none" }} />
                 </div>
                 <button style={{ background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 10, padding: "11px 24px", fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }} onClick={saveProfil}><FaCheck size={12} /> Sauvegarder</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== CONTACTER ADMINISTRATEUR ==================== */}
+        {tab === "contact_admin" && (
+          <div className="fade-up">
+            <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3f6f)", borderRadius: 20, padding: "36px 40px", marginBottom: 28, position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+              <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+                <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(247,181,0,.2)", border: "2px solid rgba(247,181,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FaHeadset style={{ color: "#F59E0B", fontSize: 28 }} /></div>
+                <div>
+                  <div style={{ color: "rgba(255,255,255,.6)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 5 }}>Support et Assistance</div>
+                  <h1 style={{ color: "#fff", fontWeight: 900, fontSize: "clamp(20px,3vw,30px)", marginBottom: 8 }}>Contacter l'Administrateur</h1>
+                  <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13.5, lineHeight: 1.7, maxWidth: 520 }}>Besoin d'aide, d'une information ou d'un signalement ? Notre équipe vous répond rapidement.</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
+              {[
+                { icon: <FaEnvelope size={22} />, title: "Envoyer un e-mail", subtitle: "Email direct", value: contactInfo?.email || "plateformebeh@gmail.com", href: `mailto:${contactInfo?.email || "plateformebeh@gmail.com"}?subject=${encodeURIComponent("Message Startup - " + (startup?.nom_startup || ""))}&body=${encodeURIComponent("Bonjour,\n\nJe suis " + (realUser?.prenom || "") + " " + (realUser?.nom || "") + " (" + (realUser?.email || "") + "), représentant la startup " + (startup?.nom_startup || "") + ".\n\n")}`, color: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE" },
+                { icon: <FaPhone size={22} />, title: "Appeler l'équipe", subtitle: "Téléphone direct", value: `+216 ${contactInfo?.telephone || "29524360"}`, href: `tel:+216${(contactInfo?.telephone || "29524360").replace(/\s/g, "")}`, color: "#10B981", bg: "#ECFDF5", border: "#A7F3D0" },
+              ].map((card, i) => (
+                <a key={i} href={card.href} target="_blank" rel="noopener noreferrer" style={{ background: "#fff", border: `1.5px solid ${card.border}`, borderRadius: 18, padding: "24px", display: "flex", alignItems: "center", gap: 20, textDecoration: "none", transition: "all .22s" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = card.color; (e.currentTarget as HTMLAnchorElement).style.boxShadow = `0 8px 32px ${card.color}20`; (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-3px)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = card.border; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; (e.currentTarget as HTMLAnchorElement).style.transform = "none"; }}>
+                  <div style={{ width: 60, height: 60, borderRadius: 16, background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", color: card.color, flexShrink: 0 }}>{card.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>{card.subtitle}</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: "#0A2540", marginBottom: 3 }}>{card.title}</div>
+                    <div style={{ fontSize: 13, color: card.color, fontWeight: 600 }}>{card.value}</div>
+                  </div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: card.color }}><FaArrowRight size={14} /></div>
+                </a>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              <div className="card">
+                <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
+                  <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><FaPaperPlane style={{ color: "#F59E0B" }} size={16} /> Envoyer un message</div>
+                  <div style={{ fontSize: 13, color: "#64748B" }}>Votre message sera transmis à l'administrateur.</div>
+                </div>
+                <div style={{ padding: "24px" }}>
+                  {contactAdminStatus === "success" && <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, color: "#059669" }}><FaCheckCircle size={16} /> Message envoyé avec succès !</div>}
+                  {contactAdminStatus === "error" && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, color: "#DC2626" }}><FaExclamationTriangle size={16} /> Erreur. Essayez par email directement.</div>}
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E8EEF6", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Vos informations</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div style={{ background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #E8EEF6" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 2 }}>Nom startup</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#0A2540" }}>{startup?.nom_startup || "—"}</div>
+                      </div>
+                      <div style={{ background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #E8EEF6" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 2 }}>Email</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#0A2540" }}>{realUser?.email || "—"}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <form onSubmit={envoyerMessageAdmin}>
+                    <div style={{ marginBottom: 16 }}>
+                      <FL label="Sujet">
+                        <select className="inp" value={contactAdminForm.sujet} onChange={e => setContactAdminForm({ ...contactAdminForm, sujet: e.target.value })}>
+                          <option value="">— Sélectionnez un sujet —</option>
+                          <option value="Demande d'information">Demande d'information</option>
+                          <option value="Problème technique">Problème technique</option>
+                          <option value="Validation de profil">Validation de profil</option>
+                          <option value="Signalement">Signalement</option>
+                          <option value="Formation ou podcast">Formation / Podcast</option>
+                          <option value="Mission ou devis">Mission / Devis</option>
+                          <option value="Certification">Certification client</option>
+                          <option value="Autre">Autre</option>
+                        </select>
+                      </FL>
+                    </div>
+                    <div style={{ marginBottom: 20 }}>
+                      <FL label="Message *">
+                        <textarea className="inp" rows={6} required placeholder="Décrivez votre demande en détail..." value={contactAdminForm.message} onChange={e => setContactAdminForm({ ...contactAdminForm, message: e.target.value })} />
+                      </FL>
+                    </div>
+                    <button type="submit" style={{ width: "100%", background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 10, padding: "13px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} disabled={sendingContactAdmin}>
+                      {sendingContactAdmin ? <><FaSpinner style={{ animation: "spin .8s linear infinite" }} /> Envoi en cours...</> : <><FaPaperPlane size={14} /> Envoyer le message</>}
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              <div className="card">
+                <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
+                  <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><FaComments style={{ color: "#F59E0B" }} size={16} /> Historique des échanges</div>
+                  <div style={{ fontSize: 13, color: "#64748B" }}>Vos messages et les réponses de l'administrateur.</div>
+                </div>
+                <div style={{ padding: "16px", maxHeight: 480, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {adminMessages.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8" }}>
+                      <FaEnvelope size={32} style={{ opacity: 0.4, marginBottom: 10 }} />
+                      <div>Aucun message échangé.</div>
+                      <div style={{ fontSize: 12 }}>Utilisez le formulaire pour contacter l'administrateur.</div>
+                    </div>
+                  ) : (
+                    adminMessages
+                      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                      .map((msg) => (
+                        <div key={msg.id} className="admin-message-item" style={{ background: msg.admin_reply ? "#F0FDF4" : "#FFF8E1", borderRadius: 12, padding: "14px 16px", border: `1px solid ${msg.admin_reply ? "#DCFCE7" : "#FDE68A"}`, transition: "all .2s" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: "50%", background: msg.admin_reply ? "#10B981" : "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                              {msg.admin_reply ? "A" : "S"}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: msg.admin_reply ? "#065F46" : "#92400E" }}>{msg.admin_reply ? "Administrateur BEH" : startup?.nom_startup || "Votre startup"}</div>
+                              <div style={{ fontSize: 10, color: "#94A3B8" }}>{new Date(msg.createdAt).toLocaleString("fr-FR")}</div>
+                            </div>
+                            {!msg.is_read && msg.admin_reply && (
+                              <span style={{ marginLeft: "auto", background: "#FEF3C7", color: "#B45309", borderRadius: 99, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>Nouvelle réponse</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.6, marginBottom: 6 }}>{msg.message}</div>
+                          {msg.admin_reply && (
+                            <div style={{ marginTop: 8, background: "#fff", borderRadius: 8, padding: "8px 10px", border: "1px solid #DCFCE7" }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#059669", marginBottom: 3 }}>📨 Réponse de l'administrateur :</div>
+                              <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>{msg.admin_reply}</div>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                  )}
+                </div>
+                <div style={{ padding: "12px 16px", borderTop: "1px solid #F1F5F9", background: "#FAFBFE", fontSize: 11, color: "#94A3B8", textAlign: "center" }}>
+                  Les réponses apparaîtront ici dès que l'administrateur vous répondra.
+                </div>
               </div>
             </div>
           </div>

@@ -1,4 +1,3 @@
-// src/devis/devis.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { DemandeService } from '../demandes-service/demande-service.entity';
 import { Expert } from '../user/expert.entity';
@@ -6,34 +5,34 @@ import { Expert } from '../user/expert.entity';
 @Entity('devis')
 export class Devis {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ name: 'demande_id' })
-  demande_id: number;
+  demande_id!: number;
 
   @ManyToOne(() => DemandeService, { eager: true })
   @JoinColumn({ name: 'demande_id' })
-  demande: DemandeService;
+  demande!: DemandeService;
 
   @Column({ name: 'expert_id' })
-  expert_id: number;
+  expert_id!: number;
 
   @ManyToOne(() => Expert, { eager: true })
   @JoinColumn({ name: 'expert_id' })
-  expert: Expert;
+  expert!: Expert;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  montant: number;
+  montant!: number;
 
   @Column({ type: 'text' })
-  description: string;
+  description!: string;
 
   @Column({ nullable: true })
-  delai: string;
+  delai?: string;
 
   @Column({ type: 'enum', enum: ['en_attente', 'accepte', 'refuse'], default: 'en_attente' })
-  statut: string;
+  statut!: string;
 
   @CreateDateColumn({ name: 'createdAt' })
-  createdAt: Date;
+  createdAt!: Date;
 }

@@ -14,13 +14,19 @@ export class Formation {
   @Column({ nullable: true })
   domaine?: string;
 
-  // Champ existant pour compatibilité
+  // Pour la rétrocompatibilité (un seul formateur texte)
   @Column({ nullable: true })
   formateur?: string;
 
-  // NOUVEAU : stocke les formateurs avec leurs photos (format JSON)
+  // ✅ Nouvelle structure JSON pour plusieurs formateurs
   @Column({ type: "json", nullable: true })
-  formateur_details?: Array<{ nom: string; image: string }>;
+  formateur_details?: Array<{
+    prenom: string;
+    nom: string;
+    domaine: string;
+    image: string;
+    bio: string;   // texte libre, peut contenir des puces (lignes séparées par \n)
+  }>;
 
   @Column({ default: "payant" })
   type!: string;

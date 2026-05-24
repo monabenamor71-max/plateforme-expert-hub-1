@@ -1,4 +1,3 @@
-// src/admin/admin.controller.ts
 import {
   Controller,
   Get,
@@ -15,6 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { CvAnalysisService } from './services/cv-analysis.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -94,7 +94,10 @@ const podcastFileFilter = (req: Request, file: Express.Multer.File, cb) => {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly cvAnalysisService: CvAnalysisService,
+  ) {}
 
   // ==================== USERS ====================
   @Get('users')
@@ -146,6 +149,12 @@ export class AdminController {
   @Patch('experts/:id/refuser-modification')
   refuserModificationExpert(@Param('id') id: number) {
     return this.adminService.refuserModificationExpert(id);
+  }
+
+  // ==================== ANALYSE CV ====================
+  @Post('experts/:id/analyze-cv')
+  async analyzeExpertCv(@Param('id') id: string) {
+    return this.cvAnalysisService.analyzeCvByExpertId(parseInt(id, 10));
   }
 
   // ==================== STARTUPS ====================
@@ -272,32 +281,29 @@ export class AdminController {
   async getPodcastById(@Param('id') id: number) {
     return this.adminService.getPodcastById(id);
   }
-// src/admin/admin.controller.ts
-@Post('podcasts/create')
-@UseInterceptors(
-  FileFieldsInterceptor(
-    [
-      { name: 'video_file', maxCount: 1 },
-      { name: 'image_file', maxCount: 1 },
-    ],
-    { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize: 500 * 1024 * 1024 } },
-  ),
-)
-async createPodcast(
-  @Body() dto: CreatePodcastDto,
-  @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
-) {
-  const video = files?.video_file?.[0];
-  const image = files?.image_file?.[0];
-  
-  // ✅ Vérification : soit un fichier, soit une URL
-  if (!video && !dto.url_audio) {
-    throw new BadRequestException('Vous devez fournir soit un fichier vidéo (MP4), soit une URL externe (YouTube, Vimeo, etc.)');
+
+  @Post('podcasts/create')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'video_file', maxCount: 1 },
+        { name: 'image_file', maxCount: 1 },
+      ],
+      { storage: podcastStorage, fileFilter: podcastFileFilter, limits: { fileSize: 500 * 1024 * 1024 } },
+    ),
+  )
+  async createPodcast(
+    @Body() dto: CreatePodcastDto,
+    @UploadedFiles() files: { video_file?: Express.Multer.File[]; image_file?: Express.Multer.File[] },
+  ) {
+    const video = files?.video_file?.[0];
+    const image = files?.image_file?.[0];
+    if (!video && !dto.url_audio) {
+      throw new BadRequestException('Vous devez fournir soit un fichier vidéo (MP4), soit une URL externe (YouTube, Vimeo, etc.)');
+    }
+    return this.adminService.createPodcast(dto, video, image);
   }
-  
-  return this.adminService.createPodcast(dto, video, image);
-}
-  
+
   @Put('podcasts/:id')
   @UseInterceptors(
     FileFieldsInterceptor(

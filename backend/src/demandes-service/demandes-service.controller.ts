@@ -120,7 +120,6 @@ export class DemandesServiceController {
     return this.service.deleteDemande(id, req.user.id);
   }
 
-  // Client accepte un devis
   @UseGuards(JwtAuthGuard)
   @Roles('startup')
   @Patch(':demandeId/accepter-devis/:devisId')
@@ -146,7 +145,6 @@ export class DemandesServiceController {
     return this.service.getNotificationsForExpert(req.user.id);
   }
 
-  // ✅ NOUVEAU ENDPOINT : Pour que l'expert voie ses demandes visibles (utilisé par le frontend)
   @UseGuards(JwtAuthGuard)
   @Roles('expert')
   @Get('expert/visible')
@@ -168,7 +166,6 @@ export class DemandesServiceController {
     return this.service.refuserMission(id, req.user.id);
   }
 
-  // Expert soumet un devis
   @UseGuards(JwtAuthGuard)
   @Roles('expert')
   @Post(':id/soumettre-devis')

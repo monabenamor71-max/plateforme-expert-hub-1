@@ -21,10 +21,10 @@ export class DemandeService {
   description?: string;
 
   @Column({ nullable: true })
-  telephone?: string;
+  objectif?: string;
 
   @Column({ nullable: true })
-  objectif?: string;
+  telephone?: string;
 
   @Column({ nullable: true })
   domaine?: string;
@@ -43,14 +43,14 @@ export class DemandeService {
 
   @Column({ nullable: true })
   expert_assigne_id?: number;
-  // ✅ Correction : ajout de eager: true pour charger automatiquement l'expert assigné
- @ManyToOne(() => Expert, { nullable: true, eager: true })
-@JoinColumn({ name: 'expert_assigne_id' })
-expert_assigne?: Expert;
+  @ManyToOne(() => Expert, { nullable: true, eager: true })
+  @JoinColumn({ name: 'expert_assigne_id' })
+  expert_assigne?: Expert;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   devis_montant?: number;
 
-  @Column({ type: 'enum', enum: ['en_attente', 'acceptee', 'refusee', 'en_cours', 'terminee'], default: 'en_attente' })
+  @Column({ type: 'enum', enum: ['en_attente', 'notifie_experts', 'devis_envoye', 'acceptee', 'refusee', 'en_cours', 'terminee'], default: 'en_attente' })
   statut!: string;
 
   @Column({ type: 'text', nullable: true })

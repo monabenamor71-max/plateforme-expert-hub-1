@@ -3,16 +3,16 @@ import { IsInt, IsPositive, IsString, IsOptional, MinLength, MaxLength } from 'c
 export class CreateDevisDto {
   @IsInt()
   @IsPositive()
-  demande_id: number;
+  demande_id!: number;
 
   @IsInt()
   @IsPositive()
-  montant: number;
+  montant!: number;
 
   @IsString()
   @MinLength(10)
   @MaxLength(1000)
-  description: string;
+  description!: string;
 
   @IsString()
   @IsOptional()

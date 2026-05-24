@@ -8,11 +8,9 @@ import { diskStorage } from 'multer';
 import * as path from 'path';
 import { ExpertsService } from './experts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RequestModificationDto } from './dto/request-modification.dto';
 import { UpdateProfilDto } from './dto/update-profil.dto';
 import type { Request as ExpressRequest } from 'express';
 
-// Interface pour typer la requête avec l'utilisateur
 interface RequestWithUser extends ExpressRequest {
   user: { id: number };
 }
@@ -64,11 +62,11 @@ export class ExpertsController {
   @UseInterceptors(FileInterceptor('photo', {
     storage: diskStorage({
       destination: path.join(process.cwd(), 'uploads', 'photos'),
-      filename: (req: ExpressRequest, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+      filename: (req: ExpressRequest, file: Express.Multer.File, cb) => {
         cb(null, `${Date.now()}-${file.originalname}`);
       },
     }),
-    fileFilter: (req: ExpressRequest, file: Express.Multer.File, cb: (error: Error | null, accept: boolean) => void) => {
+    fileFilter: (req, file, cb) => {
       if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
         return cb(new BadRequestException('Format d\'image non supporté'), false);
       }
@@ -80,6 +78,13 @@ export class ExpertsController {
       return { message: 'Aucune photo fournie, profil non modifié' };
     }
     return this.expertsService.updatePhoto(req.user.id, file.filename);
+  }
+
+  // ✅ NOUVELLE ROUTE POUR ANALYSE CV
+  @Post(':id/analyze-cv')
+  @UseGuards(JwtAuthGuard)
+  async analyzeCv(@Param('id', ParseIntPipe) id: number) {
+    return this.expertsService.analyzeCv(id);
   }
 
   @Patch(':id/valider-modification')

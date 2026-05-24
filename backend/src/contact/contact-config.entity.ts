@@ -3,23 +3,23 @@ import { Entity, PrimaryGeneratedColumn, Column, UpdateDateColumn } from 'typeor
 @Entity('contact_config')
 export class ContactConfig {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ nullable: true })
-  email: string;
+  email!: string;
 
   @Column({ nullable: true })
-  telephone: string;
+  telephone!: string;
 
   @Column({ nullable: true })
-  adresse: string;
+  adresse!: string;
 
   @Column({ nullable: true })
-  horaires: string;
+  horaires!: string;
 
   @Column({ type: 'text', nullable: true })
-  description_hero: string;
+  description_hero!: string;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

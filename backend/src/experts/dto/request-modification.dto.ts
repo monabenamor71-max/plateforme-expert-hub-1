@@ -4,5 +4,5 @@ export class RequestModificationDto {
   localisation?: string;
   experience?: string;
   telephone?: string;
-  annee_debut_experience?: string | number; // aucun décorateur de validation
+  annee_debut_experience?: string | number;
 }

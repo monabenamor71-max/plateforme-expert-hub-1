@@ -1,3 +1,4 @@
+// src/user/startup.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
 
@@ -9,7 +10,7 @@ export class Startup {
   @Column({ name: 'user_id' })
   user_id!: number;
 
-  @OneToOne(() => User)
+  @OneToOne(() => User, user => user.startup)
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
@@ -40,7 +41,6 @@ export class Startup {
   @Column({ nullable: true })
   photo?: string;
 
-  // ✅ CORRECTION : Utiliser les noms exacts des colonnes dans la base
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

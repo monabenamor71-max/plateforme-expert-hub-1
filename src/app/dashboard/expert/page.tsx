@@ -68,9 +68,7 @@ function Lbl({ children }: { children: React.ReactNode }) {
   return <label style={{ fontSize: 11, fontWeight: 700, color: "#7D8FAA", textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>{children}</label>;
 }
 
-// ═══════════════════════════════════════════════════════════
-// MODAL CERTIFICATION (sans aperçu)
-// ═══════════════════════════════════════════════════════════
+// ==================== MODAL CERTIFICATION ====================
 function CertificationModal({ formation, clientInfo, expertInfo, onClose, onSend }: {
   formation: any; clientInfo: any; expertInfo: any;
   onClose: () => void; onSend: (data: any) => Promise<void>;
@@ -143,7 +141,6 @@ function CertificationModal({ formation, clientInfo, expertInfo, onClose, onSend
             <button onClick={onClose} style={{ background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 16 }}><FaTimes /></button>
           </div>
         </div>
-
         <div style={{ padding: "24px 28px", maxHeight: "62vh", overflowY: "auto" }}>
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
@@ -177,7 +174,6 @@ function CertificationModal({ formation, clientInfo, expertInfo, onClose, onSend
             <div><Lbl>Message personnalisé</Lbl><textarea className="inp" rows={4} value={form.message_personnalise} onChange={e => setForm({ ...form, message_personnalise: e.target.value })} placeholder="Félicitations ! Vous avez brillamment complété cette formation..." /></div>
           </div>
         </div>
-
         <div style={{ padding: "16px 28px 22px", borderTop: "1px solid #F1F5F9", background: "#FAFBFE", borderRadius: "0 0 24px 24px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Annuler</button>
           <button onClick={handleSend} disabled={sending || !form.nom_beneficiaire.trim() || !form.titre_formation.trim() || !form.email_client.trim()} style={{ background: sending ? "#E2E8F0" : "linear-gradient(135deg,#059669,#047857)", color: sending ? "#94A3B8" : "#fff", border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 800, fontSize: 14, cursor: sending ? "not-allowed" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8 }}>
@@ -189,9 +185,7 @@ function CertificationModal({ formation, clientInfo, expertInfo, onClose, onSend
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// MODAL MISSION DETAIL
-// ═══════════════════════════════════════════════════════════
+// ==================== MODAL MISSION DETAIL ====================
 function MissionDetailModal({ mission, onClose, onAccepter, onRefuser }: {
   mission: any; onClose: () => void;
   onAccepter: (mission: any) => void; onRefuser: (id: number) => void;
@@ -223,7 +217,6 @@ function MissionDetailModal({ mission, onClose, onAccepter, onRefuser }: {
             <button onClick={onClose} style={{ background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff" }}><FaTimes /></button>
           </div>
         </div>
-
         <div style={{ padding: "24px 28px", maxHeight: "65vh", overflowY: "auto" }}>
           {mission?.description && (
             <div style={{ background: "#F8FAFC", borderRadius: 14, padding: "18px 20px", marginBottom: 20, border: "1px solid #E8EEF6" }}>
@@ -268,7 +261,6 @@ function MissionDetailModal({ mission, onClose, onAccepter, onRefuser }: {
             </div>
           )}
         </div>
-
         {isActionnable && (
           <div style={{ padding: "18px 28px 24px", borderTop: "1px solid #F1F5F9", background: "#FAFBFE", borderRadius: "0 0 24px 24px" }}>
             <div style={{ display: "flex", gap: 10 }}>
@@ -286,9 +278,7 @@ function MissionDetailModal({ mission, onClose, onAccepter, onRefuser }: {
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// MODAL PROPOSER FORMATION (avec image optionnelle et formateurs)
-// ═══════════════════════════════════════════════════════════
+// ==================== MODAL PROPOSER FORMATION ====================
 interface Formateur {
   prenom: string;
   nom: string;
@@ -577,120 +567,290 @@ function ProposerFormationModal({ onClose, onSuccess, expertData, user, tk }: { 
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// MODAL PODCAST avec MP4 et choix upload/lien externe
-// ═══════════════════════════════════════════════════════════
+// ==================== CREATE PODCAST MODAL - CORRIGÉ POUR LE BACKEND ====================
 function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () => void; onSuccess: () => void; expertData: any }) {
   const [titre, setTitre] = useState("");
   const [description, setDescription] = useState("");
   const [auteur, setAuteur] = useState("");
-  const [domaine, setDomaine] = useState("");
+  const [domaine, setDomaine] = useState(expertData?.domaine || "");
   const [useExternalLink, setUseExternalLink] = useState(false);
   const [externalLink, setExternalLink] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState("");
   const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (expertData) {
-      const fullName = `${expertData.user?.prenom || ""} ${expertData.user?.nom || ""}`.trim();
-      if (fullName) setAuteur(fullName);
-      if (expertData.domaine) setDomaine(expertData.domaine);
-    }
-  }, [expertData]);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!titre) { alert("Titre requis"); return; }
-    if (!useExternalLink && !videoFile) { alert("Veuillez uploader une vidéo MP4 ou fournir un lien externe"); return; }
-    if (useExternalLink && !externalLink.trim()) { alert("Veuillez fournir un lien externe valide"); return; }
+    
+    // Validation
+    if (!titre.trim()) {
+      setError("Titre requis");
+      return;
+    }
+    
+    if (!useExternalLink && !videoFile) {
+      setError("Veuillez sélectionner un fichier vidéo");
+      return;
+    }
+    
+    if (useExternalLink && !externalLink.trim()) {
+      setError("Veuillez saisir un lien valide");
+      return;
+    }
     
     setLoading(true);
-    const fd = new FormData();
-    fd.append("titre", titre);
-    fd.append("description", description);
-    fd.append("auteur", auteur);
-    fd.append("domaine", domaine);
-    fd.append("type_media", "video");
+    setError("");
     
+    const fd = new FormData();
+    
+    // Champs texte
+    fd.append("titre", titre);
+    if (description) fd.append("description", description);
+    if (auteur) fd.append("auteur", auteur);
+    if (domaine) fd.append("domaine", domaine);
+    
+    // ⚠️ IMPORTANT: Le backend attend "video_url" (pas "url_audio") pour les liens externes
     if (useExternalLink) {
       fd.append("video_url", externalLink);
+      console.log("Envoi avec lien externe (video_url):", externalLink);
     } else if (videoFile) {
       fd.append("video_file", videoFile);
+      console.log("Envoi avec fichier (video_file):", videoFile.name);
     }
-    if (imageFile) fd.append("image_file", imageFile);
-
+    
+    // Image de couverture (optionnelle)
+    if (imageFile) {
+      fd.append("image_file", imageFile);
+    }
+    
     try {
+      const token = localStorage.getItem("access_token");
+      
       const res = await fetch(`${BASE}/podcasts/expert/proposer`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+        },
         body: fd,
       });
-      if (res.ok) { onSuccess(); onClose(); } else alert("Erreur lors de l'envoi");
-    } catch { alert("Erreur réseau"); }
-    setLoading(false);
+      
+      const responseText = await res.text();
+      console.log("Réponse serveur:", res.status, responseText);
+      
+      if (res.ok) {
+        alert("✅ Podcast proposé avec succès !");
+        onSuccess();
+        onClose();
+      } else {
+        setError(responseText || "Erreur lors de l'envoi");
+      }
+    } catch (err: any) {
+      console.error("Erreur réseau:", err);
+      setError("Erreur réseau: " + (err.message || "Impossible de contacter le serveur"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal-box" style={{ maxWidth: 650 }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "18px 24px", borderRadius: "20px 20px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(139,92,246,.2)", display: "flex", alignItems: "center", justifyContent: "center" }}><FaVideo style={{ color: "#C4B5FD", fontSize: 18 }} /></div>
-            <div><div style={{ color: "rgba(255,255,255,.6)", fontSize: 11 }}>Proposer une vidéo</div><div style={{ color: "#fff", fontWeight: 800, fontSize: 17 }}>Nouveau contenu vidéo</div></div>
+        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "20px 28px", borderRadius: "24px 24px 0 0", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 46, height: 46, borderRadius: 13, background: "rgba(139,92,246,.2)", border: "1.5px solid rgba(139,92,246,.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <FaMicrophone style={{ color: "#C4B5FD", fontSize: 20 }} />
+              </div>
+              <div>
+                <div style={{ color: "rgba(255,255,255,.6)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Espace Expert</div>
+                <div style={{ color: "#fff", fontWeight: 900, fontSize: 18 }}>Proposer un podcast / vidéo</div>
+              </div>
+            </div>
+            <button onClick={onClose} style={{ background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 16 }}><FaTimes /></button>
           </div>
-          <button style={{ background: "rgba(255,255,255,.1)", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", cursor: "pointer" }} onClick={onClose}><FaTimes /></button>
         </div>
-        <form onSubmit={handleSubmit} style={{ padding: "24px 28px" }}>
-          <div style={{ marginBottom: 16 }}><Lbl>Titre *</Lbl><input className="inp" required value={titre} onChange={e => setTitre(e.target.value)} /></div>
-          <div style={{ marginBottom: 16 }}><Lbl>Description</Lbl><textarea className="inp" rows={3} value={description} onChange={e => setDescription(e.target.value)} /></div>
+        
+        <form onSubmit={handleSubmit} style={{ padding: "24px 28px", maxHeight: "80vh", overflowY: "auto" }}>
+          {error && (
+            <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 10, padding: "12px", marginBottom: 16, fontSize: 13, color: "#DC2626" }}>
+              <FaExclamationTriangle style={{ display: "inline", marginRight: 6 }} /> {error}
+            </div>
+          )}
+          
+          <div style={{ marginBottom: 16 }}>
+            <Lbl>Titre *</Lbl>
+            <input 
+              className="inp" 
+              required 
+              value={titre} 
+              onChange={e => setTitre(e.target.value)} 
+              placeholder="Titre de votre vidéo/podcast" 
+              maxLength={150} 
+            />
+          </div>
+          
+          <div style={{ marginBottom: 16 }}>
+            <Lbl>Description</Lbl>
+            <textarea 
+              className="inp" 
+              rows={3} 
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              placeholder="Description de votre contenu..." 
+            />
+          </div>
+          
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-            <div><Lbl>Auteur</Lbl><input className="inp" value={auteur} onChange={e => setAuteur(e.target.value)} /></div>
-            <div><Lbl>Domaine</Lbl><input className="inp" value={domaine} onChange={e => setDomaine(e.target.value)} /></div>
+            <div>
+              <Lbl>Auteur</Lbl>
+              <input 
+                className="inp" 
+                value={auteur} 
+                onChange={e => setAuteur(e.target.value)} 
+                placeholder="Votre nom" 
+              />
+            </div>
+            <div>
+              <Lbl>Domaine</Lbl>
+              <select className="inp" value={domaine} onChange={e => setDomaine(e.target.value)}>
+                <option value="">Sélectionner...</option>
+                {DOMAINES_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
           </div>
 
-          <div style={{ marginBottom: 16, display: "flex", gap: 16, background: "#F8FAFC", padding: "12px 16px", borderRadius: 12 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier MP4
+          <div style={{ marginBottom: 20, display: "flex", gap: 16, background: "#F8FAFC", padding: "12px 16px", borderRadius: 12, border: "1.5px solid #E2E8F0" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+              <input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier (MP4)
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube, Vimeo...)
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+              <input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube, Vimeo, etc.)
             </label>
           </div>
 
           {!useExternalLink ? (
             <div style={{ marginBottom: 16 }}>
-              <Lbl>Fichier vidéo (MP4) *</Lbl>
-              <label className="upload-zone" style={{ minHeight: 70, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <input type="file" accept="video/mp4,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); setVideoPreview(f.name); } }} style={{ display: "none" }} />
-                {videoPreview ? <span style={{ display: "flex", alignItems: "center", gap: 6 }}><FaCheck style={{ color: "#10B981" }} /> {videoPreview}</span> : <><FaVideo style={{ color: "#94A3B8", fontSize: 22 }} /><span style={{ color: "#64748B", fontWeight: 600 }}>Uploader un MP4</span></>}
+              <Lbl>Fichier vidéo *</Lbl>
+              <label className="upload-zone" style={{ minHeight: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}>
+                <input 
+                  type="file" 
+                  accept="video/mp4,video/webm,video/quicktime" 
+                  onChange={e => { 
+                    const f = e.target.files?.[0]; 
+                    if (f) {
+                      setVideoFile(f);
+                      console.log("Fichier sélectionné:", f.name, f.size, f.type);
+                    }
+                  }} 
+                  style={{ display: "none" }} 
+                />
+                {videoFile ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaVideo style={{ color: "#7C3AED", fontSize: 24 }} />
+                    <span style={{ fontSize: 12, color: "#0A2540" }}>{videoFile.name}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setVideoFile(null)} 
+                      style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer" }}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center" }}>
+                    <FaVideo style={{ fontSize: 32, color: "#94A3B8", marginBottom: 6 }} />
+                    <div style={{ fontSize: 12, color: "#64748B" }}>Cliquer pour sélectionner un fichier vidéo (MP4)</div>
+                  </div>
+                )}
               </label>
             </div>
           ) : (
             <div style={{ marginBottom: 16 }}>
               <Lbl>Lien externe *</Lbl>
               <div style={{ position: "relative" }}>
-                <FaLink style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
-                <input className="inp" placeholder="https://www.youtube.com/watch?v=..." value={externalLink} onChange={e => setExternalLink(e.target.value)} style={{ paddingLeft: 34 }} />
+                <FaLink style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 13 }} />
+                <input 
+                  className="inp" 
+                  placeholder="https://www.youtube.com/watch?v=..." 
+                  value={externalLink} 
+                  onChange={e => setExternalLink(e.target.value)} 
+                  style={{ paddingLeft: 34 }} 
+                />
               </div>
-              <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>YouTube, Vimeo, Dailymotion, etc.</div>
+              <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
+                Supporte YouTube, Vimeo, Dailymotion, etc.
+              </div>
             </div>
           )}
 
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 20 }}>
             <Lbl>Image de couverture (optionnelle)</Lbl>
-            <label className="upload-zone" style={{ minHeight: 70, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); } }} style={{ display: "none" }} />
-              {imagePreview ? <img src={imagePreview} style={{ maxHeight: 60, borderRadius: 6 }} alt="" /> : <><FaImage style={{ color: "#94A3B8", fontSize: 22 }} /><span style={{ color: "#64748B", fontWeight: 600 }}>Uploader une image</span></>}
+            <label className="upload-zone" style={{ minHeight: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                onChange={e => { 
+                  const f = e.target.files?.[0]; 
+                  if (f) { 
+                    setImageFile(f); 
+                    setImagePreview(URL.createObjectURL(f)); 
+                  } 
+                }} 
+                style={{ display: "none" }} 
+              />
+              {imagePreview ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <img src={imagePreview} style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover" }} alt="" />
+                  <button 
+                    type="button" 
+                    onClick={() => { setImageFile(null); setImagePreview(""); }} 
+                    style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer" }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center" }}>
+                  <FaImage style={{ fontSize: 32, color: "#94A3B8", marginBottom: 6 }} />
+                  <div style={{ fontSize: 12, color: "#64748B" }}>Cliquer pour ajouter une image de couverture</div>
+                </div>
+              )}
             </label>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-            <button type="button" style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={onClose}>Annuler</button>
-            <button type="submit" style={{ background: "#10B981", color: "#fff", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }} disabled={loading}>
-              {loading ? "Envoi..." : <><FaCheck size={11} /> Proposer</>}
+          <div style={{ marginTop: 20, background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#0369A1", display: "flex", alignItems: "center", gap: 8 }}>
+            <FaInfoCircle style={{ flexShrink: 0 }} /> Votre vidéo sera soumise en statut "En attente" et examinée par l'administrateur.
+          </div>
+
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 24 }}>
+            <button 
+              type="button" 
+              style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }} 
+              onClick={onClose}
+            >
+              Annuler
+            </button>
+            <button 
+              type="submit" 
+              disabled={loading} 
+              style={{ 
+                background: loading ? "#E2E8F0" : "#7C3AED", 
+                color: loading ? "#94A3B8" : "#fff", 
+                border: "none", 
+                borderRadius: 10, 
+                padding: "10px 24px", 
+                fontWeight: 700, 
+                fontSize: 13, 
+                cursor: loading ? "not-allowed" : "pointer", 
+                fontFamily: "inherit", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 6 
+              }}
+            >
+              {loading ? <><FaSpinner style={{ animation: "spin .8s linear infinite" }} /> Envoi...</> : <><FaPaperPlane size={12} /> Proposer</>}
             </button>
           </div>
         </form>
@@ -699,12 +859,13 @@ function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () =>
   );
 }
 
+// ==================== EDIT PODCAST MODAL ====================
 function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClose: () => void; onSuccess: () => void }) {
   const [titre, setTitre] = useState(podcast.titre || "");
   const [description, setDescription] = useState(podcast.description || "");
   const [auteur, setAuteur] = useState(podcast.auteur || "");
   const [domaine, setDomaine] = useState(podcast.domaine || "");
-  const [useExternalLink, setUseExternalLink] = useState(podcast.url_audio?.startsWith("http"));
+  const [useExternalLink, setUseExternalLink] = useState(podcast.url_audio?.startsWith("http") || false);
   const [externalLink, setExternalLink] = useState(podcast.url_audio?.startsWith("http") ? podcast.url_audio : "");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -713,29 +874,31 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!titre) { alert("Titre requis"); return; }
+    if (!titre.trim()) { alert("Titre requis"); return; }
+    
     setLoading(true);
     const fd = new FormData();
     fd.append("titre", titre);
     fd.append("description", description);
     fd.append("auteur", auteur);
     fd.append("domaine", domaine);
-    fd.append("type_media", "video");
     
     if (useExternalLink && externalLink.trim()) {
-      fd.append("video_url", externalLink);
+      fd.append("url_audio", externalLink);
     } else if (videoFile) {
       fd.append("video_file", videoFile);
     }
     if (imageFile) fd.append("image_file", imageFile);
 
     try {
+      const token = localStorage.getItem("access_token");
       const res = await fetch(`${BASE}/podcasts/expert/modifier/${podcast.id}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
-      if (res.ok) { onSuccess(); onClose(); } else alert("Erreur");
+      if (res.ok) { onSuccess(); onClose(); } 
+      else { alert("Erreur lors de la modification"); }
     } catch { alert("Erreur réseau"); }
     setLoading(false);
   };
@@ -743,12 +906,12 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal-box" style={{ maxWidth: 650 }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "18px 24px", borderRadius: "20px 20px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "18px 24px", borderRadius: "24px 24px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(139,92,246,.2)", display: "flex", alignItems: "center", justifyContent: "center" }}><FaVideo style={{ color: "#C4B5FD", fontSize: 18 }} /></div>
             <div><div style={{ color: "rgba(255,255,255,.6)", fontSize: 11 }}>Modifier</div><div style={{ color: "#fff", fontWeight: 800, fontSize: 17 }}>{podcast.titre}</div></div>
           </div>
-          <button style={{ background: "rgba(255,255,255,.1)", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", cursor: "pointer" }} onClick={onClose}><FaTimes /></button>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,.1)", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", cursor: "pointer" }}><FaTimes /></button>
         </div>
         <form onSubmit={handleSubmit} style={{ padding: "24px 28px" }}>
           <div style={{ marginBottom: 16 }}><Lbl>Titre *</Lbl><input className="inp" required value={titre} onChange={e => setTitre(e.target.value)} /></div>
@@ -759,10 +922,10 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
           </div>
 
           <div style={{ marginBottom: 16, display: "flex", gap: 16, background: "#F8FAFC", padding: "12px 16px", borderRadius: 12 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
               <input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier MP4
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
               <input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube...)
             </label>
           </div>
@@ -774,6 +937,9 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
                 <input type="file" accept="video/mp4,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) setVideoFile(f); }} style={{ display: "none" }} />
                 {videoFile ? <span><FaCheck style={{ color: "#10B981" }} /> {videoFile.name}</span> : <><FaVideo style={{ color: "#94A3B8", fontSize: 22 }} /><span>Remplacer la vidéo</span></>}
               </label>
+              {!videoFile && podcast.url_audio && !podcast.url_audio.startsWith("http") && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>Fichier actuel: {podcast.url_audio}</div>
+              )}
             </div>
           ) : (
             <div style={{ marginBottom: 16 }}>
@@ -795,8 +961,8 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <button type="button" style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={onClose}>Annuler</button>
-            <button type="submit" style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }} disabled={loading}>
-              {loading ? "Envoi..." : <><FaSave size={11} /> Enregistrer</>}
+            <button type="submit" disabled={loading} style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+              {loading ? <><FaSpinner style={{ animation: "spin .8s linear infinite" }} /> Envoi...</> : <><FaSave size={11} /> Enregistrer</>}
             </button>
           </div>
         </form>
@@ -805,13 +971,26 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
   );
 }
 
+// ==================== PODCAST DETAIL MODAL ====================
 function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () => void }) {
   const isExternalLink = podcast.url_audio?.startsWith("http");
+  const getEmbedUrl = (url: string) => {
+    if (url.includes("youtube.com/watch?v=")) return url.replace("watch?v=", "embed/");
+    if (url.includes("youtu.be/")) {
+      const videoId = url.split("youtu.be/")[1]?.split("?")[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (url.includes("vimeo.com/")) {
+      const videoId = url.split("vimeo.com/")[1]?.split("?")[0];
+      return `https://player.vimeo.com/video/${videoId}`;
+    }
+    return url;
+  };
   
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal-box" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "20px 24px", borderRadius: "20px 20px 0 0", position: "relative" }}>
+        <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "20px 24px", borderRadius: "24px 24px 0 0", position: "relative" }}>
           <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.15)", border: "none", cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><FaTimes /></button>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             {podcast.image ? <img src={`${BASE}/uploads/podcasts-images/${podcast.image}`} style={{ width: 70, height: 70, borderRadius: 12, objectFit: "cover" }} alt="" /> : <div style={{ width: 70, height: 70, borderRadius: 12, background: "rgba(139,92,246,.3)", display: "flex", alignItems: "center", justifyContent: "center" }}><FaVideo style={{ fontSize: 32, color: "#C4B5FD" }} /></div>}
@@ -824,7 +1003,7 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
           {isExternalLink ? (
             <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", marginBottom: 16, borderRadius: 12, background: "#000" }}>
               <iframe
-                src={podcast.url_audio}
+                src={getEmbedUrl(podcast.url_audio)}
                 style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
                 allowFullScreen
                 title={podcast.titre}
@@ -881,16 +1060,14 @@ function RescheduleModal({ rdv, onClose, onSuccess, hdrJ }: { rdv: any; onClose:
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// COMPOSANT PRINCIPAL (Dashboard Expert avec tous les onglets)
-// ══════════════════════════════════════════════════════════════════════════════
+// ==================== COMPOSANT PRINCIPAL (Dashboard Expert) ====================
 export default function DashboardExpert() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [expert, setExpert] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [errorAuth, setErrorAuth] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("accueil");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -912,8 +1089,6 @@ export default function DashboardExpert() {
   const [newsNotifications, setNewsNotifications] = useState<any[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsNotificationsCount, setNewsNotificationsCount] = useState(0);
-
-  // Newsletter
   const [nlEmail, setNlEmail] = useState("");
   const [nlSent, setNlSent] = useState(false);
   const [nlLoading, setNlLoading] = useState(false);
@@ -953,56 +1128,105 @@ export default function DashboardExpert() {
 
   useEffect(() => {
     const ho = () => setIsOnline(true), hf = () => setIsOnline(false);
-    window.addEventListener("online", ho); window.addEventListener("offline", hf);
+    window.addEventListener("online", ho);
+    window.addEventListener("offline", hf);
     setIsOnline(navigator.onLine);
-    return () => { window.removeEventListener("online", ho); window.removeEventListener("offline", hf); };
+    return () => { 
+      window.removeEventListener("online", ho); 
+      window.removeEventListener("offline", hf); 
+    };
   }, []);
 
-  function notify(text: string, ok = true) { setToast({ text, ok }); setTimeout(() => setToast({ text: "", ok: true }), 5000); }
-  const forceLogout = useCallback(() => { localStorage.clear(); window.location.href = "/connexion"; }, []);
+  function notify(text: string, ok = true) { 
+    setToast({ text, ok }); 
+    setTimeout(() => setToast({ text: "", ok: true }), 5000); 
+  }
+
+  const forceLogout = useCallback(() => { 
+    localStorage.clear(); 
+    window.location.href = "/connexion"; 
+  }, []);
 
   const unreadMsgCount = allMessages.filter(m => m.receiver_id === user?.id && !m.lu).length;
   const pendingRdvCount = rdvs.filter(r => r.statut === "en_attente").length;
   const notificationsCount = notifications.length;
 
-  // Newsletter
   const handleNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nlEmail.trim()) { notify("Veuillez saisir votre email", false); return; }
-    setNlLoading(true); setNlError("");
+    if (!nlEmail.trim()) { 
+      notify("Veuillez saisir votre email", false); 
+      return; 
+    }
+    setNlLoading(true); 
+    setNlError("");
     try {
       const r = await fetch(`${BASE}/newsletter/subscribe`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: nlEmail, nom: `${user?.prenom || ""} ${user?.nom || ""}`.trim() || "Expert BEH" })
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: nlEmail, 
+          nom: `${user?.prenom || ""} ${user?.nom || ""}`.trim() || "Expert BEH" 
+        })
       });
       const result = await r.json();
-      if (r.ok && result.success) { setNlSent(true); setNlEmail(""); notify("✅ Inscription newsletter réussie !"); setTimeout(() => setNlSent(false), 5000); }
-      else { setNlError(result.message || "Erreur lors de l'inscription."); }
-    } catch { setNlError("Erreur réseau."); } finally { setNlLoading(false); }
+      if (r.ok && result.success) { 
+        setNlSent(true); 
+        setNlEmail(""); 
+        notify("✅ Inscription newsletter réussie !"); 
+        setTimeout(() => setNlSent(false), 5000); 
+      } else { 
+        setNlError(result.message || "Erreur lors de l'inscription."); 
+      }
+    } catch { 
+      setNlError("Erreur réseau."); 
+    } finally { 
+      setNlLoading(false); 
+    }
   };
 
   const loadNewsNotifications = useCallback(async () => {
     setNewsLoading(true);
     try {
-      const response = await fetch(`${BASE}/news/startup`, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } });
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${BASE}/news/startup`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.canView === true) {
           setNewsNotifications(data.news || []);
           const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
           setNewsNotificationsCount((data.news || []).filter((n: any) => new Date(n.createdAt).getTime() > cutoff).length);
-        } else { setNewsNotifications([]); setNewsNotificationsCount(0); }
-      } else { setNewsNotifications([]); }
-    } catch { setNewsNotifications([]); } finally { setNewsLoading(false); }
+        } else { 
+          setNewsNotifications([]); 
+          setNewsNotificationsCount(0); 
+        }
+      } else { 
+        setNewsNotifications([]); 
+      }
+    } catch { 
+      setNewsNotifications([]); 
+    } finally { 
+      setNewsLoading(false); 
+    }
   }, []);
 
   const loadNotifications = useCallback(async (expertId?: number) => {
-    const token = tk(); const currentExpertId = expertId || expert?.id;
+    const token = tk(); 
+    const currentExpertId = expertId || expert?.id;
     if (!token || !currentExpertId) return;
     try {
-      const res = await fetch(`${BASE}/demandes-service/expert/notifications`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) { const data = await res.json(); setNotifications(Array.isArray(data) ? data : []); return; }
-      const res2 = await fetch(`${BASE}/demandes-service/all`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${BASE}/demandes-service/expert/notifications`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      if (res.ok) { 
+        const data = await res.json(); 
+        setNotifications(Array.isArray(data) ? data : []); 
+        return; 
+      }
+      const res2 = await fetch(`${BASE}/demandes-service/all`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       if (res2.ok) {
         const allDemandes = await res2.json();
         const filtered = (Array.isArray(allDemandes) ? allDemandes : []).filter((d: any) => {
@@ -1010,23 +1234,34 @@ export default function DashboardExpert() {
           if (notifies.length > 0 && typeof notifies[0] === 'object') notifies = notifies.map((n: any) => n.expert_id || n.id);
           let acceptes = d.experts_acceptes || [];
           if (acceptes.length > 0 && typeof acceptes[0] === 'object') acceptes = acceptes.map((a: any) => a.expert_id || a.id);
-          return notifies.includes(currentExpertId) && !acceptes.includes(currentExpertId) && ["en_attente", "notifie_experts", "devis_envoye"].includes(d.statut);
+          return notifies.includes(currentExpertId) && !acceptes.includes(currentExpertId) && 
+                 ["en_attente", "notifie_experts", "devis_envoye"].includes(d.statut);
         });
         setNotifications(filtered);
-      } else { setNotifications([]); }
-    } catch { setNotifications([]); }
+      } else { 
+        setNotifications([]); 
+      }
+    } catch { 
+      setNotifications([]); 
+    }
   }, [tk, expert?.id]);
 
   const loadDemandesAssignees = useCallback(async () => {
-    const token = tk(); if (!token) return;
+    const token = tk(); 
+    if (!token) return;
     try {
-      const res = await fetch(`${BASE}/demandes-service/expert/assignees`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${BASE}/demandes-service/expert/assignees`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       setDemandesAssignees(res.ok ? await res.json() : []);
-    } catch { setDemandesAssignees([]); }
+    } catch { 
+      setDemandesAssignees([]); 
+    }
   }, [tk]);
 
   const loadExpertData = useCallback(async (userId: number) => {
     setLoading(true);
+    setError(null);
     try {
       const [expertRes, formationsRes, podcastsRes, devisRes, pubTemosRes, rdvsRes] = await Promise.all([
         fetch(`${BASE}/experts/moi`, { headers: hdr() }),
@@ -1036,23 +1271,49 @@ export default function DashboardExpert() {
         fetch(`${BASE}/temoignages/publics`),
         fetch(`${BASE}/rendez-vous/expert`, { headers: hdr() }),
       ]);
-      if (!expertRes.ok) throw new Error("Erreur chargement expert");
+      
+      if (!expertRes.ok) {
+        throw new Error(`Erreur chargement expert: ${expertRes.status}`);
+      }
+      
       const exp = await expertRes.json();
       setExpert(exp);
-      setEditProfil({ domaine: exp.domaine || "", description: exp.description || "", localisation: exp.localisation || "", telephone: exp.user?.telephone || "", annee_debut_experience: exp.annee_debut_experience?.toString() || "" });
+      setEditProfil({ 
+        domaine: exp.domaine || "", 
+        description: exp.description || "", 
+        localisation: exp.localisation || "", 
+        telephone: exp.user?.telephone || "", 
+        annee_debut_experience: exp.annee_debut_experience?.toString() || "" 
+      });
       setModificationEnAttente(exp.modification_demandee === true);
-      setFormations(formationsRes.ok ? await formationsRes.json() : []);
-      setPodcasts(podcastsRes.ok ? await podcastsRes.json() : []);
-      setMesDevis(devisRes.ok ? await devisRes.json() : []);
-      setPubTemos(pubTemosRes.ok ? await pubTemosRes.json() : []);
-      setRdvs(rdvsRes.ok ? await rdvsRes.json() : []);
-      await loadNotifications(exp.id); await loadDemandesAssignees(); await loadNewsNotifications(); await refreshAllMessages();
-    } catch { notify("Erreur chargement des données", false); } finally { setLoading(false); }
+      
+      if (formationsRes.ok) setFormations(await formationsRes.json());
+      if (podcastsRes.ok) setPodcasts(await podcastsRes.json());
+      if (devisRes.ok) setMesDevis(await devisRes.json());
+      if (pubTemosRes.ok) setPubTemos(await pubTemosRes.json());
+      if (rdvsRes.ok) setRdvs(await rdvsRes.json());
+      
+      await Promise.all([
+        loadNotifications(exp.id),
+        loadDemandesAssignees(),
+        loadNewsNotifications(),
+        refreshAllMessages()
+      ]);
+      
+    } catch (err: any) {
+      console.error("Erreur chargement données:", err);
+      setError(err.message || "Erreur lors du chargement des données");
+      notify("Erreur chargement des données", false);
+    } finally { 
+      setLoading(false); 
+    }
   }, [hdr, loadNotifications, loadDemandesAssignees, loadNewsNotifications]);
 
   const refreshAllMessages = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const res = await fetch(`${BASE}/messages/mes-messages`, { headers: hdr() }); if (!res.ok) return;
+      const res = await fetch(`${BASE}/messages/mes-messages`, { headers: hdr() }); 
+      if (!res.ok) return;
       const messages = await res.json();
       setAllMessages(messages);
       const contactsMap = new Map();
@@ -1060,45 +1321,154 @@ export default function DashboardExpert() {
         const otherId = m.sender_id === user?.id ? m.receiver_id : m.sender_id;
         if (!contactsMap.has(otherId) && otherId) {
           const otherUser = m.sender_id === user?.id ? m.receiver : m.sender;
-          if (otherUser) contactsMap.set(otherId, { id: otherId, prenom: otherUser.prenom, nom: otherUser.nom, email: otherUser.email, service: "Client" });
+          if (otherUser) contactsMap.set(otherId, { 
+            id: otherId, 
+            prenom: otherUser.prenom, 
+            nom: otherUser.nom, 
+            email: otherUser.email, 
+            service: "Client" 
+          });
         }
       }
-      demandesAssignees.forEach(d => { const u = d.user; if (u && u.id) contactsMap.set(u.id, { id: u.id, prenom: u.prenom, nom: u.nom, email: u.email, service: d.service }); });
+      demandesAssignees.forEach(d => { 
+        const u = d.user; 
+        if (u && u.id) contactsMap.set(u.id, { 
+          id: u.id, 
+          prenom: u.prenom, 
+          nom: u.nom, 
+          email: u.email, 
+          service: d.service 
+        }); 
+      });
       setContacts(Array.from(contactsMap.values()));
       if (selectedContact) {
-        const filtered = messages.filter((m: any) => (m.sender_id === selectedContact.id && m.receiver_id === user?.id) || (m.sender_id === user?.id && m.receiver_id === selectedContact.id));
-        setConversation(filtered.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+        const filtered = messages.filter((m: any) => 
+          (m.sender_id === selectedContact.id && m.receiver_id === user?.id) || 
+          (m.sender_id === user?.id && m.receiver_id === selectedContact.id)
+        );
+        setConversation(filtered.sort((a: any, b: any) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        ));
       }
-    } catch {}
+    } catch (err) {
+      console.error("Erreur refresh messages:", err);
+    }
   }, [hdr, user?.id, demandesAssignees, selectedContact]);
 
   const loadConversation = useCallback(async (contactUserId: number) => {
-    const contact = contacts.find(c => c.id === contactUserId); if (!contact) return;
+    const contact = contacts.find(c => c.id === contactUserId); 
+    if (!contact) return;
     setSelectedContact(contact);
-    const filtered = allMessages.filter((m: any) => (m.sender_id === contactUserId && m.receiver_id === user?.id) || (m.sender_id === user?.id && m.receiver_id === contactUserId));
-    setConversation(filtered.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
-    try { await fetch(`${BASE}/messages/mark-read/${contactUserId}`, { method: "PATCH", headers: hdr() }); setAllMessages(prev => prev.map(m => m.sender_id === contactUserId ? { ...m, lu: true } : m)); } catch {}
+    const filtered = allMessages.filter((m: any) => 
+      (m.sender_id === contactUserId && m.receiver_id === user?.id) || 
+      (m.sender_id === user?.id && m.receiver_id === contactUserId)
+    );
+    setConversation(filtered.sort((a: any, b: any) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    ));
+    try { 
+      await fetch(`${BASE}/messages/mark-read/${contactUserId}`, { 
+        method: "PATCH", 
+        headers: hdr() 
+      }); 
+      setAllMessages(prev => prev.map(m => 
+        m.sender_id === contactUserId ? { ...m, lu: true } : m
+      )); 
+    } catch {}
   }, [contacts, allMessages, user?.id, hdr]);
 
   async function sendMessage() {
     if (!newMsg.trim() || !selectedContact) return;
-    try { const r = await fetch(`${BASE}/messages`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ receiver_id: selectedContact.id, contenu: newMsg }) }); if (r.ok) { setNewMsg(""); await refreshAllMessages(); } else notify("Erreur envoi", false); } catch { notify("Erreur réseau", false); }
+    try { 
+      const r = await fetch(`${BASE}/messages`, { 
+        method: "POST", 
+        headers: hdrJ(), 
+        body: JSON.stringify({ receiver_id: selectedContact.id, contenu: newMsg }) 
+      }); 
+      if (r.ok) { 
+        setNewMsg(""); 
+        await refreshAllMessages(); 
+      } else notify("Erreur envoi", false); 
+    } catch { 
+      notify("Erreur réseau", false); 
+    }
   }
-  async function deleteMessage(msgId: number) { if (!confirm("Supprimer ?")) return; const r = await fetch(`${BASE}/messages/${msgId}`, { method: "DELETE", headers: hdr() }); if (r.ok) { notify("Supprimé"); await refreshAllMessages(); } else notify("Erreur", false); }
-  async function confirmerRdv(rdvId: number) { const r = await fetch(`${BASE}/rendez-vous/${rdvId}/confirmer`, { method: "PUT", headers: hdrJ() }); if (r.ok) { notify("✅ Confirmé"); loadExpertData(user?.id); } else notify("Erreur", false); }
-  async function annulerRdv(rdvId: number) { if (!confirm("Annuler ?")) return; const r = await fetch(`${BASE}/rendez-vous/${rdvId}/annuler`, { method: "PUT", headers: hdrJ() }); if (r.ok) { notify("Annulé"); loadExpertData(user?.id); } else notify("Erreur", false); }
-  async function updatePhoto() { if (!photoFile) return; const fd = new FormData(); fd.append("photo", photoFile); const r = await fetch(`${BASE}/experts/photo`, { method: "POST", headers: { Authorization: `Bearer ${tk()}` }, body: fd }); if (r.ok) { notify("✅ Photo mise à jour"); await loadExpertData(user?.id); setPhotoFile(null); setPhotoPreview(""); } else notify("Erreur upload", false); }
+  
+  async function deleteMessage(msgId: number) { 
+    if (!confirm("Supprimer ?")) return; 
+    const r = await fetch(`${BASE}/messages/${msgId}`, { 
+      method: "DELETE", 
+      headers: hdr() 
+    }); 
+    if (r.ok) { 
+      notify("Supprimé"); 
+      await refreshAllMessages(); 
+    } else notify("Erreur", false); 
+  }
+  
+  async function confirmerRdv(rdvId: number) { 
+    const r = await fetch(`${BASE}/rendez-vous/${rdvId}/confirmer`, { 
+      method: "PUT", 
+      headers: hdrJ() 
+    }); 
+    if (r.ok) { 
+      notify("✅ Confirmé"); 
+      loadExpertData(user?.id); 
+    } else notify("Erreur", false); 
+  }
+  
+  async function annulerRdv(rdvId: number) { 
+    if (!confirm("Annuler ?")) return; 
+    const r = await fetch(`${BASE}/rendez-vous/${rdvId}/annuler`, { 
+      method: "PUT", 
+      headers: hdrJ() 
+    }); 
+    if (r.ok) { 
+      notify("Annulé"); 
+      loadExpertData(user?.id); 
+    } else notify("Erreur", false); 
+  }
+  
+  async function updatePhoto() { 
+    if (!photoFile) return; 
+    const fd = new FormData(); 
+    fd.append("photo", photoFile); 
+    const r = await fetch(`${BASE}/experts/photo`, { 
+      method: "POST", 
+      headers: { Authorization: `Bearer ${tk()}` }, 
+      body: fd 
+    }); 
+    if (r.ok) { 
+      notify("✅ Photo mise à jour"); 
+      await loadExpertData(user?.id); 
+      setPhotoFile(null); 
+      setPhotoPreview(""); 
+    } else notify("Erreur upload", false); 
+  }
+  
   async function updateProfile() {
     const payload: any = {};
     if (editProfil.domaine !== (expert?.domaine || "")) payload.domaine = editProfil.domaine;
     if (editProfil.description !== (expert?.description || "")) payload.description = editProfil.description;
     if (editProfil.localisation !== (expert?.localisation || "")) payload.localisation = editProfil.localisation;
     if (editProfil.telephone !== (expert?.user?.telephone || "")) payload.telephone = editProfil.telephone;
-    const anneeNum = parseInt(editProfil.annee_debut_experience); if (!isNaN(anneeNum) && anneeNum !== expert?.annee_debut_experience) payload.annee_debut_experience = anneeNum;
-    if (Object.keys(payload).length === 0) { notify("Aucune modification", false); return; }
-    const res = await fetch(`${BASE}/experts/profil`, { method: "PUT", headers: hdrJ(), body: JSON.stringify(payload) });
-    if (res.ok) { notify("✅ Modification envoyée"); await loadExpertData(user?.id); } else notify("Erreur", false);
+    const anneeNum = parseInt(editProfil.annee_debut_experience); 
+    if (!isNaN(anneeNum) && anneeNum !== expert?.annee_debut_experience) payload.annee_debut_experience = anneeNum;
+    if (Object.keys(payload).length === 0) { 
+      notify("Aucune modification", false); 
+      return; 
+    }
+    const res = await fetch(`${BASE}/experts/profil`, { 
+      method: "PUT", 
+      headers: hdrJ(), 
+      body: JSON.stringify(payload) 
+    });
+    if (res.ok) { 
+      notify("✅ Modification envoyée"); 
+      await loadExpertData(user?.id); 
+    } else notify("Erreur", false);
   }
+  
   async function handleDeletePodcast(id: number) { 
     if (!confirm("Supprimer ?")) return; 
     try {
@@ -1118,79 +1488,215 @@ export default function DashboardExpert() {
   }
 
   async function envoyerMessageAdmin(e: React.FormEvent) {
-    e.preventDefault(); if (!contactAdminForm.message.trim()) return; setSendingContactAdmin(true);
+    e.preventDefault(); 
+    if (!contactAdminForm.message.trim()) return; 
+    setSendingContactAdmin(true);
     try {
-      const r = await fetch(`${BASE}/contact/message`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ nom: user?.nom || "", prenom: user?.prenom || "", email: user?.email || "", subject: contactAdminForm.sujet || "Message d'un expert", message: contactAdminForm.message }) });
-      if (r.ok) { setContactAdminStatus("success"); setContactAdminForm({ sujet: "", message: "" }); setTimeout(() => setContactAdminStatus("idle"), 5000); }
-      else setContactAdminStatus("error");
-    } catch { setContactAdminStatus("error"); } finally { setSendingContactAdmin(false); }
+      const r = await fetch(`${BASE}/contact/message`, { 
+        method: "POST", 
+        headers: hdrJ(), 
+        body: JSON.stringify({ 
+          nom: user?.nom || "", 
+          prenom: user?.prenom || "", 
+          email: user?.email || "", 
+          subject: contactAdminForm.sujet || "Message d'un expert", 
+          message: contactAdminForm.message 
+        }) 
+      });
+      if (r.ok) { 
+        setContactAdminStatus("success"); 
+        setContactAdminForm({ sujet: "", message: "" }); 
+        setTimeout(() => setContactAdminStatus("idle"), 5000); 
+      } else setContactAdminStatus("error");
+    } catch { 
+      setContactAdminStatus("error"); 
+    } finally { 
+      setSendingContactAdmin(false); 
+    }
   }
 
+  // AUTHENTIFICATION
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const token = tk(); if (!token) { router.replace("/connexion"); return; }
-    fetch(`${BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async res => {
-        if (!res.ok) { localStorage.clear(); router.replace("/connexion"); return; }
-        const realUser = await res.json();
-        const normalizedRole = realUser.role?.toLowerCase();
-        if (normalizedRole !== "expert") {
-          localStorage.clear();
-          if (normalizedRole === "startup") router.replace("/dashboard/startup");
-          else if (normalizedRole === "admin") router.replace("/dashboard/admin");
-          else router.replace("/");
+    
+    const authenticateUser = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        
+        if (!token) {
+          router.replace("/connexion");
           return;
         }
-        setUser(realUser); localStorage.setItem("user", JSON.stringify(realUser)); await loadExpertData(realUser.id);
-        try { const r = await fetch(`${BASE}/histoire`); if (r.ok) { const d = await r.json(); setContactInfo({ email: d.email_contact || "plateformebeh@gmail.com", telephone: d.telephone_contact || "29524360" }); } } catch { setContactInfo({ email: "plateformebeh@gmail.com", telephone: "29524360" }); }
-      })
-      .catch(() => setErrorAuth("Impossible de vérifier votre identité."))
-      .finally(() => setLoadingAuth(false));
+        
+        const response = await fetch(`${BASE}/auth/me`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+        });
+        
+        if (!response.ok) {
+          localStorage.clear();
+          router.replace("/connexion");
+          return;
+        }
+        
+        const realUser = await response.json();
+        
+        const normalizedRole = realUser.role?.toLowerCase();
+        
+        if (normalizedRole !== "expert") {
+          localStorage.clear();
+          if (normalizedRole === "startup") {
+            router.replace("/dashboard/startup");
+          } else if (normalizedRole === "admin") {
+            router.replace("/dashboard/admin");
+          } else {
+            router.replace("/");
+          }
+          return;
+        }
+        
+        setUser(realUser);
+        localStorage.setItem("user", JSON.stringify(realUser));
+        
+        await loadExpertData(realUser.id);
+        
+        try {
+          const histoireRes = await fetch(`${BASE}/histoire`);
+          if (histoireRes.ok) {
+            const histoireData = await histoireRes.json();
+            setContactInfo({
+              email: histoireData.email_contact || "plateformebeh@gmail.com",
+              telephone: histoireData.telephone_contact || "29524360"
+            });
+          }
+        } catch (err) {
+          console.error("Erreur chargement contact:", err);
+          setContactInfo({
+            email: "plateformebeh@gmail.com",
+            telephone: "29524360"
+          });
+        }
+        
+      } catch (err) {
+        console.error("Erreur d'authentification:", err);
+        setError("Impossible de vérifier votre identité.");
+      } finally {
+        setLoadingAuth(false);
+      }
+    };
+    
+    authenticateUser();
   }, []);
 
-  function openMissionDetail(mission: any) { setSelectedMission(mission); setShowMissionDetail(true); }
+  function openMissionDetail(mission: any) { 
+    setSelectedMission(mission); 
+    setShowMissionDetail(true); 
+  }
+  
   const refuserNotification = useCallback(async (demandeId: number) => {
     if (actionLoading[demandeId]) return;
     setActionLoading(prev => ({ ...prev, [demandeId]: true }));
     setNotifications(prev => prev.filter(n => n.id !== demandeId));
     try {
-      const endpoints = [`${BASE}/demandes-service/${demandeId}/refuser-expert`, `${BASE}/demandes-service/${demandeId}/refuser`, `${BASE}/demandes-service/${demandeId}/expert/refuser`];
-      for (const url of endpoints) { try { const res = await fetch(url, { method: "PUT", headers: hdrJ() }); if (res.ok) break; } catch {} }
+      const endpoints = [
+        `${BASE}/demandes-service/${demandeId}/refuser-expert`, 
+        `${BASE}/demandes-service/${demandeId}/refuser`, 
+        `${BASE}/demandes-service/${demandeId}/expert/refuser`
+      ];
+      for (const url of endpoints) { 
+        try { 
+          const res = await fetch(url, { method: "PUT", headers: hdrJ() }); 
+          if (res.ok) break; 
+        } catch {} 
+      }
       notify("Mission refusée");
-    } catch { notify("Erreur lors du refus", false); }
-    finally { setActionLoading(prev => ({ ...prev, [demandeId]: false })); await loadNotifications(); await loadDemandesAssignees(); }
+    } catch { 
+      notify("Erreur lors du refus", false); 
+    } finally { 
+      setActionLoading(prev => ({ ...prev, [demandeId]: false })); 
+      await loadNotifications(); 
+      await loadDemandesAssignees(); 
+    }
   }, [hdrJ, actionLoading, loadNotifications, loadDemandesAssignees]);
 
-  const handleAccepterMission = useCallback((mission: any) => { setDevisMission(mission); setShowDevisModal(true); }, []);
+  const handleAccepterMission = useCallback((mission: any) => { 
+    setDevisMission(mission); 
+    setShowDevisModal(true); 
+  }, []);
 
   const acceptMissionAndCreateDevis = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!devisMission) return;
-    if (!devisForm.montant || Number(devisForm.montant) <= 0) { notify("Veuillez saisir un montant valide", false); return; }
+    e.preventDefault(); 
+    if (!devisMission) return;
+    if (!devisForm.montant || Number(devisForm.montant) <= 0) { 
+      notify("Veuillez saisir un montant valide", false); 
+      return; 
+    }
     setActionLoading(prev => ({ ...prev, [devisMission.id]: true }));
     try {
-      const acceptEndpoints = [`${BASE}/demandes-service/${devisMission.id}/accepter`, `${BASE}/demandes-service/${devisMission.id}/expert/accepter`, `${BASE}/demandes-service/${devisMission.id}/accept`];
-      let acceptOk = false;
-      for (const url of acceptEndpoints) { try { const res = await fetch(url, { method: "PUT", headers: hdrJ() }); if (res.ok) { acceptOk = true; break; } } catch {} }
-      const devisRes = await fetch(`${BASE}/devis`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ demande_id: devisMission.id, montant: Number(devisForm.montant), description: devisForm.description, delai: devisForm.delai }) });
-      if (devisRes.ok) { notify("✅ Devis envoyé au client !"); setNotifications(prev => prev.filter(n => n.id !== devisMission.id)); setShowDevisModal(false); setDevisMission(null); setDevisForm({ montant: "", description: "", delai: "" }); await loadExpertData(user?.id); }
-      else { const err = await devisRes.json().catch(() => ({})); notify(`Erreur devis : ${err.message || "Erreur inconnue"}`, false); }
-    } catch { notify("Erreur réseau", false); }
-    finally { setActionLoading(prev => ({ ...prev, [devisMission?.id]: false })); await loadNotifications(); await loadDemandesAssignees(); }
+      const devisRes = await fetch(`${BASE}/demandes-service/${devisMission.id}/soumettre-devis`, {
+        method: "POST",
+        headers: hdrJ(),
+        body: JSON.stringify({
+          montant: Number(devisForm.montant),
+          description: devisForm.description,
+          delai: devisForm.delai
+        })
+      });
+      
+      if (devisRes.ok) {
+        notify("✅ Devis envoyé au client !");
+        setNotifications(prev => prev.filter(n => n.id !== devisMission.id));
+        setShowDevisModal(false);
+        setDevisMission(null);
+        setDevisForm({ montant: "", description: "", delai: "" });
+        await loadExpertData(user?.id);
+      } else {
+        const err = await devisRes.json().catch(() => ({}));
+        notify(`Erreur devis : ${err.message || "Erreur inconnue"}`, false);
+      }
+    } catch (err) {
+      console.error(err);
+      notify("Erreur réseau", false);
+    }
+    finally { 
+      setActionLoading(prev => ({ ...prev, [devisMission?.id]: false })); 
+      await loadNotifications(); 
+      await loadDemandesAssignees(); 
+    }
   };
 
   const updateMissionStatus = async (demandeId: number, statut: string) => {
     setActionLoading(prev => ({ ...prev, [demandeId]: true }));
     try {
-      const r = await fetch(`${BASE}/demandes-service/${demandeId}/statut-expert`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify({ statut }) });
-      if (r.ok) { notify(`✅ Mission ${statut === "en_cours" ? "démarrée" : "terminée"}`); setDemandesAssignees(prev => prev.map(d => d.id === demandeId ? { ...d, statut } : d)); }
-      else notify("Erreur", false);
-    } catch { notify("Erreur réseau", false); }
-    finally { setActionLoading(prev => ({ ...prev, [demandeId]: false })); }
+      const r = await fetch(`${BASE}/demandes-service/${demandeId}/statut-expert`, { 
+        method: "PATCH", 
+        headers: hdrJ(), 
+        body: JSON.stringify({ statut }) 
+      });
+      if (r.ok) { 
+        notify(`✅ Mission ${statut === "en_cours" ? "démarrée" : "terminée"}`); 
+        setDemandesAssignees(prev => prev.map(d => d.id === demandeId ? { ...d, statut } : d)); 
+      } else notify("Erreur", false);
+    } catch { 
+      notify("Erreur réseau", false); 
+    } finally { 
+      setActionLoading(prev => ({ ...prev, [demandeId]: false })); 
+    }
   };
 
-  const openDevisModal = (demande: any) => { setDevisMission(demande); setShowDevisModal(true); };
+  const openDevisModal = (demande: any) => { 
+    setDevisMission(demande); 
+    setShowDevisModal(true); 
+  };
+  
   const openCertificationModal = (demande: any) => {
-    const formationLiee = formations.find(f => f.titre?.toLowerCase().includes(demande.service?.toLowerCase()) || demande.service?.toLowerCase().includes("formation")) || { titre: demande.service || "Formation", duree: demande.delai || "" };
+    const formationLiee = formations.find(f => 
+      f.titre?.toLowerCase().includes(demande.service?.toLowerCase()) || 
+      demande.service?.toLowerCase().includes("formation")
+    ) || { titre: demande.service || "Formation", duree: demande.delai || "" };
     setCertificationFormation(formationLiee); 
     setCertificationClient(demande.user); 
     setShowCertificationModal(true);
@@ -1217,18 +1723,59 @@ export default function DashboardExpert() {
 
   useEffect(() => {
     if (!user || !expert) return;
-    const interval = setInterval(async () => { await loadNotifications(expert.id); await loadDemandesAssignees(); try { const rdvRes = await fetch(`${BASE}/rendez-vous/expert`, { headers: hdr() }); if (rdvRes.ok) setRdvs(await rdvRes.json()); } catch {} }, 10000);
+    const interval = setInterval(async () => { 
+      await loadNotifications(expert.id); 
+      await loadDemandesAssignees(); 
+      try { 
+        const rdvRes = await fetch(`${BASE}/rendez-vous/expert`, { headers: hdr() }); 
+        if (rdvRes.ok) setRdvs(await rdvRes.json()); 
+      } catch {} 
+    }, 30000);
     return () => clearInterval(interval);
   }, [user, expert, hdr, loadNotifications, loadDemandesAssignees]);
 
-  useEffect(() => { if (tab === "messages") { refreshAllMessages(); const interval = setInterval(() => refreshAllMessages(), 5000); return () => clearInterval(interval); } }, [tab, refreshAllMessages]);
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [conversation]);
-  useEffect(() => { if (!pubTemos.length) return; const t = setInterval(() => { if (!tAnim) setTIdx(p => (p + 1) % pubTemos.length); }, 5000); return () => clearInterval(t); }, [pubTemos.length, tAnim]);
-  function goT(i: number) { if (tAnim || !pubTemos.length) return; setTAnim(true); setTimeout(() => { setTIdx(i); setTAnim(false); }, 280); }
-  useEffect(() => { if (tab === "demandes" && user && expert) { loadNotifications(expert.id); loadDemandesAssignees(); } }, [tab, user, expert, loadNotifications, loadDemandesAssignees]);
-  useEffect(() => { if (tab === "notifications") { loadNewsNotifications(); } }, [tab, loadNewsNotifications]);
+  useEffect(() => { 
+    if (tab === "messages") { 
+      refreshAllMessages(); 
+      const interval = setInterval(() => refreshAllMessages(), 10000); 
+      return () => clearInterval(interval); 
+    } 
+  }, [tab, refreshAllMessages]);
+  
+  useEffect(() => { 
+    msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+  }, [conversation]);
+  
+  useEffect(() => { 
+    if (!pubTemos.length) return; 
+    const t = setInterval(() => { 
+      if (!tAnim) setTIdx(p => (p + 1) % pubTemos.length); 
+    }, 5000); 
+    return () => clearInterval(t); 
+  }, [pubTemos.length, tAnim]);
+  
+  function goT(i: number) { 
+    if (tAnim || !pubTemos.length) return; 
+    setTAnim(true); 
+    setTimeout(() => { 
+      setTIdx(i); 
+      setTAnim(false); 
+    }, 280); 
+  }
+  
+  useEffect(() => { 
+    if (tab === "demandes" && user && expert) { 
+      loadNotifications(expert.id); 
+      loadDemandesAssignees(); 
+    } 
+  }, [tab, user, expert, loadNotifications, loadDemandesAssignees]);
+  
+  useEffect(() => { 
+    if (tab === "notifications") { 
+      loadNewsNotifications(); 
+    } 
+  }, [tab, loadNewsNotifications]);
 
-  // Définition des onglets
   const TABS: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "accueil", label: "Tableau de bord", icon: <FaChartLine size={15} /> },
     { id: "profil", label: "Mon Profil", icon: <FaUserCircle size={15} /> },
@@ -1242,8 +1789,69 @@ export default function DashboardExpert() {
     { id: "contact_admin", label: "Support", icon: <FaHeadset size={15} /> },
   ];
 
-  if (loadingAuth) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ textAlign: "center" }}><div style={{ width: 48, height: 48, border: "4px solid #F7B500", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} /><div style={{ color: "#0A2540", fontWeight: 600 }}>Vérification...</div></div></div>;
-  if (errorAuth || !user || user.role?.toLowerCase() !== "expert") return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}><div style={{ padding: 32, maxWidth: 500, textAlign: "center" }}><div style={{ fontSize: 48, marginBottom: 16, color: "#EF4444" }}>⚠</div><div style={{ fontSize: 18, fontWeight: 700, color: "#DC2626", marginBottom: 8 }}>Accès refusé</div><button style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "11px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={() => window.location.href = "/connexion"}>Se reconnecter</button></div></div>;
+  // ÉCRANS DE CHARGEMENT
+  if (loadingAuth) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: 48, height: 48, border: "4px solid #F7B500", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+          <div style={{ color: "#0A2540", fontWeight: 600 }}>Vérification...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: 48, height: 48, border: "4px solid #F7B500", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+          <div style={{ color: "#0A2540", fontWeight: 600, marginTop: 16 }}>Chargement de votre espace expert...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
+        <div style={{ padding: 32, maxWidth: 500, textAlign: "center", background: "#fff", borderRadius: 16 }}>
+          <div style={{ fontSize: 48, marginBottom: 16, color: "#EF4444" }}>⚠️</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#DC2626", marginBottom: 8 }}>Erreur de connexion</div>
+          <div style={{ color: "#64748B", marginBottom: 20 }}>{error}</div>
+          <div style={{ marginBottom: 16, fontSize: 13, color: "#94A3B8" }}>
+            Vérifiez que le backend est démarré sur <code style={{ background: "#F1F5F9", padding: "2px 6px", borderRadius: 4 }}>http://localhost:3001</code>
+          </div>
+          <button 
+            style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "11px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginRight: 10 }} 
+            onClick={() => window.location.reload()}
+          >
+            Réessayer
+          </button>
+          <button 
+            style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 9, padding: "11px 22px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }} 
+            onClick={() => router.push("/connexion")}
+          >
+            Retour à la connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role?.toLowerCase() !== "expert") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
+        <div style={{ padding: 32, maxWidth: 500, textAlign: "center", background: "#fff", borderRadius: 16 }}>
+          <div style={{ fontSize: 48, marginBottom: 16, color: "#EF4444" }}>⚠</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#DC2626", marginBottom: 8 }}>Accès refusé</div>
+          <button style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "11px 22px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={() => window.location.href = "/connexion"}>
+            Se reconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const photoUrl = expert?.photo ? `${BASE}/uploads/photos/${expert?.photo}` : null;
   const initials = user ? (user.prenom?.[0] || "") + (user.nom?.[0] || "") : "?";
@@ -1253,6 +1861,7 @@ export default function DashboardExpert() {
   const MAILTO_HREF = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent("Message Expert - " + (user?.prenom || "") + " " + (user?.nom || ""))}&body=${encodeURIComponent("Bonjour,\n\nJe suis " + (user?.prenom || "") + " " + (user?.nom || "") + " (" + (user?.email || "") + "), expert sur la plateforme BEH.\n\n")}`;
   const TEL_HREF = `tel:+216${ADMIN_PHONE.replace(/\s/g, "")}`;
 
+  // Rendu principal
   return (
     <>
       <style>{`
@@ -1262,7 +1871,6 @@ export default function DashboardExpert() {
         .inp{width:100%;background:#F7F9FC;border:1.5px solid #E2E8F0;border-radius:10px;padding:11px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;color:#0A2540;outline:none;transition:border-color .2s,box-shadow .2s;}
         .inp:focus{border-color:#F7B500;box-shadow:0 0 0 3px rgba(247,181,0,.08);}
         textarea.inp{resize:vertical;min-height:90px;}
-        .inp:disabled{background:#F1F5F9;color:#94A3B8;cursor:not-allowed;}
         .modal-bg{position:fixed;inset:0;background:rgba(10,37,64,.65);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);}
         .modal-box{background:#fff;border-radius:24px;width:100%;max-width:720px;max-height:92vh;overflow-y:auto;box-shadow:0 28px 80px rgba(10,37,64,.25);}
         .upload-zone{display:block;border:2px dashed #D1D5DB;border-radius:10px;padding:16px;background:#F8FAFC;cursor:pointer;text-align:center;transition:border-color .2s;}
@@ -1284,10 +1892,6 @@ export default function DashboardExpert() {
         @keyframes onlinePulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)}70%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
         .fade-up{animation:fadeUp .35s ease;}
         .chip{display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1px solid #E8EEF6;border-radius:8px;padding:5px 10px;font-size:12px;color:#475569;font-weight:600;}
-        .notif-row{border:1.5px solid #FDE68A;border-left:4px solid #F7B500;background:#FFFCF0;border-radius:16px;margin-bottom:14px;transition:box-shadow .2s;}
-        .notif-row:hover{box-shadow:0 4px 20px rgba(247,181,0,.14);}
-        .mission-row{border:1.5px solid #E8EEF6;border-radius:16px;background:#fff;cursor:pointer;transition:all .2s;}
-        .mission-row:hover{border-color:rgba(247,181,0,.4);box-shadow:0 4px 18px rgba(10,37,64,.07);}
       `}</style>
 
       {toast.text && (
@@ -1364,38 +1968,25 @@ export default function DashboardExpert() {
             </button>
           </div>
 
-          {/* Profil carte */}
-          {!sidebarCollapsed ? (
-            <div style={{ margin: "10px", background: "rgba(247,181,0,.07)", border: "1px solid rgba(247,181,0,.15)", borderRadius: 13, padding: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <div style={{ position: "relative", flexShrink: 0 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", background: "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(247,181,0,.5)" }}>
-                    {(photoPreview || photoUrl) ? <img src={photoPreview || photoUrl || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ fontSize: 15, color: "#0A2540", fontWeight: 900 }}>{initials}</span>}
-                  </div>
-                  <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444", border: "2px solid #0d2d4e", ...(isOnline ? { animation: "onlinePulse 2s infinite" } : {}) }} />
+          <div style={{ margin: "10px", background: "rgba(247,181,0,.07)", border: "1px solid rgba(247,181,0,.15)", borderRadius: 13, padding: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", background: "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(247,181,0,.5)" }}>
+                  {(photoPreview || photoUrl) ? <img src={photoPreview || photoUrl || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ fontSize: 15, color: "#0A2540", fontWeight: 900 }}>{initials}</span>}
                 </div>
-                <div style={{ overflow: "hidden", flex: 1 }}>
-                  <div style={{ color: "#fff", fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.prenom} {user?.nom}</div>
-                  <div style={{ color: "rgba(255,255,255,.4)", fontSize: 10.5, marginTop: 2 }}>{expert?.domaine || "Expert"}</div>
-                </div>
+                <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444", border: "2px solid #0d2d4e", ...(isOnline ? { animation: "onlinePulse 2s infinite" } : {}) }} />
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444" }} />
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: isOnline ? "#10B981" : "#EF4444" }}>{isOnline ? "Connecté" : "Hors ligne"}</span>
+              <div style={{ overflow: "hidden", flex: 1 }}>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.prenom} {user?.nom}</div>
+                <div style={{ color: "rgba(255,255,255,.4)", fontSize: 10.5, marginTop: 2 }}>{expert?.domaine || "Expert"}</div>
               </div>
             </div>
-          ) : (
-            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 8px" }}>
-              <div style={{ position: "relative" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(247,181,0,.5)", fontSize: 12, color: "#0A2540", fontWeight: 900 }}>
-                  {(photoPreview || photoUrl) ? <img src={photoPreview || photoUrl || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : initials}
-                </div>
-                <div style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444", border: "2px solid #0d2d4e" }} />
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#10B981" : "#EF4444" }} />
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: isOnline ? "#10B981" : "#EF4444" }}>{isOnline ? "Connecté" : "Hors ligne"}</span>
             </div>
-          )}
+          </div>
 
-          {/* Navigation */}
           <nav style={{ flex: 1, padding: "6px 8px", overflowY: "auto" }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,.25)", textTransform: "uppercase", letterSpacing: "1.5px", padding: sidebarCollapsed ? "8px 0" : "8px 6px", textAlign: sidebarCollapsed ? "center" : "left" }}>
               {!sidebarCollapsed ? "Navigation" : "—"}
@@ -1418,7 +2009,6 @@ export default function DashboardExpert() {
             })}
           </nav>
 
-          {/* Bas sidebar */}
           <div style={{ padding: "8px", borderTop: "1px solid rgba(255,255,255,.06)" }}>
             <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="sidebar-item" style={{ marginBottom: 4, justifyContent: sidebarCollapsed ? "center" : "flex-start" }}>
               <FaArrowLeft size={13} style={{ transform: sidebarCollapsed ? "rotate(180deg)" : "none", transition: "transform .2s", color: "rgba(255,255,255,.4)" }} />
@@ -1461,7 +2051,6 @@ export default function DashboardExpert() {
             {/* ACCUEIL */}
             {tab === "accueil" && (
               <div className="fade-up">
-                {/* Hero section */}
                 <section style={{ position: "relative", overflow: "hidden", minHeight: 360, borderRadius: 20, marginBottom: 24 }}>
                   <div style={{ position: "absolute", inset: 0 }}>
                     <Image src="/image.png" alt="" fill priority style={{ objectFit: "cover" }} />
@@ -1492,7 +2081,6 @@ export default function DashboardExpert() {
                   </div>
                 </section>
 
-                {/* KPI Cards */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
                   {[
                     { icon: <FaClipboardList size={20} />, label: "Missions assignées", value: demandesAssignees.length, color: "#8B5CF6" },
@@ -1507,7 +2095,6 @@ export default function DashboardExpert() {
                   ))}
                 </div>
 
-                {/* ADN Section */}
                 <section style={{ padding: "36px 28px", background: "#F8FAFC", borderRadius: 20, marginBottom: 24 }}>
                   <Reveal><div style={{ textAlign: "center", marginBottom: 28 }}><h2 style={{ fontWeight: 700, fontSize: "clamp(22px,3vw,36px)", color: "#0A2540" }}>Notre <span style={{ fontStyle: "italic", color: "#F7B500" }}>ADN</span></h2></div></Reveal>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
@@ -1531,7 +2118,6 @@ export default function DashboardExpert() {
                   </div>
                 </section>
 
-                {/* Newsletter Section */}
                 <section style={{ marginBottom: 24 }}>
                   <Reveal>
                     <div style={{ borderRadius: 22, background: "linear-gradient(135deg,#0A2540 0%,#1a3f6f 100%)", position: "relative", padding: "40px 44px", overflow: "hidden" }}>
@@ -1575,7 +2161,6 @@ export default function DashboardExpert() {
                   </Reveal>
                 </section>
 
-                {/* Témoignages */}
                 {pubTemos.length > 0 && (
                   <section style={{ padding: "36px 28px", background: "#fff", borderRadius: 20 }}>
                     <div style={{ maxWidth: 700, margin: "0 auto" }}>
@@ -1613,7 +2198,7 @@ export default function DashboardExpert() {
                 <div className="card" style={{ padding: "24px", marginBottom: 20, display: "flex", alignItems: "center", gap: 20 }}>
                   <div style={{ position: "relative", flexShrink: 0 }}>
                     <div style={{ width: 80, height: 80, borderRadius: "50%", overflow: "hidden", background: "#0A2540", display: "flex", alignItems: "center", justifyContent: "center", border: "3px solid #F7B500" }}>
-                      {photoPreview ? <img src={photoPreview} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#F7B500", fontWeight: 900, fontSize: 26 }}>{initials}</span>}
+                      {(photoPreview || photoUrl) ? <img src={photoPreview || photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#F7B500", fontWeight: 900, fontSize: 26 }}>{initials}</span>}
                     </div>
                     <label style={{ position: "absolute", bottom: -2, right: -2, width: 26, height: 26, background: "#F7B500", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid #fff" }}>
                       <FaCamera style={{ fontSize: 11, color: "#0A2540" }} />
@@ -2186,121 +2771,38 @@ export default function DashboardExpert() {
             {/* CONTACT ADMIN */}
             {tab === "contact_admin" && (
               <div className="fade-up">
-                <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3f6f)", borderRadius: 20, padding: "36px 40px", marginBottom: 28, position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
-                  <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-                    <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(247,181,0,.2)", border: "2px solid rgba(247,181,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FaHeadset style={{ color: "#F7B500", fontSize: 28 }} /></div>
-                    <div>
-                      <div style={{ color: "rgba(255,255,255,.6)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 5 }}>Support et Assistance</div>
-                      <h1 style={{ color: "#fff", fontWeight: 900, fontSize: "clamp(20px,3vw,30px)", marginBottom: 8 }}>Contacter l'Administrateur</h1>
-                      <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13.5, lineHeight: 1.7, maxWidth: 520 }}>Besoin d'aide, d'une information ou d'un signalement ? Notre équipe vous répond rapidement.</p>
-                    </div>
+                <div className="card" style={{ padding: "24px", textAlign: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Contacter l'administrateur</h2>
+                  <p style={{ color: "#64748B", marginBottom: 20 }}>Pour toute question ou problème, contactez-nous par email ou téléphone.</p>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
+                    <a href={MAILTO_HREF} style={{ background: "#F7B500", color: "#0A2540", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>📧 Envoyer un email</a>
+                    <a href={TEL_HREF} style={{ background: "#10B981", color: "#fff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>📞 Appeler</a>
                   </div>
                 </div>
-
-                {/* Cards de contact */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
-                  {[
-                    { icon: <FaEnvelope size={22} />, title: "Envoyer un e-mail", subtitle: "Email direct", value: ADMIN_EMAIL, href: MAILTO_HREF, color: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE" },
-                    { icon: <FaPhone size={22} />, title: "Appeler l'équipe", subtitle: "Téléphone direct", value: `+216 ${ADMIN_PHONE}`, href: TEL_HREF, color: "#10B981", bg: "#ECFDF5", border: "#A7F3D0" },
-                  ].map((card, i) => (
-                    <a key={i} href={card.href} target="_blank" rel="noopener noreferrer" style={{ background: "#fff", border: `1.5px solid ${card.border}`, borderRadius: 18, padding: "24px", display: "flex", alignItems: "center", gap: 20, textDecoration: "none", transition: "all .22s" }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = card.color; (e.currentTarget as HTMLAnchorElement).style.boxShadow = `0 8px 32px ${card.color}20`; (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-3px)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = card.border; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; (e.currentTarget as HTMLAnchorElement).style.transform = "none"; }}>
-                      <div style={{ width: 60, height: 60, borderRadius: 16, background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", color: card.color, flexShrink: 0 }}>{card.icon}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>{card.subtitle}</div>
-                        <div style={{ fontWeight: 800, fontSize: 15, color: "#0A2540", marginBottom: 3 }}>{card.title}</div>
-                        <div style={{ fontSize: 13, color: card.color, fontWeight: 600 }}>{card.value}</div>
-                      </div>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: card.color }}><FaArrowRight size={14} /></div>
-                    </a>
-                  ))}
-                </div>
-
-                {/* Formulaire + infos */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 24 }}>
-                  <div className="card">
-                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><FaPaperPlane style={{ color: "#F7B500" }} size={16} /> Envoyer un message</div>
-                      <div style={{ fontSize: 13, color: "#64748B" }}>Votre message sera transmis à l'administrateur.</div>
+                <div className="card" style={{ padding: "24px" }}>
+                  <form onSubmit={envoyerMessageAdmin}>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", marginBottom: 4 }}>Sujet</label>
+                      <select className="inp" value={contactAdminForm.sujet} onChange={e => setContactAdminForm({ ...contactAdminForm, sujet: e.target.value })}>
+                        <option value="">— Sélectionnez un sujet —</option>
+                        <option value="Demande d'information">Demande d'information</option>
+                        <option value="Problème technique">Problème technique</option>
+                        <option value="Validation de profil">Validation de profil</option>
+                        <option value="Signalement">Signalement</option>
+                        <option value="Autre">Autre</option>
+                      </select>
                     </div>
-                    <div style={{ padding: "24px" }}>
-                      {contactAdminStatus === "success" && <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, color: "#059669" }}><FaCheckCircle size={16} /> Message envoyé avec succès !</div>}
-                      {contactAdminStatus === "error" && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, color: "#DC2626" }}><FaExclamationTriangle size={16} /> Erreur. Essayez par email directement.</div>}
-                      <div style={{ background: "#F8FAFC", border: "1px solid #E8EEF6", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Vos informations</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          {[{ label: "Nom complet", val: `${user?.prenom || ""} ${user?.nom || ""}` }, { label: "Email", val: user?.email || "—" }].map((r, i) => (
-                            <div key={i} style={{ background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #E8EEF6" }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 2 }}>{r.label}</div>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: "#0A2540" }}>{r.val}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <form onSubmit={envoyerMessageAdmin}>
-                        <div style={{ marginBottom: 16 }}>
-                          <Lbl>Sujet</Lbl>
-                          <select className="inp" value={contactAdminForm.sujet} onChange={e => setContactAdminForm({ ...contactAdminForm, sujet: e.target.value })}>
-                            <option value="">— Sélectionnez un sujet —</option>
-                            <option value="Demande d'information">Demande d'information</option>
-                            <option value="Problème technique">Problème technique</option>
-                            <option value="Validation de profil">Validation de profil</option>
-                            <option value="Signalement">Signalement</option>
-                            <option value="Formation ou podcast">Formation / Podcast</option>
-                            <option value="Mission ou devis">Mission / Devis</option>
-                            <option value="Certification">Certification client</option>
-                            <option value="Autre">Autre</option>
-                          </select>
-                        </div>
-                        <div style={{ marginBottom: 20 }}>
-                          <Lbl>Message *</Lbl>
-                          <textarea className="inp" rows={6} required placeholder="Décrivez votre demande en détail..." value={contactAdminForm.message} onChange={e => setContactAdminForm({ ...contactAdminForm, message: e.target.value })} />
-                        </div>
-                        <button type="submit" style={{ width: "100%", background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 10, padding: "13px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} disabled={sendingContactAdmin}>
-                          {sendingContactAdmin ? <><FaSpinner style={{ animation: "spin .8s linear infinite" }} /> Envoi en cours...</> : <><FaPaperPlane size={14} /> Envoyer le message</>}
-                        </button>
-                      </form>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", marginBottom: 4 }}>Message *</label>
+                      <textarea className="inp" rows={5} required value={contactAdminForm.message} onChange={e => setContactAdminForm({ ...contactAdminForm, message: e.target.value })} />
                     </div>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    <div className="card" style={{ padding: "22px 24px" }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: "#0A2540", marginBottom: 16, display: "flex", alignItems: "center", gap: 7 }}><FaPhone style={{ color: "#F7B500" }} size={14} /> Coordonnées</div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {[
-                          { icon: <FaEnvelope size={14} />, label: "Email", val: ADMIN_EMAIL, href: MAILTO_HREF, color: "#3B82F6", bg: "#EFF6FF" },
-                          { icon: <FaPhone size={14} />, label: "Téléphone", val: `+216 ${ADMIN_PHONE}`, href: TEL_HREF, color: "#10B981", bg: "#ECFDF5" },
-                        ].map((c, i) => (
-                          <a key={i} href={c.href} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", padding: "12px 14px", background: "#F8FAFC", borderRadius: 12, border: "1.5px solid #E8EEF6", transition: "all .2s" }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = c.color; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#E8EEF6"; }}>
-                            <div style={{ width: 38, height: 38, borderRadius: 10, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", color: c.color, flexShrink: 0 }}>{c.icon}</div>
-                            <div><div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", marginBottom: 2 }}>{c.label}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: c.color }}>{c.val}</div></div>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="card" style={{ padding: "22px 24px" }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: "#0A2540", marginBottom: 14, display: "flex", alignItems: "center", gap: 7 }}><FaClock style={{ color: "#F7B500" }} size={14} /> Disponibilités</div>
-                      {[{ day: "Lun — Ven", hours: "09h00 – 18h00", available: true }, { day: "Samedi", hours: "09h00 – 13h00", available: true }, { day: "Dimanche", hours: "Fermé", available: false }].map((h, i) => (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 2 ? "1px solid #F1F5F9" : "none" }}>
-                          <span style={{ fontSize: 13, color: "#475569", fontWeight: 500 }}>{h.day}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: h.available ? "#059669" : "#94A3B8", background: h.available ? "#ECFDF5" : "#F1F5F9", padding: "3px 8px", borderRadius: 6 }}>{h.hours}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3f6f)", borderRadius: 16, padding: "20px 22px", border: "1px solid rgba(247,181,0,.2)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                        <FaCheckCircle style={{ color: "#F7B500", fontSize: 18 }} />
-                        <div style={{ fontSize: 13, fontWeight: 800, color: "#F7B500" }}>Réponse garantie</div>
-                      </div>
-                      <p style={{ color: "rgba(255,255,255,.55)", fontSize: 12.5, lineHeight: 1.75, margin: 0 }}>Pour les urgences, appelez directement. Les emails sont traités sous <strong style={{ color: "#F7B500" }}>24h ouvrées</strong>.</p>
-                    </div>
-                  </div>
+                    {contactAdminStatus === "success" && <p style={{ color: "#10B981", marginBottom: 12 }}>✅ Message envoyé avec succès !</p>}
+                    {contactAdminStatus === "error" && <p style={{ color: "#DC2626", marginBottom: 12 }}>❌ Erreur. Veuillez réessayer.</p>}
+                    <button type="submit" disabled={sendingContactAdmin} style={{ width: "100%", background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 8, padding: "12px", fontWeight: 700, cursor: "pointer" }}>
+                      {sendingContactAdmin ? "Envoi..." : "Envoyer le message"}
+                    </button>
+                  </form>
                 </div>
               </div>
             )}

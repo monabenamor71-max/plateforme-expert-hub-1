@@ -4,28 +4,28 @@ import { User } from '../user/user.entity';
 @Entity('messages')
 export class Message {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  sender_id: number;
+  sender_id!: number;
 
   @Column()
-  receiver_id: number;
+  receiver_id!: number;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'sender_id' })
-  sender: User;
+  sender!: User;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'receiver_id' })
-  receiver: User;
+  receiver!: User;
 
   @Column({ type: 'text' })
-  contenu: string;
+  contenu!: string;
 
   @Column({ default: false })
-  lu: boolean;
+  lu!: boolean;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 }

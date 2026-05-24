@@ -65,7 +65,6 @@ export class FormationsService {
     const saved = await this.formationRepo.save(formation);
     this.logger.log(`✅ Formation sauvegardée ID: ${saved.id}`);
 
-    // 🔔 ENVOYER NOTIFICATION EMAIL À L'ADMIN
     try {
       if (this.mailService && expertUser && expertUser.email) {
         this.logger.log(`📧 Envoi email pour formation ${saved.id}...`);
@@ -156,8 +155,15 @@ export class FormationsService {
     if (dto.description !== undefined) formation.description = dto.description;
     if (dto.domaine !== undefined) formation.domaine = dto.domaine;
     if (dto.formateur !== undefined) formation.formateur = dto.formateur;
+    // ✅ Correction : normalisation des formateur_details (image obligatoire)
     if (dto.formateur_details && Array.isArray(dto.formateur_details)) {
-      formation.formateur_details = dto.formateur_details;
+      formation.formateur_details = dto.formateur_details.map(fd => ({
+        prenom: fd.prenom || '',
+        nom: fd.nom || '',
+        domaine: fd.domaine || '',
+        image: fd.image || '',   // transforme undefined en chaîne vide
+        bio: fd.bio || '',
+      }));
     }
     if (dto.type !== undefined) formation.type = dto.type;
     if (dto.prix !== undefined) formation.prix = dto.prix;

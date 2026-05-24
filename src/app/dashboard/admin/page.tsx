@@ -3,22 +3,27 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  FaSync, FaEye, FaArrowLeft, FaBell, FaSearch, FaTimes,
+  FaSync, FaArrowLeft, FaSearch, FaTimes,
   FaFilePdf, FaImage, FaTrashAlt, FaCommentDollar,
-  FaNewspaper, FaEnvelope, FaEdit, FaTrash, FaCheck, FaPlus,
-  FaCalendarAlt, FaClock, FaUsers, FaChartLine, FaBriefcase,
-  FaMapMarkerAlt, FaPhone, FaStar, FaGraduationCap, FaVideo,
-  FaMicrophone, FaComments, FaHeart, FaGlobe, FaClock as FaClockIcon,
+  FaNewspaper, FaEnvelope, FaEdit, FaPlus,
+  FaClock, FaUsers, FaChartLine, FaBriefcase,
+  FaMapMarkerAlt, FaPhone, FaStar, FaVideo,
   FaEnvelope as FaEnvelopeIcon, FaMapMarkerAlt as FaMapIcon,
-  FaFileAlt,
+  FaFileAlt, FaChalkboardTeacher, FaPodcast, FaSpinner,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
+const FASTAPI_BASE = "http://localhost:5000";
 
 type Tab =
-  | "dashboard" | "experts" | "startups" | "temoignages" | "contacts"
-  | "histoire" | "blog" | "formations" | "podcasts" | "demandes" | "medias" | "news"
-  | "contenu";
+  | "dashboard"
+  | "utilisateurs"
+  | "demandes"
+  | "proposition"
+  | "temoignages"
+  | "contacts"
+  | "contenu_accueil"
+  | "services";
 
 const C = {
   teal: "#00BFA5", tealD: "#00897B", tealL: "#E0F2F1",
@@ -403,16 +408,16 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
         </div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:14 }}>
-        <KpiCard label="Startups totales" value={startups.length} sub={`${startupValides} validées`} color={C.purple+"40"} onClick={()=>setTab("startups")} />
-        <KpiCard label="Experts valides" value={expertValides} sub={`${experts.length} inscrits`} color={C.teal+"40"} onClick={()=>setTab("experts")} />
+        <KpiCard label="Startups totales" value={startups.length} sub={`${startupValides} validées`} color={C.purple+"40"} onClick={()=>setTab("utilisateurs")} />
+        <KpiCard label="Experts valides" value={expertValides} sub={`${experts.length} inscrits`} color={C.teal+"40"} onClick={()=>setTab("utilisateurs")} />
         <KpiCard label="Clients / Demandes" value={demandes.length} sub={`${demandes.filter((d:any)=>d.statut==="en_attente").length} en attente`} color={C.blueM+"40"} onClick={()=>setTab("demandes")} />
         <KpiCard label="Taux de satisfaction" value={satPct?satPct+"%":"—"} sub={`${temosPublies.length} avis · ${avgNote>0?avgNote.toFixed(1):"—"}/5`} color="#10B98140" />
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:18 }}>
-        <KpiCard label="Formations publiées" value={(formations||[]).filter((f:any)=>f.statut==="publie").length} sub={`${(formationsProposees||[]).length} à valider`} color={C.orange+"40"} onClick={()=>setTab("formations")} />
-        <KpiCard label="Podcasts publiés" value={(podcasts||[]).filter((p:any)=>p.statut==="publie").length} sub={`${(podcastsProposees||[]).length} à valider`} color={C.cyan+"40"} onClick={()=>setTab("podcasts")} />
-        <KpiCard label="Articles publiés" value={(articles||[]).filter((a:any)=>a.statut==="publie").length} sub={`${(articles||[]).filter((a:any)=>a.statut==="brouillon").length} brouillons`} color={C.blueM+"40"} onClick={()=>setTab("blog")} />
-        <KpiCard label="En attente validation" value={enAttente} sub="Experts + Startups" color={C.red+"30"} onClick={()=>setTab("experts")} />
+        <KpiCard label="Formations publiées" value={(formations||[]).filter((f:any)=>f.statut==="publie").length} sub={`${(formationsProposees||[]).length} à valider`} color={C.orange+"40"} onClick={()=>setTab("services")} />
+        <KpiCard label="Podcasts publiés" value={(podcasts||[]).filter((p:any)=>p.statut==="publie").length} sub={`${(podcastsProposees||[]).length} à valider`} color={C.cyan+"40"} onClick={()=>setTab("services")} />
+        <KpiCard label="Articles publiés" value={(articles||[]).filter((a:any)=>a.statut==="publie").length} sub={`${(articles||[]).filter((a:any)=>a.statut==="brouillon").length} brouillons`} color={C.blueM+"40"} onClick={()=>setTab("contenu_accueil")} />
+        <KpiCard label="En attente validation" value={enAttente} sub="Experts + Startups" color={C.red+"30"} onClick={()=>setTab("utilisateurs")} />
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:14, marginBottom:14 }}>
         <div style={{ background:C.white, borderRadius:16, border:`2px solid ${C.border}`, padding:"20px 22px" }}>
@@ -516,45 +521,238 @@ function BIDashboardView({ experts, startups, temoignages, demandes, formationsP
 }
 
 // ==================== MODAL DÉTAIL EXPERT ====================
-function ModalExpertDetail({expert,onClose,onValider,onRefuser}:any){
-  return(
+function ModalExpertDetail({ expert, onClose, onValider, onRefuser }: any) {
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [scoreConfig, setScoreConfig] = useState({
+    poids_competences: 8,
+    poids_experience: 5,
+    bonus_diplome: 15,
+    seuil_accepte: 70,
+    seuil_pending: 40,
+    age_min: 18,
+    age_max: 60,
+    sexe_prefere: "tous",
+    localisations_acceptees: ["Toute la Tunisie"],
+    experience_min_ans: 0,
+  });
+
+  useEffect(() => {
+    fetch(`${FASTAPI_BASE}/config`)
+      .then(r => r.json())
+      .then(data => setScoreConfig(prev => ({ ...prev, ...data })))
+      .catch(() => {});
+  }, []);
+
+  const saveScoreConfig = async () => {
+    setSavingConfig(true);
+    try {
+      await fetch(`${FASTAPI_BASE}/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(scoreConfig),
+      });
+    } catch {}
+    setSavingConfig(false);
+  };
+
+  const handleAnalyzeCV = async () => {
+    if (!expert.cv) {
+      setAnalysisError("Aucun CV disponible pour cet expert.");
+      return;
+    }
+    setAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      const cvRes = await fetch(`${BASE}/uploads/cv/${expert.cv}`);
+      const blob = await cvRes.blob();
+      const file = new File([blob], expert.cv, { type: "application/pdf" });
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch(`${FASTAPI_BASE}/analyze-cv-pdf?model=spacy`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!r.ok) throw new Error("Erreur analyse");
+      const data = await r.json();
+      setAnalysisResult(data);
+    } catch (err: any) {
+      setAnalysisError(err.message || "Erreur réseau");
+    }
+    setAnalyzing(false);
+  };
+
+  return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" style={{maxWidth:680}} onClick={(e:any)=>e.stopPropagation()}>
-        <div style={{background:`linear-gradient(135deg, ${C.sidebar}, ${C.tealD})`,padding:"22px 26px",borderRadius:"20px 20px 0 0"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
-              <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(0,191,165,.25)",border:`2px solid ${C.teal}`,display:"flex",alignItems:"center",justifyContent:"center",color:C.teal,fontWeight:800,fontSize:20}}>{expert.user?.prenom?.[0]}{expert.user?.nom?.[0]}</div>
+      <div className="modal" style={{ maxWidth: 780 }} onClick={(e: any) => e.stopPropagation()}>
+        <div style={{ background: `linear-gradient(135deg, ${C.sidebar}, ${C.tealD})`, padding: "22px 26px", borderRadius: "20px 20px 0 0" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(0,191,165,.25)", border: `2px solid ${C.teal}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.teal, fontWeight: 800, fontSize: 20 }}>
+                {expert.user?.prenom?.[0]}{expert.user?.nom?.[0]}
+              </div>
               <div>
-                <div style={{color:"rgba(255,255,255,.6)",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"1.5px"}}>Fiche Expert</div>
-                <div style={{color:"#fff",fontWeight:800,fontSize:19}}>{expert.user?.prenom} {expert.user?.nom}</div>
-                <div style={{color:C.teal,fontSize:12,marginTop:2}}>{expert.domaine||"Expert"}</div>
+                <div style={{ color: "rgba(255,255,255,.6)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" }}>Fiche Expert</div>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: 19 }}>{expert.user?.prenom} {expert.user?.nom}</div>
+                <div style={{ color: C.teal, fontSize: 12, marginTop: 2 }}>{expert.domaine || "Expert"}</div>
               </div>
             </div>
-            <button onClick={onClose} style={{background:"rgba(255,255,255,.15)",border:"none",borderRadius:10,width:36,height:36,cursor:"pointer",color:"#fff",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
           </div>
         </div>
-        <div style={{padding:"22px 26px",maxHeight:"75vh",overflowY:"auto"}}>
-          <div style={{background:"#F8FAFC",borderRadius:14,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.border}`}}>
-            <div style={{fontWeight:700,fontSize:13,color:C.text,marginBottom:12}}>Informations personnelles</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{label:"Email",val:expert.user?.email||"—"},{label:"Téléphone",val:expert.user?.telephone||"—"},{label:"Localisation",val:expert.localisation||"—"},{label:"Expérience",val:expert.annee_debut_experience?`${new Date().getFullYear()-expert.annee_debut_experience} ans`:"—"},{label:"Domaine",val:expert.domaine||"—"},{label:"Statut",val:expert.statut}].map((row,i)=>(
-                <div key={i} style={{background:C.white,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.border}`}}>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.textSub,textTransform:"uppercase",marginBottom:4}}>{row.label}</div>
-                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{row.val}</div>
+        <div style={{ padding: "22px 26px", maxHeight: "75vh", overflowY: "auto" }}>
+          <div style={{ background: "#F8FAFC", borderRadius: 14, padding: "16px 18px", marginBottom: 16, border: `1px solid ${C.border}` }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: C.text, marginBottom: 12 }}>Informations personnelles</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { label: "Email", val: expert.user?.email || "—" },
+                { label: "Téléphone", val: expert.user?.telephone || "—" },
+                { label: "Localisation", val: expert.localisation || "—" },
+                { label: "Expérience", val: expert.annee_debut_experience ? `${new Date().getFullYear() - expert.annee_debut_experience} ans` : "—" },
+                { label: "Domaine", val: expert.domaine || "—" },
+                { label: "Statut", val: expert.statut },
+              ].map((row, i) => (
+                <div key={i} style={{ background: C.white, borderRadius: 10, padding: "10px 14px", border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.textSub, textTransform: "uppercase", marginBottom: 4 }}>{row.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{row.val}</div>
                 </div>
               ))}
             </div>
           </div>
-          {expert.description&&<div style={{background:"#F8FAFC",borderRadius:14,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.border}`}}><p style={{fontSize:13.5,color:"#334155",lineHeight:1.75,margin:0}}>{expert.description}</p></div>}
-          {expert.cv&&<div style={{marginBottom:16}}><a href={`${BASE}/uploads/cv/${expert.cv}`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:8,background:C.blueL,color:C.blue,borderRadius:10,padding:"10px 16px",textDecoration:"none",fontWeight:700,fontSize:13}}>Voir le CV</a></div>}
+          {expert.description && (
+            <div style={{ background: "#F8FAFC", borderRadius: 14, padding: "16px 18px", marginBottom: 16, border: `1px solid ${C.border}` }}>
+              <p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.75, margin: 0 }}>{expert.description}</p>
+            </div>
+          )}
+          {expert.cv && (
+            <div style={{ marginBottom: 16 }}>
+              <a href={`${BASE}/uploads/cv/${expert.cv}`} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.blueL, color: C.blue, borderRadius: 10, padding: "10px 16px", textDecoration: "none", fontWeight: 700, fontSize: 13 }}>
+                Voir le CV
+              </a>
+            </div>
+          )}
+
+          {(expert.cv || expert.cv_text) && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.text, marginBottom: 12 }}>⚙️ Configuration scoring</div>
+              <div style={{ background: "#F8FAFC", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  {[
+                    { key: "poids_competences", label: "Points/compétence", min: 1, max: 20 },
+                    { key: "poids_experience", label: "Points/année exp.", min: 1, max: 20 },
+                    { key: "bonus_diplome", label: "Bonus diplôme", min: 0, max: 30 },
+                    { key: "seuil_accepte", label: "Seuil accepter", min: 50, max: 100 },
+                  ].map(field => (
+                    <div key={field.key}>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: C.textSub, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{field.label}</label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input type="range" min={field.min} max={field.max} value={(scoreConfig as any)[field.key]} onChange={e => setScoreConfig((prev: any) => ({ ...prev, [field.key]: parseInt(e.target.value) }))} style={{ flex: 1, accentColor: C.teal }} />
+                        <span style={{ background: C.tealL, color: C.tealD, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 800, minWidth: 36, textAlign: "center" }}>{(scoreConfig as any)[field.key]}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: C.textSub, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Âge minimum</label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input type="range" min={18} max={50} value={scoreConfig.age_min} onChange={e => setScoreConfig(prev => ({ ...prev, age_min: parseInt(e.target.value) }))} style={{ flex: 1, accentColor: C.teal }} />
+                      <span style={{ background: C.tealL, color: C.tealD, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 800, minWidth: 36, textAlign: "center" }}>{scoreConfig.age_min}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: C.textSub, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Âge maximum</label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input type="range" min={25} max={70} value={scoreConfig.age_max} onChange={e => setScoreConfig(prev => ({ ...prev, age_max: parseInt(e.target.value) }))} style={{ flex: 1, accentColor: C.teal }} />
+                      <span style={{ background: C.tealL, color: C.tealD, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 800, minWidth: 36, textAlign: "center" }}>{scoreConfig.age_max}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: C.textSub, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Expérience minimum (années)</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="range" min={0} max={20} value={scoreConfig.experience_min_ans} onChange={e => setScoreConfig(prev => ({ ...prev, experience_min_ans: parseInt(e.target.value) }))} style={{ flex: 1, accentColor: C.teal }} />
+                    <span style={{ background: C.tealL, color: C.tealD, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 800, minWidth: 36, textAlign: "center" }}>{scoreConfig.experience_min_ans} ans</span>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: C.textSub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Sexe préféré</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {["tous", "homme", "femme"].map(s => (
+                      <button key={s} type="button" onClick={() => setScoreConfig(prev => ({ ...prev, sexe_prefere: s }))} style={{ flex: 1, padding: "7px", border: `1.5px solid ${scoreConfig.sexe_prefere === s ? C.teal : C.border}`, borderRadius: 8, background: scoreConfig.sexe_prefere === s ? C.tealL : "#fff", color: scoreConfig.sexe_prefere === s ? C.tealD : C.textSub, fontWeight: scoreConfig.sexe_prefere === s ? 700 : 500, cursor: "pointer", fontFamily: "inherit", fontSize: 12, textTransform: "capitalize" }}>
+                        {s === "tous" ? "Tous" : s === "homme" ? "Homme" : "Femme"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: C.textSub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Localisations acceptées</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {["Toute la Tunisie", "Tunis", "Sfax", "Sousse", "Bizerte", "Nabeul", "Gabes"].map(loc => (
+                      <button key={loc} type="button" onClick={() => {
+                        const locs = scoreConfig.localisations_acceptees;
+                        if (loc === "Toute la Tunisie") setScoreConfig(prev => ({ ...prev, localisations_acceptees: ["Toute la Tunisie"] }));
+                        else {
+                          const filtered = locs.filter(l => l !== "Toute la Tunisie");
+                          if (filtered.includes(loc)) setScoreConfig(prev => ({ ...prev, localisations_acceptees: filtered.filter(l => l !== loc) }));
+                          else setScoreConfig(prev => ({ ...prev, localisations_acceptees: [...filtered, loc] }));
+                        }
+                      }} style={{ padding: "5px 10px", border: `1.5px solid ${scoreConfig.localisations_acceptees.includes(loc) ? C.teal : C.border}`, borderRadius: 8, background: scoreConfig.localisations_acceptees.includes(loc) ? C.tealL : "#fff", color: scoreConfig.localisations_acceptees.includes(loc) ? C.tealD : C.textSub, fontWeight: scoreConfig.localisations_acceptees.includes(loc) ? 700 : 500, cursor: "pointer", fontFamily: "inherit", fontSize: 11 }}>
+                        {loc}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={saveScoreConfig} disabled={savingConfig} style={{ width: "100%", padding: "8px", background: C.teal, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{savingConfig ? "Sauvegarde..." : "💾 Sauvegarder la formule"}</button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>🔍 Analyse automatique du CV (modèle spaCy)</div>
+                <button onClick={handleAnalyzeCV} disabled={analyzing} style={{ background: "#1D9E75", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: analyzing ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 700 }}>{analyzing ? "⏳ Analyse..." : "Analyser le CV"}</button>
+              </div>
+              {analysisError && <div style={{ background: C.redL, border: `1px solid ${C.red}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: C.red, marginBottom: 8 }}>⚠️ {analysisError}</div>}
+              {analysisResult && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ background: "#F0FDF4", border: `1.5px solid ${C.greenM}40`, borderRadius: 12, padding: "14px 16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontWeight: 800, fontSize: 14, color: C.text }}>Résultat de l'analyse (spaCy)</span>
+                      <span style={{ background: analysisResult.decision === "accepted" ? C.greenL : analysisResult.decision === "pending" ? C.amberL : C.redL, color: analysisResult.decision === "accepted" ? C.green : analysisResult.decision === "pending" ? "#92400E" : C.red, borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
+                        {analysisResult.decision === "accepted" ? "Accepté" : analysisResult.decision === "pending" ? "En attente" : "Refusé"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+                      <div><span style={{ fontSize: 12, color: C.textSub }}>Score :</span> <strong style={{ fontSize: 18, color: analysisResult.score >= 70 ? C.green : analysisResult.score >= 40 ? C.amber : C.red }}>{analysisResult.score} / 100</strong></div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.textSub, marginBottom: 4 }}>Compétences détectées :</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {(analysisResult.skills_found || []).map((skill: string, idx: number) => (
+                          <span key={idx} style={{ background: C.tealL, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, color: C.tealD }}>{skill}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {expert.statut === "en_attente" && (
+                    <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px", border: `1px solid ${C.border}`, marginTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.textSub, marginBottom: 8, textTransform: "uppercase" }}>Décision finale admin</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn btn-red" style={{ flex: 1, justifyContent: "center" }} onClick={() => onRefuser(expert.id)}>❌ Refuser l'expert</button>
+                        <button className="btn btn-green" style={{ flex: 1, justifyContent: "center" }} onClick={() => onValider(expert.id)}>✅ Accepter l'expert</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        {expert.statut==="en_attente"&&<div style={{padding:"14px 26px",borderTop:`1px solid ${C.border}`,display:"flex",gap:10,justifyContent:"flex-end",background:"#FAFCFE",borderRadius:"0 0 20px 20px"}}><button className="btn btn-red" onClick={()=>onRefuser(expert.id)}>Refuser</button><button className="btn btn-green" onClick={()=>onValider(expert.id)}>Valider et envoyer email</button></div>}
       </div>
     </div>
   );
 }
 
-// ==================== MODAL DÉTAIL STARTUP (avec localisation) ====================
+// ==================== MODAL DÉTAIL STARTUP ====================
 function ModalStartupDetail({startup,onClose,onValider,onRefuser}:any){
   return(
     <div className="modal-bg" onClick={onClose}>
@@ -616,13 +814,14 @@ function resolveExpertChoisi(demande:any,experts:any[]):any|null{
   return null;
 }
 
-// ==================== MODAL DEMANDE SERVICE ====================
-function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdmin,onChangerStatut,onNotifierExperts,onAccepterFormation,onRefuserFormation,onClose,getDemandeDomaine,setSelectedExpertProfile,devisList,onLoadDevis}:any){
+// ==================== MODAL DEMANDE SERVICE (SANS COMMENTAIRE ADMIN) ====================
+function ModalDemandeService({demande,experts,onNotifierExperts,onAccepterFormation,onRefuserFormation,onClose,getDemandeDomaine,setSelectedExpertProfile,devisList,onLoadDevis}:any){
   const svc=demande?.service||"";
   const svcNorm = normalizeService(svc);
   const isFormationExistante = svcNorm === "formation-existante";
   const isFormationSurMesure = svcNorm === "formation-sur-mesure";
   const needsExpert = ["consulting","audit-sur-site","nos-plateformes","formation-sur-mesure"].includes(svcNorm);
+  const allowRefuse = isFormationExistante;
   const demandeDomaine=getDemandeDomaine(demande);
   const expertsValides=experts.filter((e:any)=>e.statut==="valide");
   let expertsFiltres=expertsValides;
@@ -661,7 +860,6 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
           </div>
         </div>
         <div style={{padding:"22px 26px",maxHeight:"80vh",overflowY:"auto"}}>
-          {/* Corps détaillé (identique à l'original) - gardé pour ne pas surcharger, mais fonctionnel */}
           <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
             <span style={{background:isFormationExistante?C.greenL:isFormationSurMesure?C.blueL:C.tealL,color:isFormationExistante?C.green:isFormationSurMesure?C.blue:C.tealD,borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700}}>
               {getServiceLabel(svc)}
@@ -676,7 +874,14 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
           <div style={{background:"#F8FAFC",borderRadius:14,padding:"16px 18px",marginBottom:18,border:`1px solid ${C.border}`}}>
             <div style={{fontWeight:700,fontSize:13,color:C.text,marginBottom:12}}>Client</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{label:"Nom",val:`${demande.user?.prenom||""} ${demande.user?.nom||""}`},{label:"Email",val:demande.user?.email||"—"},{label:"Téléphone",val:demande.telephone||demande.user?.telephone||"—"},{label:"Startup",val:demande.user?.startup?.nom_startup||"—"},{label:"Secteur",val:demande.user?.startup?.secteur||"—"},{label:"Domaine",val:getDemandeDomaine(demande)}].map((row,i)=>(
+              {[
+                {label:"Nom",val:`${demande.user?.prenom||""} ${demande.user?.nom||""}`},
+                {label:"Email",val:demande.user?.email||"—"},
+                {label:"Téléphone",val:demande.telephone||demande.user?.telephone||"—"},
+                {label:"Startup",val:demande.user?.startup?.nom_startup||"—"},
+                {label:"Secteur",val:demande.user?.startup?.secteur||"—"},
+                {label:"Domaine",val:getDemandeDomaine(demande)},
+              ].map((row,i)=>(
                 <div key={i} style={{background:C.white,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.border}`}}>
                   <div style={{fontSize:9.5,fontWeight:700,color:C.textSub,textTransform:"uppercase",marginBottom:4}}>{row.label}</div>
                   <div style={{fontSize:13,fontWeight:600,color:C.text}}>{row.val}</div>
@@ -688,7 +893,13 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
             <div style={{background:C.greenL,border:`1.5px solid ${C.greenM}40`,borderRadius:14,padding:"16px 18px",marginBottom:18}}>
               <div style={{fontWeight:700,fontSize:13,color:C.green,marginBottom:10}}>Détails de la formation</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {[{label:"Titre",val:formation.titre||"—"},{label:"Domaine",val:formation.domaine||"—"},{label:"Mode",val:formation.mode==="en_ligne"?"En ligne":formation.mode==="presentiel"?"Présentiel":formation.mode||"—"},{label:"Places dispo.",val:formation.places_limitees?(formation.places_disponibles??0)+" places":"Illimitées"},{label:"Prix",val:formation.gratuit?"Gratuit":formation.prix?`${formation.prix} DT`:"—"}].map((row,i)=>(
+                {[
+                  {label:"Titre",val:formation.titre||"—"},
+                  {label:"Domaine",val:formation.domaine||"—"},
+                  {label:"Mode",val:formation.mode==="en_ligne"?"En ligne":formation.mode==="presentiel"?"Présentiel":formation.mode||"—"},
+                  {label:"Places dispo.",val:formation.places_limitees?(formation.places_disponibles??0)+" places":"Illimitées"},
+                  {label:"Prix",val:formation.gratuit?"Gratuit":formation.prix?`${formation.prix} DT`:"—"},
+                ].map((row,i)=>(
                   <div key={i} style={{background:C.white,borderRadius:8,padding:"8px 12px",border:`1px solid ${C.greenM}25`}}>
                     <div style={{fontSize:9.5,fontWeight:700,color:C.textSub,textTransform:"uppercase",marginBottom:3}}>{row.label}</div>
                     <div style={{fontSize:13,fontWeight:600,color:C.text}}>{row.val}</div>
@@ -772,14 +983,18 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
           )}
           <div style={{background:"#F8FAFC",border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px"}}>
             <div style={{fontWeight:700,color:C.text,fontSize:14,marginBottom:14}}>Actions admin</div>
-            <div style={{marginBottom:14}}><label className="lbl">Message pour le client</label><textarea className="inp" rows={3} value={commentaireAdmin} onChange={(e:any)=>setCommentaireAdmin(e.target.value)}/></div>
             <div style={{display:"flex",flexWrap:"wrap",gap:9}}>
               {demande.statut==="en_attente"&&isFormationExistante&&(
-                <><button className="btn btn-green" style={{flex:1,justifyContent:"center"}} disabled={!peutAccepter} onClick={()=>peutAccepter&&onAccepterFormation(demande.id)}>{peutAccepter?"Accepter":"Complet — impossible"}</button><button className="btn btn-red" style={{flex:1,justifyContent:"center"}} onClick={()=>onRefuserFormation(demande.id)}>Refuser</button></>
+                <React.Fragment><button className="btn btn-green" style={{flex:1,justifyContent:"center"}} disabled={!peutAccepter} onClick={()=>peutAccepter&&onAccepterFormation(demande.id)}>{peutAccepter?"Accepter":"Complet — impossible"}</button><button className="btn btn-red" style={{flex:1,justifyContent:"center"}} onClick={()=>onRefuserFormation(demande.id)}>Refuser</button></React.Fragment>
               )}
-              {demande.statut==="en_attente"&&!isFormationExistante&&<button className="btn btn-red" style={{flex:1,justifyContent:"center"}} onClick={()=>onChangerStatut(demande.id,"refusee")}>Refuser</button>}
-              {demande.statut==="notifie_experts"&&<button className="btn btn-red" style={{flex:1,justifyContent:"center"}} onClick={()=>onChangerStatut(demande.id,"refusee")}>Refuser</button>}
-              {commentaireAdmin&&<button className="btn btn-gray" style={{justifyContent:"center"}} onClick={()=>onChangerStatut(demande.id,demande.statut)}>Sauvegarder</button>}
+              {demande.statut==="en_attente"&&!isFormationExistante&&!allowRefuse&&(
+                <div style={{background:C.blueL, color:C.blue, borderRadius:8, padding:"8px 12px", fontSize:12, fontWeight:500, textAlign:"center", width:"100%"}}>
+                  ℹ️ Cette demande sera traitée par notification d'experts. Aucune action de refus direct n'est disponible.
+                </div>
+              )}
+              {demande.statut==="notifie_experts"&&isFormationExistante&&(
+                <button className="btn btn-red" style={{flex:1,justifyContent:"center"}} onClick={()=>onRefuserFormation(demande.id)}>Refuser</button>
+              )}
             </div>
           </div>
         </div>
@@ -788,78 +1003,244 @@ function ModalDemandeService({demande,experts,commentaireAdmin,setCommentaireAdm
   );
 }
 
-// ==================== FORMATION FORM MODAL ====================
-function FormationFormModal({formation,onClose,onSave}:any){
-  const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({titre:formation?.titre||"",description:formation?.description||"",domaine:formation?.domaine||"",mode:formation?.mode||"en_ligne",duree:formation?.duree||"",localisation:formation?.localisation||"",niveau:formation?.niveau||"",lien_formation:formation?.lien_formation||"",dateDebut:formation?.dateDebut?.split("T")[0]||"",dateFin:formation?.dateFin?.split("T")[0]||"",type:formation?.type||"payant",gratuit:formation?.gratuit||false,prix:formation?.prix||"",places_limitees:formation?.places_limitees||false,places_disponibles:formation?.places_disponibles||"",certifiante:formation?.certifiante||false,statut:formation?.statut||"publie"});
-  const [imageFile,setImageFile]=useState<File|null>(null);
-  const [formateurs,setFormateurs]=useState<any[]>(()=>{
-    if(formation?.formateur_details&&Array.isArray(formation.formateur_details))return formation.formateur_details.map((f:any)=>({prenom:f.prenom||"",nom:f.nom||"",domaine:f.domaine||"",bio:f.bio||"",imageFile:null,imagePreview:f.image?`${BASE}/uploads/formateurs/${f.image}`:""}));
-    return [{prenom:"",nom:"",domaine:"",bio:"",imageFile:null,imagePreview:""}];
+// ==================== FORMATION FORM MODAL (CORRIGÉE) ====================
+function FormationFormModal({ formation, onClose, onSave }: any) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    titre: formation?.titre || "",
+    description: formation?.description || "",
+    domaine: formation?.domaine || "",
+    mode: formation?.mode || "en_ligne",
+    duree: formation?.duree || "",
+    localisation: formation?.localisation || "",
+    niveau: formation?.niveau || "",
+    lien_formation: formation?.lien_formation || "",
+    dateDebut: formation?.dateDebut?.split("T")[0] || "",
+    dateFin: formation?.dateFin?.split("T")[0] || "",
+    type: formation?.type || "payant",
+    gratuit: formation?.gratuit || false,
+    prix: formation?.prix || "",
+    places_limitees: formation?.places_limitees || false,
+    places_disponibles: formation?.places_disponibles || "",
+    certifiante: formation?.certifiante || false,
+    statut: formation?.statut || "publie",
   });
-  const DOMAINES=["Marketing Digital","Finance / Comptabilité","Ressources Humaines","Développement Web / Mobile","Design UI/UX","Stratégie Commerciale","Logistique / Supply Chain","Intelligence Artificielle / Data","Management","Communication","Juridique","Autre"];
-  const handleSubmit=async(e:React.FormEvent)=>{
-    e.preventDefault();if(!form.titre.trim()){alert("Titre requis");return;}setLoading(true);
-    const fd=new FormData();
-    Object.entries(form).forEach(([k,v])=>{if(v!==null&&v!==undefined&&v!=="")fd.append(k,String(v));});
-    fd.set("gratuit",String(form.gratuit));fd.set("places_limitees",String(form.places_limitees));fd.set("certifiante",String(form.certifiante));
-    if(imageFile)fd.append("image",imageFile);
-    fd.append("formateur_details",JSON.stringify(formateurs.map(f=>({prenom:f.prenom,nom:f.nom,domaine:f.domaine,bio:f.bio}))));
-    formateurs.forEach((f,i)=>{if(f.imageFile)fd.append(`formateur_image_${i}`,f.imageFile);});
-    const url=formation?`${BASE}/formations/admin/${formation.id}`:`${BASE}/formations/admin/create`;
-    try{const res=await fetch(url,{method:formation?"PUT":"POST",headers:{Authorization:`Bearer ${localStorage.getItem("access_token")}`},body:fd});if(res.ok){onSave();onClose();}else{const err=await res.text();alert(`Erreur: ${err}`);}}catch{alert("Erreur réseau");}
-    setLoading(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [formateurs, setFormateurs] = useState<any[]>(() => {
+    if (formation?.formateur_details && Array.isArray(formation.formateur_details))
+      return formation.formateur_details.map((f: any) => ({
+        prenom: f.prenom || "",
+        nom: f.nom || "",
+        domaine: f.domaine || "",
+        bio: f.bio || "",
+        imageFile: null,
+        imagePreview: f.image ? `${BASE}/uploads/formateurs/${f.image}` : "",
+      }));
+    return [{ prenom: "", nom: "", domaine: "", bio: "", imageFile: null, imagePreview: "" }];
+  });
+
+  const DOMAINES = [
+    "Marketing Digital", "Finance / Comptabilité", "Ressources Humaines",
+    "Développement Web / Mobile", "Design UI/UX", "Stratégie Commerciale",
+    "Logistique / Supply Chain", "Intelligence Artificielle / Data",
+    "Management", "Communication", "Juridique", "Autre",
+  ];
+
+  const addFormateur = () => {
+    setFormateurs(prev => [...prev, { prenom: "", nom: "", domaine: "", bio: "", imageFile: null, imagePreview: "" }]);
   };
-  return(
+
+  const removeFormateur = (index: number) => {
+    if (formateurs.length === 1) return;
+    setFormateurs(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateFormateur = (index: number, field: string, value: any) => {
+    setFormateurs(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
+  };
+
+  const handleFormateurImage = (index: number, file: File | null) => {
+    if (file) {
+      const preview = URL.createObjectURL(file);
+      setFormateurs(prev => prev.map((f, i) =>
+        i === index ? { ...f, imageFile: file, imagePreview: preview } : f
+      ));
+    } else {
+      setFormateurs(prev => prev.map((f, i) =>
+        i === index ? { ...f, imageFile: null, imagePreview: "" } : f
+      ));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.titre.trim()) {
+      alert("Titre requis");
+      return;
+    }
+
+    // Construction des formateur_details avec des valeurs par défaut pour éviter les undefined
+    const formateursData = [];
+    for (let i = 0; i < formateurs.length; i++) {
+      const f = formateurs[i];
+      formateursData.push({
+        prenom: (f.prenom && f.prenom.trim() !== "") ? f.prenom.trim() : "",
+        nom: (f.nom && f.nom.trim() !== "") ? f.nom.trim() : "",
+        domaine: (f.domaine && f.domaine.trim() !== "") ? f.domaine.trim() : "",
+        bio: (f.bio && f.bio.trim() !== "") ? f.bio.trim() : "",
+      });
+    }
+
+    setLoading(true);
+    const fd = new FormData();
+
+    // Ajouter tous les champs du formulaire
+    fd.append("titre", form.titre);
+    if (form.description) fd.append("description", form.description);
+    if (form.domaine) fd.append("domaine", form.domaine);
+    fd.append("mode", form.mode);
+    if (form.duree) fd.append("duree", form.duree);
+    if (form.localisation) fd.append("localisation", form.localisation);
+    if (form.niveau) fd.append("niveau", form.niveau);
+    if (form.lien_formation) fd.append("lien_formation", form.lien_formation);
+    if (form.dateDebut) fd.append("dateDebut", form.dateDebut);
+    if (form.dateFin) fd.append("dateFin", form.dateFin);
+    fd.append("type", form.type);
+    fd.append("gratuit", String(form.gratuit));
+    if (form.prix && !form.gratuit) fd.append("prix", form.prix);
+    fd.append("places_limitees", String(form.places_limitees));
+    if (form.places_limitees && form.places_disponibles) fd.append("places_disponibles", form.places_disponibles);
+    fd.append("certifiante", String(form.certifiante));
+    fd.append("statut", form.statut);
+    if (imageFile) fd.append("image", imageFile);
+    
+    // Envoyer formateur_details en JSON (format attendu par le backend)
+    fd.append("formateur_details", JSON.stringify(formateursData));
+
+    // Ajouter les images des formateurs (une par formateur, index correspondant)
+    for (let i = 0; i < formateurs.length; i++) {
+      if (formateurs[i].imageFile) {
+        fd.append(`formateur_image_${i}`, formateurs[i].imageFile);
+      }
+    }
+
+    const url = formation
+      ? `${BASE}/formations/admin/${formation.id}`
+      : `${BASE}/formations/admin/create`;
+    
+    try {
+      const res = await fetch(url, {
+        method: formation ? "PUT" : "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+        body: fd,
+      });
+      if (res.ok) {
+        alert(formation ? "Formation modifiée avec succès !" : "Formation créée avec succès !");
+        onSave();
+        onClose();
+      } else {
+        const err = await res.text();
+        alert(`Erreur: ${err}`);
+      }
+    } catch (err) {
+      console.error("Erreur réseau:", err);
+      alert("Erreur réseau");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" style={{maxWidth:900}} onClick={(e:any)=>e.stopPropagation()}>
-        <div style={{background:`linear-gradient(135deg, ${C.sidebar}, ${C.purple})`,padding:"24px 28px",borderRadius:"20px 20px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",alignItems:"center",gap:14}}><div style={{width:48,height:48,borderRadius:12,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#fff",fontWeight:700}}>F</div><div style={{color:"#fff",fontWeight:800,fontSize:18}}>{formation?"Modifier":"Créer"} une formation</div></div>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,.15)",border:"none",borderRadius:10,width:36,height:36,cursor:"pointer",color:"#fff",fontSize:16}}>×</button>
-        </div>
-        <form onSubmit={handleSubmit} style={{padding:"24px 28px",maxHeight:"72vh",overflowY:"auto"}}>
-          <div style={{marginBottom:12}}><label className="lbl">Titre *</label><input className="inp" required value={form.titre} onChange={e=>setForm({...form,titre:e.target.value})}/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <div><label className="lbl">Domaine</label><select className="inp" value={form.domaine} onChange={e=>setForm({...form,domaine:e.target.value})}><option value="">Sélectionner</option>{DOMAINES.map(d=><option key={d}>{d}</option>)}</select></div>
-            <div><label className="lbl">Mode</label><select className="inp" value={form.mode} onChange={e=>setForm({...form,mode:e.target.value})}><option value="en_ligne">En ligne</option><option value="presentiel">Présentiel</option><option value="hybride">Hybride</option></select></div>
-            <div><label className="lbl">Durée</label><input className="inp" value={form.duree} onChange={e=>setForm({...form,duree:e.target.value})} placeholder="Ex: 2 jours"/></div>
-            <div><label className="lbl">Niveau</label><select className="inp" value={form.niveau} onChange={e=>setForm({...form,niveau:e.target.value})}><option value="">Sélectionner</option>{["Débutant","Intermédiaire","Avancé","Tous niveaux"].map(n=><option key={n}>{n}</option>)}</select></div>
+      <div className="modal" style={{ maxWidth: 900 }} onClick={(e: any) => e.stopPropagation()}>
+        <div style={{ background: `linear-gradient(135deg, ${C.sidebar}, ${C.purple})`, padding: "24px 28px", borderRadius: "20px 20px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#fff", fontWeight: 700 }}>F</div>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{formation ? "Modifier" : "Créer"} une formation</div>
           </div>
-          <div style={{marginBottom:12}}><label className="lbl">Description</label><textarea className="inp" rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
-          <div style={{marginBottom:16,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 16px",background:"#FAFCFE"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <label className="lbl" style={{marginBottom:0}}>Formateur(s)</label>
-              <button type="button" className="btn btn-teal" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setFormateurs([...formateurs,{prenom:"",nom:"",domaine:"",bio:"",imageFile:null,imagePreview:""}])}>+ Ajouter</button>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16 }}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: "24px 28px", maxHeight: "72vh", overflowY: "auto" }}>
+          <div style={{ marginBottom: 12 }}><label className="lbl">Titre *</label><input className="inp" required value={form.titre} onChange={e => setForm({ ...form, titre: e.target.value })} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div><label className="lbl">Domaine</label><select className="inp" value={form.domaine} onChange={e => setForm({ ...form, domaine: e.target.value })}><option value="">Sélectionner</option>{DOMAINES.map(d => <option key={d}>{d}</option>)}</select></div>
+            <div><label className="lbl">Mode</label><select className="inp" value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value })}><option value="en_ligne">En ligne</option><option value="presentiel">Présentiel</option><option value="hybride">Hybride</option></select></div>
+            <div><label className="lbl">Durée</label><input className="inp" value={form.duree} onChange={e => setForm({ ...form, duree: e.target.value })} placeholder="Ex: 2 jours"/></div>
+            <div><label className="lbl">Niveau</label><select className="inp" value={form.niveau} onChange={e => setForm({ ...form, niveau: e.target.value })}><option value="">Sélectionner</option>{["Débutant","Intermédiaire","Avancé","Tous niveaux"].map(n => <option key={n}>{n}</option>)}</select></div>
+          </div>
+          <div style={{ marginBottom: 12 }}><label className="lbl">Description</label><textarea className="inp" rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+          <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", background: "#FAFCFE" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <label className="lbl" style={{ marginBottom: 0 }}>Formateur(s)</label>
+              <button type="button" className="btn btn-teal" style={{ fontSize: 12, padding: "5px 12px" }} onClick={addFormateur}>+ Ajouter</button>
             </div>
-            {formateurs.map((f,idx)=>(
-              <div key={idx} style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap",borderBottom:idx!==formateurs.length-1?`1px solid ${C.border}`:"none",paddingBottom:12}}>
-                <input className="inp" style={{flex:1,minWidth:100}} placeholder="Prénom" value={f.prenom} onChange={e=>{const n=[...formateurs];n[idx].prenom=e.target.value;setFormateurs(n);}}/>
-                <input className="inp" style={{flex:1,minWidth:100}} placeholder="Nom" value={f.nom} onChange={e=>{const n=[...formateurs];n[idx].nom=e.target.value;setFormateurs(n);}}/>
-                <input className="inp" style={{flex:1,minWidth:100}} placeholder="Domaine" value={f.domaine} onChange={e=>{const n=[...formateurs];n[idx].domaine=e.target.value;setFormateurs(n);}}/>
-                <textarea className="inp" style={{flex:2,minWidth:180}} placeholder="Bio" rows={2} value={f.bio} onChange={e=>{const n=[...formateurs];n[idx].bio=e.target.value;setFormateurs(n);}}/>
-                {formateurs.length>1&&<button type="button" className="btn btn-red" style={{padding:"6px 10px"}} onClick={()=>{const n=[...formateurs];n.splice(idx,1);setFormateurs(n);}}><FaTrashAlt size={12}/></button>}
+            {formateurs.map((f, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap", borderBottom: idx !== formateurs.length - 1 ? `1px solid ${C.border}` : "none", paddingBottom: 12 }}>
+                <input 
+                  className="inp" 
+                  style={{ flex: 1, minWidth: 100 }} 
+                  placeholder="Prénom" 
+                  value={f.prenom} 
+                  onChange={e => updateFormateur(idx, "prenom", e.target.value)} 
+                />
+                <input 
+                  className="inp" 
+                  style={{ flex: 1, minWidth: 100 }} 
+                  placeholder="Nom" 
+                  value={f.nom} 
+                  onChange={e => updateFormateur(idx, "nom", e.target.value)} 
+                />
+                <input 
+                  className="inp" 
+                  style={{ flex: 1, minWidth: 100 }} 
+                  placeholder="Domaine" 
+                  value={f.domaine} 
+                  onChange={e => updateFormateur(idx, "domaine", e.target.value)} 
+                />
+                <textarea 
+                  className="inp" 
+                  style={{ flex: 2, minWidth: 180 }} 
+                  placeholder="Bio" 
+                  rows={2} 
+                  value={f.bio} 
+                  onChange={e => updateFormateur(idx, "bio", e.target.value)} 
+                />
+                <label className="upload-zone" style={{ width: 80, height: 80, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#fff" }}>
+                  <input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0]; if (file) handleFormateurImage(idx, file); }} style={{ display: "none" }} />
+                  {f.imagePreview ? <img src={f.imagePreview} style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover" }} alt="" /> : <FaImage style={{ fontSize: 20, color: "#94A3B8" }} />}
+                </label>
+                {formateurs.length > 1 && (
+                  <button type="button" className="btn btn-red" style={{ padding: "6px 10px" }} onClick={() => removeFormateur(idx)}>
+                    <FaTrashAlt size={12} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <div><label className="lbl">Localisation</label><input className="inp" value={form.localisation} onChange={e=>setForm({...form,localisation:e.target.value})}/></div>
-            <div><label className="lbl">Lien</label><input className="inp" value={form.lien_formation} onChange={e=>setForm({...form,lien_formation:e.target.value})}/></div>
-            <div><label className="lbl">Date début</label><input className="inp" type="date" value={form.dateDebut} onChange={e=>setForm({...form,dateDebut:e.target.value})}/></div>
-            <div><label className="lbl">Date fin</label><input className="inp" type="date" value={form.dateFin} onChange={e=>setForm({...form,dateFin:e.target.value})}/></div>
-            <div><label className="lbl">Type</label><select className="inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option value="payant">Payant</option><option value="gratuit">Gratuit</option></select></div>
-            <div><label className="lbl">Statut</label><select className="inp" value={form.statut} onChange={e=>setForm({...form,statut:e.target.value})}><option value="publie">Publié</option><option value="brouillon">Brouillon</option><option value="archive">Archivé</option></select></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div><label className="lbl">Localisation</label><input className="inp" value={form.localisation} onChange={e => setForm({ ...form, localisation: e.target.value })} /></div>
+            <div><label className="lbl">Lien</label><input className="inp" value={form.lien_formation} onChange={e => setForm({ ...form, lien_formation: e.target.value })} /></div>
+            <div><label className="lbl">Date début</label><input className="inp" type="date" value={form.dateDebut} onChange={e => setForm({ ...form, dateDebut: e.target.value })} /></div>
+            <div><label className="lbl">Date fin</label><input className="inp" type="date" value={form.dateFin} onChange={e => setForm({ ...form, dateFin: e.target.value })} /></div>
+            <div><label className="lbl">Type</label><select className="inp" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}><option value="payant">Payant</option><option value="gratuit">Gratuit</option></select></div>
+            <div><label className="lbl">Statut</label><select className="inp" value={form.statut} onChange={e => setForm({ ...form, statut: e.target.value })}><option value="publie">Publié</option><option value="brouillon">Brouillon</option><option value="archive">Archivé</option></select></div>
           </div>
-          {form.type==="payant"&&<div style={{marginBottom:12}}><label className="lbl">Prix (DT)</label><input className="inp" type="number" min="0" value={form.prix} onChange={e=>setForm({...form,prix:e.target.value})}/></div>}
-          <div style={{marginBottom:12}}>
+          {form.type === "payant" && (
+            <div style={{ marginBottom: 12 }}>
+              <label className="lbl">Prix (DT)</label>
+              <input className="inp" type="number" min="0" value={form.prix} onChange={e => setForm({ ...form, prix: e.target.value })} />
+            </div>
+          )}
+          <div style={{ marginBottom: 12 }}>
             <label className="lbl">Image de couverture</label>
-            <label className="upload-zone" style={{minHeight:90,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
-              <input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)setImageFile(f);}} style={{display:"none"}}/>
-              {imageFile?<img src={URL.createObjectURL(imageFile)} style={{maxHeight:70,borderRadius:6}} alt=""/>:(formation?.image?<img src={`${BASE}/uploads/formations/${formation.image}`} style={{maxHeight:70,borderRadius:6}} alt=""/>:<div style={{fontSize:12,color:C.textSub}}>Importer une image</div>)}
+            <label className="upload-zone" style={{ minHeight: 90, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setImageFile(f); }} style={{ display: "none" }} />
+              {imageFile ? <img src={URL.createObjectURL(imageFile)} style={{ maxHeight: 70, borderRadius: 6 }} alt="" /> : (formation?.image ? <img src={`${BASE}/uploads/formations/${formation.image}`} style={{ maxHeight: 70, borderRadius: 6 }} alt="" /> : <div style={{ fontSize: 12, color: C.textSub }}>Importer une image</div>)}
             </label>
           </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:12,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
             <button type="button" className="btn btn-gray" onClick={onClose}>Annuler</button>
-            <button type="submit" className="btn btn-teal" disabled={loading}>{loading?"Enregistrement...":(formation?"Modifier":"Créer")}</button>
+            <button type="submit" className="btn btn-teal" disabled={loading}>{loading ? "Enregistrement..." : (formation ? "Modifier" : "Créer")}</button>
           </div>
         </form>
       </div>
@@ -890,9 +1271,8 @@ function PodcastFormModal({podcast,onClose,onSave}:any){
   fd.append("auteur", form.auteur || "");
   fd.append("statut", form.statut);
   
-  // ✅ CORRECTION : utiliser "url_audio" au lieu de "video_url"
   if (useUrl && form.video_url.trim()) {
-    fd.append("url_audio", form.video_url);  // ← Changement clé
+    fd.append("url_audio", form.video_url);
   } else if (videoFile) {
     fd.append("video_file", videoFile);
   }
@@ -1155,503 +1535,292 @@ function ModalPodcastValidation({podcast,onClose,onValider,onRefuser}:any){
   );
 }
 
-// ==================== DEMANDES VIEW ====================
-function DemandesView({demandes,formations,podcasts,experts,formationsEnAttenteExpert,podcastsEnAttenteExpert,onOpenDemande,onPublierFormationExpert,onRefuserFormationExpert,onPublierPodcastExpert,onRefuserPodcastExpert,onSetFormationValidation,onSetPodcastValidation,onLoadDevisForDemande}:any){
-  const [activeTab,setActiveTab]=useState<"experts"|"startups">("experts");
-  const [expertSubTab,setExpertSubTab]=useState<"formations"|"podcasts">("formations");
-  const [serviceFilter,setServiceFilter]=useState<string>("all");
-  const totalExpertAttente=formationsEnAttenteExpert.length+podcastsEnAttenteExpert.length;
-  const totalServiceAttente=demandes.filter((d:any)=>d.statut==="en_attente").length;
-  const countByService=(key:string)=>{if(key==="all")return demandes.length;return demandes.filter((d:any)=>normalizeService(d.service)===key).length;};
-  const demandesFiltrees=serviceFilter==="all"?demandes:demandes.filter((d:any)=>normalizeService(d.service)===serviceFilter);
-
-  return(
-    <div>
-      <div style={{marginBottom:22}}><div style={{fontSize:10,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:"2px",marginBottom:4}}>Centre de gestion</div><h1 style={{fontSize:22,fontWeight:900,color:C.text,margin:0}}>Demandes et Publications</h1></div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
-        {[{label:"Formations à valider",value:formationsEnAttenteExpert.length,color:C.purple},{label:"Médias à valider",value:podcastsEnAttenteExpert.length,color:C.cyan},{label:"Demandes service",value:demandes.length,color:C.blueM},{label:"Services en attente",value:totalServiceAttente,color:C.amber}].map((s,i)=>(
-          <div key={i} style={{background:C.white,border:`2px solid ${s.value>0?s.color+"30":C.border}`,borderRadius:14,padding:"15px 17px",display:"flex",gap:12,alignItems:"center"}}>
-            <div style={{width:40,height:40,borderRadius:11,background:`${s.color}12`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:s.color,fontSize:15}}>{String(s.value)}</div>
-            <div><div style={{fontSize:22,fontWeight:900,color:s.value>0?s.color:C.text}}>{s.value}</div><div style={{fontSize:11.5,color:C.textSub,marginTop:1}}>{s.label}</div></div>
-          </div>
-        ))}
-      </div>
-      <div style={{background:C.white,border:`2px solid ${C.border}`,borderRadius:16,overflow:"hidden"}}>
-        <div style={{display:"flex",borderBottom:`1.5px solid ${C.border}`}}>
-          {[["experts","Experts — Publications",totalExpertAttente,C.teal],["startups","Startups — Services",totalServiceAttente,C.blueM]].map(([v,l,c,color])=>(
-            <button key={v as string} onClick={()=>setActiveTab(v as any)} style={{flex:1,padding:"16px 22px",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:activeTab===v?800:500,color:activeTab===v?C.text:C.textSub,background:activeTab===v?C.white:"#FAFCFE",borderBottom:activeTab===v?`3px solid ${color}`:"3px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-              {l as string}
-              {(c as number)>0&&<span style={{background:color as string,color:"#fff",borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:800}}>{c as number}</span>}
-            </button>
-          ))}
-        </div>
-        {activeTab==="experts"&&(
-          <div>
-            <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:"#FAFCFE",padding:"0 18px"}}>
-              {[["formations","Formations",formationsEnAttenteExpert.length,C.purple],["podcasts","Médias",podcastsEnAttenteExpert.length,C.cyan]].map(([v,l,c,color])=>(
-                <button key={v as string} onClick={()=>setExpertSubTab(v as any)} style={{padding:"11px 16px",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:expertSubTab===v?700:500,color:expertSubTab===v?color as string:C.textSub,background:"transparent",borderBottom:expertSubTab===v?`2.5px solid ${color}`:"2.5px solid transparent",display:"flex",alignItems:"center",gap:7}}>
-                  {l as string}<span style={{background:(c as number)>0?color as string:C.border,color:(c as number)>0?"#fff":C.textSub,borderRadius:99,padding:"1px 7px",fontSize:11,fontWeight:800}}>{c as number}</span>
-                </button>
-              ))}
-            </div>
-            <div style={{padding:"18px"}}>
-              {expertSubTab==="formations"&&(formationsEnAttenteExpert.length===0?<div style={{padding:"56px 0",textAlign:"center",color:C.textSub}}><div style={{fontWeight:700,fontSize:15}}>Aucune formation en attente</div></div>:formationsEnAttenteExpert.map((f:any)=>(
-                <div key={f.id} style={{border:`1.5px solid ${C.purple}30`,borderRadius:14,overflow:"hidden",background:C.white,marginBottom:12}}>
-                  <div style={{background:`linear-gradient(135deg, ${C.purpleL}, #EDE9FE)`,padding:"15px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{width:50,height:50,borderRadius:12,background:`linear-gradient(135deg, ${C.purple}, #5B21B6)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#fff",fontWeight:700}}>F</div>
-                      <div><div style={{fontWeight:800,fontSize:14,color:C.text}}>{f.titre}</div><div style={{fontSize:11.5,color:C.purple,marginTop:2}}>{f.expert?.user?.prenom} {f.expert?.user?.nom} · {f.expert?.domaine}</div></div>
-                    </div>
-                    <span style={{background:C.amberL,borderRadius:99,padding:"4px 12px",fontSize:11,fontWeight:700,color:"#92400E"}}>{new Date(f.createdAt).toLocaleDateString("fr-FR")}</span>
-                  </div>
-                  <div style={{padding:"12px 18px",display:"flex",gap:9,flexWrap:"wrap"}}>
-                    <button onClick={()=>onSetFormationValidation(f)} style={{flex:1,minWidth:120,padding:"8px 13px",border:`1.5px solid ${C.purple}30`,borderRadius:9,background:C.purpleL,color:C.purple,fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>Examiner</button>
-                    <button onClick={()=>onPublierFormationExpert(f.id)} style={{flex:1,minWidth:120,padding:"8px 13px",border:`1.5px solid ${C.greenM}40`,borderRadius:9,background:C.greenL,color:C.green,fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>Valider et publier</button>
-                    <button onClick={()=>onRefuserFormationExpert(f.id)} style={{padding:"8px 13px",border:`1.5px solid ${C.red}30`,borderRadius:9,background:C.redL,color:C.red,fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>Refuser</button>
-                  </div>
-                </div>
-              )))}
-              {expertSubTab==="podcasts"&&(podcastsEnAttenteExpert.length===0?<div style={{padding:"56px 0",textAlign:"center",color:C.textSub}}><div style={{fontWeight:700,fontSize:15}}>Aucun média en attente</div></div>:podcastsEnAttenteExpert.map((p:any)=>(
-                <div key={p.id} style={{border:`1.5px solid ${C.cyan}30`,borderRadius:14,overflow:"hidden",background:C.white,marginBottom:12}}>
-                  <div style={{background:`linear-gradient(135deg, ${C.cyanL}, #ECFEFF)`,padding:"15px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{width:50,height:50,borderRadius:12,background:`linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#fff",fontWeight:700}}>V</div>
-                      <div><div style={{fontWeight:800,fontSize:14,color:C.text}}>{p.titre}</div><div style={{fontSize:11.5,color:C.cyan,marginTop:2}}>{p.expert?.user?.prenom} {p.expert?.user?.nom}</div></div>
-                    </div>
-                    <span style={{background:C.amberL,borderRadius:99,padding:"4px 12px",fontSize:11,fontWeight:700,color:"#92400E"}}>{new Date(p.createdAt).toLocaleDateString("fr-FR")}</span>
-                  </div>
-                  <div style={{padding:"12px 18px"}}>
-                    {p.url_video&&<div style={{background:"#F0F4F8",borderRadius:9,padding:"9px 13px",marginBottom:10}}><video src={`${BASE}/uploads/podcasts-audio/${p.url_video}`} controls style={{width:"100%",maxHeight:160,borderRadius:6}}/></div>}
-                    <div style={{display:"flex",gap:9}}>
-                      <button onClick={()=>onSetPodcastValidation(p)} style={{flex:1,padding:"8px 13px",border:`1.5px solid ${C.cyan}30`,borderRadius:9,background:C.cyanL,color:C.cyan,fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>Examiner</button>
-                      <button onClick={()=>onPublierPodcastExpert(p.id)} style={{flex:1,padding:"8px 13px",border:`1.5px solid ${C.greenM}40`,borderRadius:9,background:C.greenL,color:C.green,fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>Valider et publier</button>
-                      <button onClick={()=>onRefuserPodcastExpert(p.id)} style={{padding:"8px 13px",border:`1.5px solid ${C.red}30`,borderRadius:9,background:C.redL,color:C.red,fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>Refuser</button>
-                    </div>
-                  </div>
-                </div>
-              )))}
-            </div>
-          </div>
-        )}
-        {activeTab==="startups"&&(
-          <div>
-            <div style={{padding:"14px 18px 0",borderBottom:`1px solid ${C.border}`,background:"#FAFCFE"}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.textSub,textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Filtrer par service</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",paddingBottom:14}}>
-                {SERVICE_FILTERS.map(sf=>{
-                  const count=countByService(sf.key);
-                  const isActive=serviceFilter===sf.key;
-                  let color=C.teal;
-                  if(sf.key==="consulting")color=C.purple;
-                  else if(sf.key==="audit-sur-site")color=C.orange;
-                  else if(sf.key==="nos-plateformes")color=C.blueM;
-                  else if(sf.key==="formation-sur-mesure")color=C.amber;
-                  else if(sf.key==="formation-existante")color=C.green;
-                  return(
-                    <button key={sf.key} onClick={()=>setServiceFilter(sf.key)} style={{padding:"7px 14px",border:`1.5px solid ${isActive?color:C.border}`,borderRadius:9,background:isActive?`${color}15`:C.white,color:isActive?color:C.textSub,fontWeight:isActive?700:500,cursor:"pointer",fontSize:12.5,fontFamily:"inherit",display:"flex",alignItems:"center",gap:7,transition:"all .15s"}}>
-                      <span>{sf.label}</span>
-                      <span style={{background:isActive?color:"#E5E7EB",color:isActive?"#fff":C.textSub,borderRadius:99,padding:"1px 7px",fontSize:10.5,fontWeight:700,minWidth:20,textAlign:"center"}}>{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {serviceFilter!=="all"&&(
-                <div style={{background:serviceFilter==="formation-sur-mesure"?C.amberL:serviceFilter==="formation-existante"?C.greenL:C.blueL,border:`1px solid ${serviceFilter==="formation-sur-mesure"?C.amber+"40":serviceFilter==="formation-existante"?C.greenM+"40":C.blueM+"30"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,fontWeight:600,color:serviceFilter==="formation-sur-mesure"?"#92400E":serviceFilter==="formation-existante"?C.green:C.blue}}>
-                  {serviceFilter==="consulting"&&"Consulting — L'admin notifie un expert selon le domaine du client."}
-                  {serviceFilter==="audit-sur-site"&&"Audit sur site — L'admin notifie un expert pour un audit physique."}
-                  {serviceFilter==="nos-plateformes"&&"Nos plateformes — Accès à une plateforme, pas d'expert requis."}
-                  {serviceFilter==="formation-sur-mesure"&&"Formation sur mesure — L'admin notifie un expert qui concevra le programme adapté au client."}
-                  {serviceFilter==="formation-existante"&&"Formation existante — Formation déjà disponible. L'admin accepte ou refuse selon les places disponibles."}
-                </div>
-              )}
-            </div>
-            <div style={{padding:"14px 18px"}}>
-              <DataTable
-                title={`Demandes de service${serviceFilter!=="all"?` — ${SERVICE_FILTERS.find(s=>s.key===serviceFilter)?.label}`:""} (${demandesFiltrees.length})`}
-                columns={[{key:"service",label:"Service",sortable:true},{key:"user.prenom",label:"Client",sortable:true},{key:"user.startup.nom_startup",label:"Startup"},{key:"statut",label:"Statut",sortable:true},{key:"createdAt",label:"Date",sortable:true},{key:"actions",label:""}]}
-                data={demandesFiltrees}
-                searchKeys={["service","user.prenom","user.nom","user.startup.nom_startup"]}
-                filters={[{key:"statut",label:"Filtrer par statut",options:[{value:"en_attente",label:"En attente"},{value:"notifie_experts",label:"Experts notifiés"},{value:"devis_envoye",label:"Devis envoyé"},{value:"acceptee",label:"Acceptée"},{value:"refusee",label:"Refusée"}]}]}
-                renderRow={(d:any)=>{
-                  const svcNorm=normalizeService(d.service);
-                  let svcColor=C.teal;
-                  if(svcNorm==="consulting")svcColor=C.purple;
-                  else if(svcNorm==="audit-sur-site")svcColor=C.orange;
-                  else if(svcNorm==="nos-plateformes")svcColor=C.blueM;
-                  else if(svcNorm==="formation-sur-mesure")svcColor=C.amber;
-                  else if(svcNorm==="formation-existante")svcColor=C.green;
-                  return (
-                    <tr key={d.id}>
-                      <td>
-                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                          <span style={{background:`${svcColor}14`,color:svcColor,borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:700,display:"inline-block"}}>{getServiceLabel(d.service)}</span>
-                          {svcNorm==="formation-sur-mesure"&&<span style={{fontSize:10,color:C.amber,fontWeight:600}}>Expert requis</span>}
-                          {svcNorm==="formation-existante"&&d.formation?.places_limitees&&<span style={{fontSize:10,color:C.green,fontWeight:600}}>{d.formation.places_disponibles>0?`${d.formation.places_disponibles} place(s)`:"Complet"}</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <Avatar prenom={d.user?.prenom} nom={d.user?.nom} size={30} color={C.blueM}/>
-                          <div><div style={{fontWeight:600,fontSize:13}}>{d.user?.prenom} {d.user?.nom}</div><div style={{fontSize:11,color:C.textSub}}>{d.user?.email}</div></div>
-                        </div>
-                      </td>
-                      <td>{d.user?.startup?.nom_startup||"—"}</td>
-                      <td><StatusBadge statut={d.statut}/></td>
-                      <td style={{color:C.textSub,fontSize:12}}>{new Date(d.createdAt).toLocaleDateString("fr-FR")}</td>
-                      <td><button className="btn btn-teal" style={{fontSize:12,padding:"6px 13px"}} onClick={()=>onOpenDemande(d)}>Voir</button></td>
-                    </tr>
-                  );
-                }}
-                emptyText="Aucune demande"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ==================== NEWS FORM MODAL (corrigé : statut uniquement brouillon ou envoyé) ====================
-function NewsFormModal({news,onClose,onSave,token}:{news:any;onClose:()=>void;onSave:()=>void;token:string}){
-  const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({titre:news?.titre||"",description:news?.description||"",categorie:news?.categorie||"",statut:news?.statut||"brouillon"});
-  const [imageFile,setImageFile]=useState<File|null>(null);
-  const [attachmentFile,setAttachmentFile]=useState<File|null>(null);
-  const [imagePreview,setImagePreview]=useState(news?.image?`${BASE}/uploads/news/${news.image}`:"");
-  const [sendNow,setSendNow]=useState(false);
-  const CATEGORIES=["Actualité","Événement","Offre spéciale","Formation","Partenariat","Annonce","Autre"];
-  
-  const handleSubmit=async(e:React.FormEvent)=>{
-    e.preventDefault();
-    if(!form.titre.trim()){alert("Titre requis");return;}
-    setLoading(true);
-    const fd=new FormData();
-    fd.append("titre",form.titre);
-    fd.append("description",form.description);
-    fd.append("categorie",form.categorie);
-    // Pour une création : statut = "brouillon"
-    // Pour une modification : on garde le statut existant (ne pas le changer ici)
-    const statutFinal = news ? form.statut : "brouillon";
-    fd.append("statut", statutFinal);
-    if(sendNow && !news) fd.append("send_newsletter","true");
-    if(imageFile) fd.append("image",imageFile);
-    if(attachmentFile) fd.append("attachment",attachmentFile);
-    const url = news ? `${BASE}/news/admin/${news.id}` : `${BASE}/news/admin/create`;
-    try{
-      const res=await fetch(url,{method:news?"PUT":"POST",headers:{Authorization:`Bearer ${token}`},body:fd});
-      if(res.ok){
-        // Si l'envoi immédiat est coché, on recharge pour afficher le nouveau statut (le backend aura mis "envoye" si l'envoi a réussi)
-        onSave();
-        onClose();
-      }else{
-        const err=await res.text();
-        alert(`Erreur : ${err||"Impossible de sauvegarder"}`);
-      }
-    }catch{alert("Erreur réseau");}
-    setLoading(false);
-  };
-
-  return(
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" style={{maxWidth:800}} onClick={(e:any)=>e.stopPropagation()}>
-        <div style={{background:`linear-gradient(135deg, ${C.sidebar}, ${C.teal})`,padding:"24px 28px",borderRadius:"20px 20px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:48,height:48,borderRadius:12,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#fff"}}><FaNewspaper/></div>
-            <div><div style={{color:"rgba(255,255,255,.6)",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"1.5px"}}>News et Newsletter</div><div style={{color:"#fff",fontWeight:800,fontSize:18}}>{news?"Modifier":"Nouvelle"} annonce</div></div>
-          </div>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,.15)",border:"none",borderRadius:10,width:36,height:36,cursor:"pointer",color:"#fff",fontSize:16}}>×</button>
-        </div>
-        <form onSubmit={handleSubmit} style={{padding:"24px 28px",maxHeight:"78vh",overflowY:"auto"}}>
-          <div style={{marginBottom:12}}><label className="lbl">Titre *</label><input className="inp" required value={form.titre} onChange={e=>setForm({...form,titre:e.target.value})} placeholder="Titre de l'annonce"/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <div><label className="lbl">Catégorie</label><select className="inp" value={form.categorie} onChange={e=>setForm({...form,categorie:e.target.value})}><option value="">Sélectionner</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-            {news && (
-              <div><label className="lbl">Statut actuel</label><div style={{padding:"9px 13px", background:"#F8FAFC", borderRadius:9, fontSize:13}}><StatusBadge statut={form.statut} /></div></div>
-            )}
-          </div>
-          <div style={{marginBottom:16}}><label className="lbl">Contenu de l'annonce *</label><textarea className="inp" rows={8} required value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Rédigez le contenu de votre annonce ici..." style={{resize:"vertical",minHeight:180,fontSize:13.5,lineHeight:1.75}}/></div>
-          <div style={{marginBottom:16}}>
-            <label className="lbl">Image (optionnelle)</label>
-            <label className="upload-zone" style={{minHeight:100,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
-              <input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f){setImageFile(f);setImagePreview(URL.createObjectURL(f));}}} style={{display:"none"}}/>
-              {imagePreview?<img src={imagePreview} style={{maxHeight:80,borderRadius:8,maxWidth:"100%"}} alt=""/>:<div style={{fontSize:12,color:C.textSub}}>Cliquer pour importer une image</div>}
-            </label>
-          </div>
-          <div style={{marginBottom:16}}>
-            <label className="lbl">Fichier joint (optionnel)</label>
-            <label className="upload-zone" style={{minHeight:80,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
-              <input type="file" onChange={e=>{const f=e.target.files?.[0];if(f)setAttachmentFile(f);}} style={{display:"none"}}/>
-              {attachmentFile?<div style={{fontSize:12,color:C.greenM}}><FaFileAlt/> {attachmentFile.name}</div>:<div style={{fontSize:12,color:C.textSub}}>Ajouter un document (PDF, etc.)</div>}
-            </label>
-          </div>
-          {!news && (
-            <div style={{background:`${C.teal}08`,border:`1.5px solid ${C.teal}40`,borderRadius:12,padding:"16px 18px",marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div onClick={()=>setSendNow(!sendNow)} style={{width:44,height:24,background:sendNow?C.teal:"#D1D5DB",borderRadius:99,position:"relative",cursor:"pointer",flexShrink:0}}>
-                  <div style={{position:"absolute",top:2,left:sendNow?22:2,width:20,height:20,background:"#fff",borderRadius:"50%",transition:"left .2s"}}/>
-                </div>
-                <div><div style={{fontWeight:700,fontSize:13,color:C.text}}>Envoyer immédiatement par newsletter</div><div style={{fontSize:11.5,color:C.textSub,marginTop:2}}>Notifie automatiquement tous les abonnés après création</div></div>
-              </div>
-              {sendNow&&<div style={{marginTop:12,background:C.tealL,borderRadius:9,padding:"10px 14px",fontSize:12,color:C.tealD,fontWeight:600}}>Cette annonce sera envoyée par email à tous les abonnés après sa création.</div>}
-            </div>
-          )}
-          <div style={{display:"flex",justifyContent:"flex-end",gap:12,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
-            <button type="button" className="btn btn-gray" onClick={onClose}>Annuler</button>
-            <button type="submit" className="btn btn-teal" disabled={loading}>{loading?"Sauvegarde en cours...":(news?"Modifier":"Créer")}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ==================== NEWS VIEW (avec statuts brouillon / envoyé) ====================
-function NewsView({token}:{token:string}){
-  const [news,setNews]=useState<any[]>([]);
-  const [abonnes,setAbonnes]=useState<any[]>([]);
-  const [loading,setLoading]=useState(false);
-  const [showForm,setShowForm]=useState(false);
-  const [editingNews,setEditingNews]=useState<any>(null);
-  const [sending,setSending]=useState<number|null>(null);
-  const [toast,setToast]=useState("");
-
-  const hdr=()=>({Authorization:`Bearer ${token}`});
-  const hdrJ=()=>({Authorization:`Bearer ${token}`,"Content-Type":"application/json"});
-  const notify=(msg:string)=>{setToast(msg);setTimeout(()=>setToast(""),3000);};
-
-  const loadNews = async () => {
-  setLoading(true);
-  try {
-    const r = await fetch(`${BASE}/news/admin/all`, { headers: hdr() });
-    if (r.ok) setNews(await r.json());
-    else setNews([]);
-  } catch {
-    setNews([]);
-  }
-  setLoading(false);
-};
-  const loadAbonnes=async()=>{
-    try{const r=await fetch(`${BASE}/newsletter/admin/all`,{headers:hdr()});if(r.ok)setAbonnes(await r.json());else setAbonnes([]);}catch{setAbonnes([]);}
-  };
-  useEffect(()=>{loadNews();loadAbonnes();},[]);
-
-  const supprimerNews=async(id:number)=>{
-    if(!confirm("Supprimer cette annonce ?"))return;
-    const r = await fetch(`${BASE}/news/admin/${id}`, { method: "DELETE", headers: hdr() });
-    if(r.ok){notify("Supprimée");loadNews();}else notify("Erreur");
-  };
-
-  const envoyerNewsletter = async (id: number) => {
-  if (!confirm(`Envoyer cette annonce aux ${abonnes.length} abonné(s) ?`)) return;
-  setSending(id);
-  try {
-    const r = await fetch(`${BASE}/news/admin/${id}/send-newsletter`, { method: "POST", headers: hdrJ() });
-    if (r.ok) {
-      notify(`Envoyé à ${abonnes.length} abonné(s) !`);
-      await loadNews(); // recharge pour voir le nouveau statut (backend mettra "envoye")
-    } else {
-      const e = await r.text();
-      notify(`Erreur: ${e}`);
-    }
-  } catch {
-    notify("Erreur réseau");
-  }
-  setSending(null);
-};
-
-  return(
-    <div>
-      {toast&&<div style={{position:"fixed",top:18,right:18,zIndex:9999,background:C.white,border:`1px solid ${toast.startsWith("Envoyé")||toast.startsWith("Supprim")?C.greenM+"50":C.red+"50"}`,borderLeft:`4px solid ${toast.startsWith("Envoyé")||toast.startsWith("Supprim")?C.greenM:C.red}`,color:toast.startsWith("Envoyé")||toast.startsWith("Supprim")?C.green:C.red,borderRadius:12,padding:"13px 18px",fontWeight:700,fontSize:13,boxShadow:"0 10px 36px rgba(0,0,0,.09)",animation:"slideIn .2s ease"}}>{toast}</div>}
-      {showForm&&<NewsFormModal news={editingNews} onClose={()=>{setShowForm(false);setEditingNews(null);}} onSave={()=>loadNews()} token={token}/>}
-      <div style={{marginBottom:22,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:10,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:"2px",marginBottom:4}}>Communications</div><h1 style={{fontSize:22,fontWeight:900,color:C.text,margin:0}}>News et Newsletter</h1></div>
-        <button className="btn btn-teal" style={{display:"flex",alignItems:"center",gap:7}} onClick={()=>{setEditingNews(null);setShowForm(true);}}><FaPlus size={11}/> Nouvelle annonce</button>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
-        {[{label:"Annonces totales",value:news.length,color:C.blueM},{label:"Brouillons",value:news.filter(n=>n.statut==="brouillon").length,color:C.amber},{label:"Abonnés newsletter",value:abonnes.length,color:C.purple},{label:"Annonces envoyées",value:news.filter(n=>n.statut==="envoye").length,color:C.green}].map((s,i)=>(
-          <div key={i} style={{background:C.white,border:`2px solid ${s.color}30`,borderRadius:14,padding:"16px 18px"}}>
-            <div style={{fontSize:11.5,color:C.textSub,fontWeight:600,marginBottom:6}}>{s.label}</div>
-            <div style={{fontSize:28,fontWeight:900,color:s.color}}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{background:C.white,border:`2px solid ${C.border}`,borderRadius:16,padding:"20px 24px",marginBottom:22}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <div><div style={{fontWeight:800,fontSize:14,color:C.text}}>Abonnés newsletter ({abonnes.length})</div><div style={{fontSize:11.5,color:C.textSub,marginTop:2}}>Personnes ayant souscrit à la newsletter</div></div>
-          <button className="btn btn-gray" style={{fontSize:12}} onClick={loadAbonnes}>Actualiser</button>
-        </div>
-        {abonnes.length===0?<div style={{textAlign:"center",padding:"20px 0",color:C.textSub}}>Aucun abonné pour l'instant</div>:(
-          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-            {abonnes.slice(0,20).map((a:any,i:number)=>(
-              <div key={i} style={{background:`${C.purple}10`,border:`1px solid ${C.purple}30`,borderRadius:99,padding:"4px 12px",fontSize:12,color:C.purple,fontWeight:600}}>{a.email||a}</div>
-            ))}
-            {abonnes.length>20&&<div style={{background:"#F1F5F9",borderRadius:99,padding:"4px 12px",fontSize:12,color:C.textSub}}>+{abonnes.length-20} autres</div>}
-          </div>
-        )}
-      </div>
-      {loading?<div style={{textAlign:"center",padding:"40px 0",color:C.textSub}}>Chargement...</div>:(
-        news.length===0?(
-          <div style={{background:C.white,border:`2px dashed ${C.border}`,borderRadius:16,padding:"60px 0",textAlign:"center"}}>
-            <div style={{fontSize:48,marginBottom:14}}>📰</div>
-            <div style={{fontWeight:700,fontSize:16,color:C.text,marginBottom:8}}>Aucune annonce créée</div>
-            <div style={{color:C.textSub,marginBottom:20}}>Créez votre première annonce et envoyez-la à vos abonnés</div>
-            <button className="btn btn-teal" onClick={()=>{setEditingNews(null);setShowForm(true);}}>Créer une annonce</button>
-          </div>
-        ):(
-          <div style={{display:"flex",flexDirection:"column",gap:14}}>
-            {news.map((n:any)=>(
-              <div key={n.id} style={{background:C.white,border:`2px solid ${n.statut==="envoye"?C.greenM+"40":C.border}`,borderRadius:16,overflow:"hidden"}}>
-                <div style={{padding:"18px 22px",display:"flex",gap:18,alignItems:"flex-start"}}>
-                  {n.image&&<img src={`${BASE}/uploads/news/${n.image}`} style={{width:80,height:80,borderRadius:10,objectFit:"cover",flexShrink:0}} alt=""/>}
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,flexWrap:"wrap"}}>
-                      <span style={{fontWeight:800,fontSize:15,color:C.text}}>{n.titre}</span>
-                      <StatusBadge statut={n.statut || "brouillon"}/>
-                    </div>
-                    {n.description&&<div style={{fontSize:13,color:C.textSub,lineHeight:1.6,marginBottom:8}}>{(n.description||"").slice(0,160)}{(n.description||"").length>160?"...":""}</div>}
-                    <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-                      {n.categorie&&<span style={{background:`${C.blueM}12`,color:C.blueM,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>{n.categorie}</span>}
-                      <span style={{fontSize:11,color:C.textSub}}>{new Date(n.createdAt||Date.now()).toLocaleDateString("fr-FR")}</span>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:7,flexShrink:0}}>
-                    {n.statut !== "envoye" && abonnes.length > 0 && (
-                      <button className="btn btn-teal" style={{fontSize:12,padding:"7px 14px"}} disabled={sending===n.id} onClick={()=>envoyerNewsletter(n.id)}>
-                        {sending===n.id?"Envoi en cours...":`Envoyer (${abonnes.length})`}
-                      </button>
-                    )}
-                    <button className="btn btn-blue" style={{fontSize:12,padding:"7px 14px"}} onClick={()=>{setEditingNews(n);setShowForm(true);}}>Modifier</button>
-                    <button className="btn btn-red" style={{fontSize:12,padding:"7px 14px"}} onClick={()=>supprimerNews(n.id)}>Supprimer</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      )}
-    </div>
-  );
-}
-
-// ==================== CONTACT CONFIG FORM ====================
-function ContactConfigForm({ contactConfig, setContactConfig, onSave, saving }: any) {
-  const [form, setForm] = useState({
-    email: contactConfig?.email || "contact@beh.com",
-    telephone: contactConfig?.telephone || "+216 29 524 360",
-    adresse: contactConfig?.adresse || "Tunis, Tunisie",
-    horaires: contactConfig?.horaires || "Lun - Ven : 9h00 - 18h00",
-    description_hero: contactConfig?.description_hero || "Une question ? Un projet ? Notre équipe est à votre écoute pour vous accompagner.",
-    latitude: contactConfig?.latitude || "36.8065",
-    longitude: contactConfig?.longitude || "10.1815",
-  });
-
-  const handleChange = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setContactConfig(prev => ({ ...prev, [field]: value }));
-  };
+// ==================== ONGLET UTILISATEURS ====================
+function UtilisateursView({ startups, experts, onValiderStartup, onRefuserStartup, onValiderExpert, onRefuserExpert, onSetSelectedStartup, onSetSelectedExpert, modificationsAtt, onValiderModification, onRefuserModification }: any) {
+  const [subTab, setSubTab] = useState<"startups" | "experts">("startups");
+  const enAttenteStartups = startups.filter((s: any) => s.statut === "en_attente");
+  const enAttenteExperts = experts.filter((e: any) => e.statut === "en_attente");
 
   return (
-    <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 24 }}>
-      <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} />
-        <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Page Contact — Informations modifiables</span>
+    <div>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Gestion des comptes</div>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>Utilisateurs</h1>
       </div>
-      <div style={{ padding: "20px 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div>
-            <label className="lbl">Email de contact</label>
-            <div className="field-icon-wrap" style={{ position: "relative" }}>
-              <FaEnvelopeIcon style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} />
-              <input
-                type="email"
-                className="inp"
-                value={form.email}
-                onChange={e => handleChange("email", e.target.value)}
-                style={{ paddingLeft: 38 }}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="lbl">Téléphone</label>
-            <div className="field-icon-wrap" style={{ position: "relative" }}>
-              <FaPhone style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} />
-              <input
-                type="text"
-                className="inp"
-                value={form.telephone}
-                onChange={e => handleChange("telephone", e.target.value)}
-                style={{ paddingLeft: 38 }}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="lbl">Adresse</label>
-            <div className="field-icon-wrap" style={{ position: "relative" }}>
-              <FaMapIcon style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} />
-              <input
-                type="text"
-                className="inp"
-                value={form.adresse}
-                onChange={e => handleChange("adresse", e.target.value)}
-                style={{ paddingLeft: 38 }}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="lbl">Horaires</label>
-            <div className="field-icon-wrap" style={{ position: "relative" }}>
-              <FaClockIcon style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} />
-              <input
-                type="text"
-                className="inp"
-                value={form.horaires}
-                onChange={e => handleChange("horaires", e.target.value)}
-                style={{ paddingLeft: 38 }}
-              />
-            </div>
-          </div>
-          <div style={{ gridColumn: "span 2" }}>
-            <label className="lbl">Description Hero</label>
-            <textarea
-              className="inp"
-              rows={2}
-              value={form.description_hero}
-              onChange={e => handleChange("description_hero", e.target.value)}
-              placeholder="Description affichée dans le bandeau de la page contact"
-            />
-          </div>
-          <div>
-            <label className="lbl">Latitude (carte Google Maps)</label>
-            <input
-              type="text"
-              className="inp"
-              value={form.latitude}
-              onChange={e => handleChange("latitude", e.target.value)}
-              placeholder="36.8065"
-            />
-          </div>
-          <div>
-            <label className="lbl">Longitude (carte Google Maps)</label>
-            <input
-              type="text"
-              className="inp"
-              value={form.longitude}
-              onChange={e => handleChange("longitude", e.target.value)}
-              placeholder="10.1815"
-            />
-          </div>
+      <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "flex", borderBottom: `1.5px solid ${C.border}` }}>
+          <button onClick={() => setSubTab("startups")} style={{ flex: 1, padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: subTab === "startups" ? 800 : 500, color: subTab === "startups" ? C.text : C.textSub, background: subTab === "startups" ? C.white : "#FAFCFE", borderBottom: subTab === "startups" ? `3px solid ${C.orange}` : "3px solid transparent", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            Startups
+            {enAttenteStartups.length > 0 && <span style={{ background: C.orange, color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{enAttenteStartups.length}</span>}
+          </button>
+          <button onClick={() => setSubTab("experts")} style={{ flex: 1, padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: subTab === "experts" ? 800 : 500, color: subTab === "experts" ? C.text : C.textSub, background: subTab === "experts" ? C.white : "#FAFCFE", borderBottom: subTab === "experts" ? `3px solid ${C.teal}` : "3px solid transparent", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            Experts
+            {enAttenteExperts.length > 0 && <span style={{ background: C.teal, color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{enAttenteExperts.length}</span>}
+          </button>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-          <button className="btn btn-gray" onClick={() => window.location.reload()}>Annuler</button>
-          <button className="btn btn-teal" onClick={onSave} disabled={saving}>{saving ? "Sauvegarde..." : "💾 Sauvegarder"}</button>
+        <div style={{ padding: "18px" }}>
+          {modificationsAtt.length > 0 && subTab === "experts" && (
+            <div style={{ background: C.amberL, border: `1px solid ${C.amber}55`, borderRadius: 14, padding: "16px 20px", marginBottom: 18 }}>
+              <div style={{ fontWeight: 700, color: "#92400E", fontSize: 13.5, marginBottom: 11 }}>Modifications en attente ({modificationsAtt.length})</div>
+              {modificationsAtt.map((e: any) => (
+                <div key={e.id} style={{ background: C.white, borderRadius: 10, padding: "11px 13px", marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={34} color={C.amber} /><div><div style={{ fontWeight: 600, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div><div style={{ fontSize: 11, color: C.textSub }}>{e.user?.email}</div></div></div>
+                  <div style={{ display: "flex", gap: 6 }}><button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => onValiderModification(e.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12 }} onClick={() => onRefuserModification(e.id)}>Refuser</button><button className="btn btn-blue" style={{ fontSize: 12 }} onClick={() => onSetSelectedExpert(e)}>Voir</button></div>
+                </div>
+              ))}
+            </div>
+          )}
+          {subTab === "startups" && (
+            <DataTable
+              title={`Startups — ${startups.length} total · ${enAttenteStartups.length} en attente`}
+              columns={[{ key: "user.prenom", label: "Responsable", sortable: true }, { key: "user.email", label: "Email" }, { key: "nom_startup", label: "Startup", sortable: true }, { key: "secteur", label: "Secteur", sortable: true }, { key: "localisation", label: "Localisation", sortable: true }, { key: "taille", label: "Taille" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
+              data={startups}
+              searchKeys={["user.prenom", "user.nom", "user.email", "nom_startup", "secteur", "localisation"]}
+              filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
+              renderRow={(s: any) => (
+                <tr key={s.id}>
+                  <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar prenom={s.user?.prenom} nom={s.user?.nom} size={32} color={C.orange} /><span style={{ fontWeight: 700, fontSize: 13 }}>{s.user?.prenom} {s.user?.nom}</span></div></td>
+                  <td style={{ color: C.textSub, fontSize: 12 }}>{s.user?.email}</td>
+                  <td style={{ fontWeight: 700 }}>{s.nom_startup || "—"}</td>
+                  <td><span style={{ background: `${C.orange}12`, color: C.orange, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{s.secteur || "—"}</span></td>
+                  <td style={{ color: C.textSub, fontSize: 12 }}>{s.localisation || s.user?.localisation || "—"}</td>
+                  <td style={{ color: C.textSub }}>{s.taille || "—"}</td>
+                  <td><StatusBadge statut={s.statut} /></td>
+                  <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => onSetSelectedStartup(s)}>Voir</button>{s.statut === "en_attente" && (<React.Fragment><button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => onValiderStartup(s.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => onRefuserStartup(s.id)}>Refuser</button></React.Fragment>)}</div></td>
+                </tr>
+              )}
+              emptyText="Aucune startup"
+            />
+          )}
+          {subTab === "experts" && (
+            <DataTable
+              title={`Experts — ${experts.length} total · ${enAttenteExperts.length} en attente`}
+              columns={[{ key: "user.prenom", label: "Expert", sortable: true }, { key: "user.email", label: "Email", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "localisation", label: "Localisation" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
+              data={experts} searchKeys={["user.prenom", "user.nom", "user.email", "domaine", "localisation"]}
+              filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
+              renderRow={(e: any) => (
+                <tr key={e.id}>
+                  <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={32} color={C.teal} /><div style={{ fontWeight: 700, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div></div></td>
+                  <td style={{ color: C.textSub, fontSize: 12 }}>{e.user?.email}</td>
+                  <td><span style={{ background: `${C.teal}12`, color: C.tealD, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{e.domaine || "—"}</span></td>
+                  <td style={{ color: C.textSub, fontSize: 12 }}>{e.localisation || "—"}</td>
+                  <td><StatusBadge statut={e.statut} /></td>
+                  <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => onSetSelectedExpert(e)}>Voir</button>{e.statut === "en_attente" && (<React.Fragment><button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => onValiderExpert(e.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => onRefuserExpert(e.id)}>Refuser</button></React.Fragment>)}</div></td>
+                </tr>
+              )}
+              emptyText="Aucun expert"
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ==================== CONTENU PLATEFORME VIEW ====================
+// ==================== DEMANDES STARTUPS ====================
+function DemandesStartupsView({ demandes, experts, onOpenDemande, onLoadDevisForDemande }: any) {
+  const [serviceFilter, setServiceFilter] = useState<string>("all");
+  const countByService = (key: string) => {
+    if (key === "all") return demandes.length;
+    return demandes.filter((d: any) => normalizeService(d.service) === key).length;
+  };
+  const demandesFiltrees = serviceFilter === "all" ? demandes : demandes.filter((d: any) => normalizeService(d.service) === serviceFilter);
+  return (
+    <div>
+      <div style={{ marginBottom: 22 }}><div style={{ fontSize: 10, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Gestion des demandes</div><h1 style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>Demandes de services (Startups)</h1></div>
+      <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ padding: "14px 18px 0", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Filtrer par service</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingBottom: 14 }}>
+            {SERVICE_FILTERS.map(sf => {
+              const count = countByService(sf.key);
+              const isActive = serviceFilter === sf.key;
+              let color = C.teal;
+              if (sf.key === "consulting") color = C.purple;
+              else if (sf.key === "audit-sur-site") color = C.orange;
+              else if (sf.key === "nos-plateformes") color = C.blueM;
+              else if (sf.key === "formation-sur-mesure") color = C.amber;
+              else if (sf.key === "formation-existante") color = C.green;
+              return (
+                <button key={sf.key} onClick={() => setServiceFilter(sf.key)} style={{ padding: "7px 14px", border: `1.5px solid ${isActive ? color : C.border}`, borderRadius: 9, background: isActive ? `${color}15` : C.white, color: isActive ? color : C.textSub, fontWeight: isActive ? 700 : 500, cursor: "pointer", fontSize: 12.5, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7, transition: "all .15s" }}>
+                  <span>{sf.label}</span>
+                  <span style={{ background: isActive ? color : "#E5E7EB", color: isActive ? "#fff" : C.textSub, borderRadius: 99, padding: "1px 7px", fontSize: 10.5, fontWeight: 700, minWidth: 20, textAlign: "center" }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ padding: "14px 18px" }}>
+          <DataTable
+            title={`Demandes de service${serviceFilter !== "all" ? ` — ${SERVICE_FILTERS.find(s => s.key === serviceFilter)?.label}` : ""} (${demandesFiltrees.length})`}
+            columns={[{ key: "service", label: "Service", sortable: true }, { key: "user.prenom", label: "Client", sortable: true }, { key: "user.startup.nom_startup", label: "Startup" }, { key: "statut", label: "Statut", sortable: true }, { key: "createdAt", label: "Date", sortable: true }, { key: "actions", label: "" }]}
+            data={demandesFiltrees}
+            searchKeys={["service", "user.prenom", "user.nom", "user.startup.nom_startup"]}
+            filters={[{ key: "statut", label: "Filtrer par statut", options: [{ value: "en_attente", label: "En attente" }, { value: "notifie_experts", label: "Experts notifiés" }, { value: "devis_envoye", label: "Devis envoyé" }, { value: "acceptee", label: "Acceptée" }, { value: "refusee", label: "Refusée" }] }]}
+            renderRow={(d: any) => {
+              const svcNorm = normalizeService(d.service);
+              let svcColor = C.teal;
+              if (svcNorm === "consulting") svcColor = C.purple;
+              else if (svcNorm === "audit-sur-site") svcColor = C.orange;
+              else if (svcNorm === "nos-plateformes") svcColor = C.blueM;
+              else if (svcNorm === "formation-sur-mesure") svcColor = C.amber;
+              else if (svcNorm === "formation-existante") svcColor = C.green;
+              return (
+                <tr key={d.id}>
+                  <td><div style={{ display: "flex", flexDirection: "column", gap: 3 }}><span style={{ background: `${svcColor}14`, color: svcColor, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700, display: "inline-block" }}>{getServiceLabel(d.service)}</span>{svcNorm === "formation-sur-mesure" && <span style={{ fontSize: 10, color: C.amber, fontWeight: 600 }}>Expert requis</span>}{svcNorm === "formation-existante" && d.formation?.places_limitees && <span style={{ fontSize: 10, color: C.green, fontWeight: 600 }}>{d.formation.places_disponibles > 0 ? `${d.formation.places_disponibles} place(s)` : "Complet"}</span>}</div></td>
+                  <td><div style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar prenom={d.user?.prenom} nom={d.user?.nom} size={30} color={C.blueM} /><div><div style={{ fontWeight: 600, fontSize: 13 }}>{d.user?.prenom} {d.user?.nom}</div><div style={{ fontSize: 11, color: C.textSub }}>{d.user?.email}</div></div></div></td>
+                  <td>{d.user?.startup?.nom_startup || "—"}</td>
+                  <td><StatusBadge statut={d.statut} /></td>
+                  <td style={{ color: C.textSub, fontSize: 12 }}>{new Date(d.createdAt).toLocaleDateString("fr-FR")}</td>
+                  <td><button className="btn btn-teal" style={{ fontSize: 12, padding: "6px 13px" }} onClick={() => onOpenDemande(d)}>Voir</button></td>
+                </tr>
+              );
+            }}
+            emptyText="Aucune demande de service"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== PROPOSITION EXPERTS ====================
+function PropositionExpertView({ formationsEnAttente, podcastsEnAttente, onExaminerFormation, onValiderFormation, onRefuserFormation, onExaminerPodcast, onValiderPodcast, onRefuserPodcast }: any) {
+  const [subTab, setSubTab] = useState<"formations" | "podcasts">("formations");
+  return (
+    <div>
+      <div style={{ marginBottom: 22 }}><div style={{ fontSize: 10, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Contenu proposé par les experts</div><h1 style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>Propositions à valider</h1></div>
+      <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "flex", borderBottom: `1.5px solid ${C.border}` }}>
+          <button onClick={() => setSubTab("formations")} style={{ flex: 1, padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: subTab === "formations" ? 800 : 500, color: subTab === "formations" ? C.text : C.textSub, background: subTab === "formations" ? C.white : "#FAFCFE", borderBottom: subTab === "formations" ? `3px solid ${C.purple}` : "3px solid transparent", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            Formations
+            {formationsEnAttente.length > 0 && <span style={{ background: C.purple, color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{formationsEnAttente.length}</span>}
+          </button>
+          <button onClick={() => setSubTab("podcasts")} style={{ flex: 1, padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: subTab === "podcasts" ? 800 : 500, color: subTab === "podcasts" ? C.text : C.textSub, background: subTab === "podcasts" ? C.white : "#FAFCFE", borderBottom: subTab === "podcasts" ? `3px solid ${C.cyan}` : "3px solid transparent", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            Podcasts & Vidéos
+            {podcastsEnAttente.length > 0 && <span style={{ background: C.cyan, color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{podcastsEnAttente.length}</span>}
+          </button>
+        </div>
+        <div style={{ padding: "18px" }}>
+          {subTab === "formations" && (
+            formationsEnAttente.length === 0 ? (
+              <div style={{ padding: "56px 0", textAlign: "center", color: C.textSub }}><div style={{ fontWeight: 700, fontSize: 15 }}>Aucune formation en attente de validation</div></div>
+            ) : (
+              formationsEnAttente.map((f: any) => (
+                <div key={f.id} style={{ border: `1.5px solid ${C.purple}30`, borderRadius: 14, overflow: "hidden", background: C.white, marginBottom: 12 }}>
+                  <div style={{ background: `linear-gradient(135deg, ${C.purpleL}, #EDE9FE)`, padding: "15px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 50, height: 50, borderRadius: 12, background: `linear-gradient(135deg, ${C.purple}, #5B21B6)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#fff", fontWeight: 700 }}>F</div>
+                      <div><div style={{ fontWeight: 800, fontSize: 14, color: C.text }}>{f.titre}</div><div style={{ fontSize: 11.5, color: C.purple, marginTop: 2 }}>{f.expert?.user?.prenom} {f.expert?.user?.nom} · {f.expert?.domaine}</div></div>
+                    </div>
+                    <span style={{ background: C.amberL, borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#92400E" }}>{new Date(f.createdAt).toLocaleDateString("fr-FR")}</span>
+                  </div>
+                  <div style={{ padding: "12px 18px", display: "flex", gap: 9, flexWrap: "wrap" }}>
+                    <button onClick={() => onExaminerFormation(f)} style={{ flex: 1, minWidth: 120, padding: "8px 13px", border: `1.5px solid ${C.purple}30`, borderRadius: 9, background: C.purpleL, color: C.purple, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>Examiner</button>
+                    <button onClick={() => onValiderFormation(f.id)} style={{ flex: 1, minWidth: 120, padding: "8px 13px", border: `1.5px solid ${C.greenM}40`, borderRadius: 9, background: C.greenL, color: C.green, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>Valider et publier</button>
+                    <button onClick={() => onRefuserFormation(f.id)} style={{ padding: "8px 13px", border: `1.5px solid ${C.red}30`, borderRadius: 9, background: C.redL, color: C.red, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>Refuser</button>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+          {subTab === "podcasts" && (
+            podcastsEnAttente.length === 0 ? (
+              <div style={{ padding: "56px 0", textAlign: "center", color: C.textSub }}><div style={{ fontWeight: 700, fontSize: 15 }}>Aucun podcast/vidéo en attente de validation</div></div>
+            ) : (
+              podcastsEnAttente.map((p: any) => (
+                <div key={p.id} style={{ border: `1.5px solid ${C.cyan}30`, borderRadius: 14, overflow: "hidden", background: C.white, marginBottom: 12 }}>
+                  <div style={{ background: `linear-gradient(135deg, ${C.cyanL}, #ECFEFF)`, padding: "15px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 50, height: 50, borderRadius: 12, background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#fff", fontWeight: 700 }}>V</div>
+                      <div><div style={{ fontWeight: 800, fontSize: 14, color: C.text }}>{p.titre}</div><div style={{ fontSize: 11.5, color: C.cyan, marginTop: 2 }}>{p.expert?.user?.prenom} {p.expert?.user?.nom}</div></div>
+                    </div>
+                    <span style={{ background: C.amberL, borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#92400E" }}>{new Date(p.createdAt).toLocaleDateString("fr-FR")}</span>
+                  </div>
+                  <div style={{ padding: "12px 18px" }}>
+                    {p.url_video && <div style={{ background: "#F0F4F8", borderRadius: 9, padding: "9px 13px", marginBottom: 10 }}><video src={`${BASE}/uploads/podcasts-audio/${p.url_video}`} controls style={{ width: "100%", maxHeight: 160, borderRadius: 6 }} /></div>}
+                    <div style={{ display: "flex", gap: 9 }}>
+                      <button onClick={() => onExaminerPodcast(p)} style={{ flex: 1, padding: "8px 13px", border: `1.5px solid ${C.cyan}30`, borderRadius: 9, background: C.cyanL, color: C.cyan, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>Examiner</button>
+                      <button onClick={() => onValiderPodcast(p.id)} style={{ flex: 1, padding: "8px 13px", border: `1.5px solid ${C.greenM}40`, borderRadius: 9, background: C.greenL, color: C.green, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>Valider et publier</button>
+                      <button onClick={() => onRefuserPodcast(p.id)} style={{ padding: "8px 13px", border: `1.5px solid ${C.red}30`, borderRadius: 9, background: C.redL, color: C.red, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>Refuser</button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== CONTENU ACCUEIL (Articles, Media, Page d'accueil) ====================
+function ContenuAccueilView({ token, articles, medias, onPublierArticle, onSupprimerArticle, onEditArticle, onAddArticle, onEditMedia, onSupprimerMedia, onAddMedia }: any) {
+  const [subTab, setSubTab] = useState<"blog" | "media" | "pages">("blog");
+  return (
+    <div>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Gestion du contenu</div>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>Contenu d'accueil de la plateforme</h1>
+      </div>
+      <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 14, border: `1px solid ${C.border}`, padding: "6px", marginBottom: 28, width: "fit-content" }}>
+        <button onClick={() => setSubTab("blog")} style={{ padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: subTab === "blog" ? 800 : 600, background: subTab === "blog" ? C.blueM : "transparent", color: subTab === "blog" ? "#fff" : C.textSub, transition: "all .2s" }}>
+          <FaNewspaper style={{ marginRight: 8 }} /> Articles
+        </button>
+        <button onClick={() => setSubTab("media")} style={{ padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: subTab === "media" ? 800 : 600, background: subTab === "media" ? C.red : "transparent", color: subTab === "media" ? "#fff" : C.textSub, transition: "all .2s" }}>
+          <FaVideo style={{ marginRight: 8 }} /> Média
+        </button>
+        <button onClick={() => setSubTab("pages")} style={{ padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: subTab === "pages" ? 800 : 600, background: subTab === "pages" ? C.teal : "transparent", color: subTab === "pages" ? "#fff" : C.textSub, transition: "all .2s" }}>
+          <FaEnvelope style={{ marginRight: 8 }} /> Page d'accueil
+        </button>
+      </div>
+      {subTab === "blog" && (
+        <DataTable
+          title={`Articles — ${articles.length} articles`}
+          columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "type", label: "Type", sortable: true }, { key: "categorie", label: "Catégorie", sortable: true }, { key: "image", label: "Image" }, { key: "pdf", label: "PDF" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
+          data={articles} searchKeys={["titre", "description", "categorie"]}
+          filters={[{ key: "statut", label: "Filtrer", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }, { key: "type", label: "Type", options: [{ value: "article", label: "Article" }, { value: "conseil", label: "Conseil" }] }]}
+          actions={<button className="btn btn-teal" style={{ fontSize: 12 }} onClick={onAddArticle}>Nouvel article</button>}
+          renderRow={(a: any) => (
+            <tr key={a.id}>
+              <td><div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>{a.titre}</div><div style={{ fontSize: 11, color: C.textSub, marginTop: 2 }}>{(a.description || "").slice(0, 60)}{(a.description || "").length > 60 ? "..." : ""}</div></td>
+              <td><span style={{ background: C.blueL, color: C.blue, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{a.type}</span></td>
+              <td style={{ color: C.textSub }}>{a.categorie || "—"}</td>
+              <td>{a.image ? <a href={`${BASE}/uploads/articles-img/${a.image}`} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.tealL, color: C.tealD, textDecoration: "none", padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}><FaImage />Image</a> : <span style={{ color: C.textSub, fontSize: 11 }}>—</span>}</td>
+              <td>{a.pdf ? <a href={`${BASE}/uploads/articles-pdf/${a.pdf}`} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.cyanL, color: C.cyan, textDecoration: "none", padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}><FaFilePdf />PDF</a> : <span style={{ color: C.textSub, fontSize: 11 }}>—</span>}</td>
+              <td><StatusBadge statut={a.statut} /></td>
+              <td><div style={{ display: "flex", gap: 5 }}>{a.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => onPublierArticle(a.id)}>Publier</button>}<button className="btn btn-teal" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => onEditArticle(a)}>Modifier</button><button className="btn btn-red" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => onSupprimerArticle(a.id)}>Supprimer</button></div></td>
+            </tr>
+          )}
+          emptyText="Aucun article"
+        />
+      )}
+      {subTab === "media" && (
+        <DataTable
+          title={`Médias — ${medias.length} éléments`}
+          columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "emission", label: "Émission" }, { key: "date_publication", label: "Date" }, { key: "statut", label: "Statut" }, { key: "actions", label: "" }]}
+          data={medias} searchKeys={["titre", "description", "emission"]}
+          filters={[{ key: "statut", label: "Filtrer", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }] }]}
+          actions={<button className="btn btn-teal" style={{ fontSize: 12 }} onClick={onAddMedia}>Ajouter un média</button>}
+          renderRow={(m: any) => (
+            <tr key={m.id}>
+              <td><div style={{ fontWeight: 700, fontSize: 13 }}>{m.titre}</div><div style={{ fontSize: 11, color: C.textSub, marginTop: 2 }}>{m.description?.slice(0, 60)}</div></td>
+              <td style={{ color: C.textSub }}>{m.emission || "—"}</td>
+              <td style={{ fontSize: 12, color: C.textSub }}>{new Date(m.date_publication).toLocaleDateString("fr-FR")}</td>
+              <td><StatusBadge statut={m.statut} /></td>
+              <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => onEditMedia(m)}>Modifier</button><button className="btn btn-red" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => onSupprimerMedia(m.id)}>Supprimer</button></div></td>
+            </tr>
+          )}
+          emptyText="Aucun média"
+        />
+      )}
+      {subTab === "pages" && <ContenuPlateformeView token={token} />}
+    </div>
+  );
+}
+
+// ==================== CONTENU PLATEFORME (Page d'accueil, À propos, Contact) ====================
 function ContenuPlateformeView({ token }: { token: string }) {
   const [activeSection, setActiveSection] = useState<"histoire" | "contact">("histoire");
   const [hForm, setHForm] = useState<any>({});
@@ -1732,8 +1901,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
     setSavingContact(false);
   };
 
-  const categoriesPredefinies = ["Développement", "Intelligence artificielle", "Business", "Sécurité", "Design", "Autre"];
-
   return (
     <div>
       {toast.text && (
@@ -1774,65 +1941,6 @@ function ContenuPlateformeView({ token }: { token: string }) {
               </div>
             </div>
           </div>
-          <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Citation fondateur</span></div>
-            <div style={{ padding: "18px 20px" }}>
-              <HField label="Texte de la citation" cle="citation" rows={3} hf={hf} setHF={setHF} placeholder="Nous ne faisons pas que connecter…" />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
-                <HField label="Nom de l'auteur" cle="citation_auteur" hf={hf} setHF={setHF} placeholder="Ahmed Benslimane" />
-                <HField label="Rôle / Titre" cle="citation_role" hf={hf} setHF={setHF} placeholder="CEO & Co-fondateur" />
-              </div>
-            </div>
-          </div>
-          <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Section Mission</span></div>
-            <div style={{ padding: "18px 20px" }}><HField label="Description mission" cle="mission_desc" rows={3} hf={hf} setHF={setHF} placeholder="Offrir aux startups un accès privilégié…" /></div>
-          </div>
-          <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Timeline — Notre parcours</span></div>
-            <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {[1,2,3,4,5,6].map(n => (
-                <div key={n} style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, color: C.textSub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Étape {n}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 2fr", gap: 10 }}>
-                    <HField label="Année" cle={`timeline${n}_year`} hf={hf} setHF={setHF} placeholder={String(2018+n)} />
-                    <HField label="Titre" cle={`timeline${n}_title`} hf={hf} setHF={setHF} placeholder="Ex: Fondation" />
-                    <HField label="Description" cle={`timeline${n}_desc`} hf={hf} setHF={setHF} placeholder="Courte description…" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Nos Valeurs</span></div>
-            <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {[1,2,3].map(n => (
-                <div key={n} style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px 16px", border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, color: C.textSub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Valeur {n}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 120px", gap: 10, alignItems: "start" }}>
-                    <HField label="Titre" cle={`valeur${n}_titre`} hf={hf} setHF={setHF} placeholder={n===1?"Excellence":n===2?"Transparence":"Engagement"} />
-                    <HField label="Description" cle={`valeur${n}_desc`} rows={2} hf={hf} setHF={setHF} placeholder="Courte description de cette valeur…" />
-                    <div>
-                      <label className="lbl">Couleur</label>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <input type="color" value={hf(`valeur${n}_color`) || ["#F7B500","#22C55E","#3B82F6"][n-1]} onChange={(e)=>setHF(`valeur${n}_color`,e.target.value)} style={{ width: 40, height: 36, border: `1.5px solid ${C.border}`, borderRadius: 8, cursor: "pointer", padding: 2 }} />
-                        <input type="text" className="inp" value={hf(`valeur${n}_color`) || ["#F7B500","#22C55E","#3B82F6"][n-1]} onChange={(e)=>setHF(`valeur${n}_color`,e.target.value)} placeholder="#F7B500" style={{ flex: 1, fontSize: 12, padding: "8px 10px" }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} /><span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Statistiques (page Consulting)</span></div>
-            <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <HField label="Startups accompagnées" cle="startups_accompagnees" hf={hf} setHF={setHF} placeholder="150" type="number" />
-              <HField label="Taux de satisfaction (%)" cle="taux_satisfaction" hf={hf} setHF={setHF} placeholder="94" type="number" />
-              <HField label="Années d'expérience" cle="annees_experience" hf={hf} setHF={setHF} placeholder="8" type="number" />
-              <HField label="Experts certifiés" cle="experts_certifies" hf={hf} setHF={setHF} placeholder="45" type="number" />
-            </div>
-          </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 11, padding: "6px 0 4px" }}>
             <button type="button" className="btn btn-gray" onClick={loadHistoire}>Annuler les changements</button>
             <button type="submit" className="btn btn-teal" disabled={savingH} style={{ padding: "10px 28px", fontSize: 14 }}>{savingH ? "Sauvegarde en cours..." : "💾 Sauvegarder"}</button>
@@ -1846,7 +1954,221 @@ function ContenuPlateformeView({ token }: { token: string }) {
   );
 }
 
-// ==================== COMPOSANT PRINCIPAL ====================
+function ContactConfigForm({ contactConfig, setContactConfig, onSave, saving }: any) {
+  const [form, setForm] = useState({
+    email: contactConfig?.email || "contact@beh.com",
+    telephone: contactConfig?.telephone || "+216 29 524 360",
+    adresse: contactConfig?.adresse || "Tunis, Tunisie",
+    horaires: contactConfig?.horaires || "Lun - Ven : 9h00 - 18h00",
+    description_hero: contactConfig?.description_hero || "Une question ? Un projet ? Notre équipe est à votre écoute pour vous accompagner.",
+    latitude: contactConfig?.latitude || "36.8065",
+    longitude: contactConfig?.longitude || "10.1815",
+  });
+
+  const handleChange = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setContactConfig(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginBottom: 24 }}>
+      <div style={{ padding: "13px 20px", borderBottom: `1px solid ${C.border}`, background: "#FAFCFE", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F7B500" }} />
+        <span style={{ fontWeight: 800, fontSize: 13.5, color: C.text }}>Page Contact — Informations modifiables</span>
+      </div>
+      <div style={{ padding: "20px 24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div><label className="lbl">Email de contact</label><div className="field-icon-wrap" style={{ position: "relative" }}><FaEnvelopeIcon style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} /><input type="email" className="inp" value={form.email} onChange={e => handleChange("email", e.target.value)} style={{ paddingLeft: 38 }} /></div></div>
+          <div><label className="lbl">Téléphone</label><div className="field-icon-wrap" style={{ position: "relative" }}><FaPhone style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} /><input type="text" className="inp" value={form.telephone} onChange={e => handleChange("telephone", e.target.value)} style={{ paddingLeft: 38 }} /></div></div>
+          <div><label className="lbl">Adresse</label><div className="field-icon-wrap" style={{ position: "relative" }}><FaMapIcon style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} /><input type="text" className="inp" value={form.adresse} onChange={e => handleChange("adresse", e.target.value)} style={{ paddingLeft: 38 }} /></div></div>
+          <div><label className="lbl">Horaires</label><div className="field-icon-wrap" style={{ position: "relative" }}><FaClock style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 14 }} /><input type="text" className="inp" value={form.horaires} onChange={e => handleChange("horaires", e.target.value)} style={{ paddingLeft: 38 }} /></div></div>
+          <div style={{ gridColumn: "span 2" }}><label className="lbl">Description Hero</label><textarea className="inp" rows={2} value={form.description_hero} onChange={e => handleChange("description_hero", e.target.value)} /></div>
+          <div><label className="lbl">Latitude (carte Google Maps)</label><input type="text" className="inp" value={form.latitude} onChange={e => handleChange("latitude", e.target.value)} placeholder="36.8065" /></div>
+          <div><label className="lbl">Longitude (carte Google Maps)</label><input type="text" className="inp" value={form.longitude} onChange={e => handleChange("longitude", e.target.value)} placeholder="10.1815" /></div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
+          <button className="btn btn-gray" onClick={() => window.location.reload()}>Annuler</button>
+          <button className="btn btn-teal" onClick={onSave} disabled={saving}>{saving ? "Sauvegarde..." : "💾 Sauvegarder"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== SERVICES VIEW ====================
+function ServicesView({
+  formations,
+  podcasts,
+  onPublierFormation,
+  onArchiverFormation,
+  onSupprimerFormation,
+  onEditFormation,
+  onAddFormation,
+  onPublierPodcast,
+  onArchiverPodcast,
+  onSupprimerPodcast,
+  onEditPodcast,
+  onAddPodcast
+}: any) {
+  const [subTab, setSubTab] = useState<"formations" | "podcasts">("formations");
+  return (
+    <div>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Gestion des offres</div>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>Services</h1>
+        <p style={{ fontSize: 12.5, color: C.textSub, marginTop: 4 }}>Créez et gérez les formations et podcasts proposés aux startups</p>
+      </div>
+      <div style={{ background: C.white, border: `2px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "flex", borderBottom: `1.5px solid ${C.border}` }}>
+          <button
+            onClick={() => setSubTab("formations")}
+            style={{
+              flex: 1,
+              padding: "14px 22px",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 14,
+              fontWeight: subTab === "formations" ? 800 : 500,
+              color: subTab === "formations" ? C.text : C.textSub,
+              background: subTab === "formations" ? C.white : "#FAFCFE",
+              borderBottom: subTab === "formations" ? `3px solid ${C.purple}` : "3px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10
+            }}
+          >
+            <FaChalkboardTeacher /> Formations
+            <span style={{ background: C.purple + "20", color: C.purple, borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{formations.length}</span>
+          </button>
+          <button
+            onClick={() => setSubTab("podcasts")}
+            style={{
+              flex: 1,
+              padding: "14px 22px",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 14,
+              fontWeight: subTab === "podcasts" ? 800 : 500,
+              color: subTab === "podcasts" ? C.text : C.textSub,
+              background: subTab === "podcasts" ? C.white : "#FAFCFE",
+              borderBottom: subTab === "podcasts" ? `3px solid ${C.cyan}` : "3px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10
+            }}
+          >
+            <FaPodcast /> Podcasts & Vidéos
+            <span style={{ background: C.cyan + "20", color: C.cyan, borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{podcasts.length}</span>
+          </button>
+        </div>
+        <div style={{ padding: "18px" }}>
+          {subTab === "formations" && (
+            <DataTable
+              title={`Formations — ${formations.length} au total`}
+              columns={[
+                { key: "titre", label: "Formation", sortable: true },
+                { key: "domaine", label: "Domaine", sortable: true },
+                { key: "formateurs", label: "Formateur(s)" },
+                { key: "mode", label: "Mode", sortable: true },
+                { key: "prix", label: "Prix" },
+                { key: "statut", label: "Statut", sortable: true },
+                { key: "actions", label: "Actions" }
+              ]}
+              data={formations}
+              searchKeys={["titre", "domaine", "description", "formateur"]}
+              filters={[
+                { key: "statut", label: "Tous les statuts", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] },
+                { key: "mode", label: "Tous les modes", options: [{ value: "en_ligne", label: "En ligne" }, { value: "presentiel", label: "Présentiel" }, { value: "hybride", label: "Hybride" }] }
+              ]}
+              actions={<button className="btn btn-teal" style={{ fontSize: 12 }} onClick={onAddFormation}>Nouvelle formation</button>}
+              renderRow={(f: any) => {
+                // Afficher les formateurs correctement
+                let formateursText = "—";
+                if (f.formateur_details && Array.isArray(f.formateur_details) && f.formateur_details.length > 0) {
+                  formateursText = f.formateur_details.map((fd: any) => `${fd.prenom} ${fd.nom}`.trim()).join(", ");
+                } else if (f.formateur && f.formateur.trim()) {
+                  formateursText = f.formateur;
+                }
+                return (
+                  <tr key={f.id}>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                        {f.image ? <img src={`${BASE}/uploads/formations/${f.image}`} style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="" /> : <div style={{ width: 36, height: 36, borderRadius: 8, background: `linear-gradient(135deg, ${C.purple}, #5B21B6)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#fff", fontWeight: 700 }}>F</div>}
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{f.titre}</div>
+                      </div>
+                    </td>
+                    <td><span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{f.domaine || "—"}</span></td>
+                    <td><span style={{ color: C.textSub, fontSize: 12 }}>{formateursText}</span></td>
+                    <td><span style={{ color: C.textSub, fontSize: 12 }}>{f.mode === "en_ligne" ? "En ligne" : f.mode === "presentiel" ? "Présentiel" : f.mode || "—"}</span></td>
+                    <td><span style={{ fontWeight: 600 }}>{f.gratuit ? <span style={{ color: C.greenM }}>Gratuit</span> : f.prix ? `${f.prix} DT` : "—"}</span></td>
+                    <td><StatusBadge statut={f.statut} /></td>
+                    <td>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {f.statut !== "publie" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onPublierFormation(f.id)}>Publier</button>}
+                        {f.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onArchiverFormation(f.id)}>Archiver</button>}
+                        {!f.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onEditFormation(f)}>Modifier</button>}
+                        <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onSupprimerFormation(f.id)}>Supprimer</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }}
+              emptyText="Aucune formation"
+            />
+          )}
+          {subTab === "podcasts" && (
+            <DataTable
+              title={`Podcasts et Vidéos — ${podcasts.length} au total`}
+              columns={[
+                { key: "titre", label: "Titre", sortable: true },
+                { key: "auteur", label: "Auteur", sortable: true },
+                { key: "domaine", label: "Domaine", sortable: true },
+                { key: "type_media", label: "Format" },
+                { key: "statut", label: "Statut", sortable: true },
+                { key: "actions", label: "Actions" }
+              ]}
+              data={podcasts}
+              searchKeys={["titre", "auteur", "domaine", "description"]}
+              filters={[{ key: "statut", label: "Statut", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }]}
+              actions={<button className="btn btn-cyan" style={{ fontSize: 12 }} onClick={onAddPodcast}>Ajouter un podcast</button>}
+              renderRow={(p: any) => (
+                <tr key={p.id}>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {p.image ? <img src={`${BASE}/uploads/podcasts-images/${p.image}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>V</span>}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>{p.titre}</div>
+                    </div>
+                  </td>
+                  <td style={{ color: C.textSub }}>{p.auteur || "—"}</td>
+                  <td><span style={{ background: `${C.cyan}12`, color: C.cyan, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{p.domaine || "—"}</span></td>
+                  <td>{p.url_audio && p.url_audio.startsWith("http") ? <span style={{ background: `${C.blueM}12`, color: C.blueM, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>Lien</span> : <span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>MP4</span>}</td>
+                  <td><StatusBadge statut={p.statut} /></td>
+                  <td>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {p.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onPublierPodcast(p.id)}>Publier</button>}
+                      {p.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onArchiverPodcast(p.id)}>Archiver</button>}
+                      {!p.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onEditPodcast(p)}>Modifier</button>}
+                      <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => onSupprimerPodcast(p.id)}>Supprimer</button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              emptyText="Aucun podcast"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== COMPOSANT PRINCIPAL ADMIN ====================
 export default function DashboardAdmin() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -1872,7 +2194,6 @@ export default function DashboardAdmin() {
   const [selectedExpert, setSelectedExpert] = useState<any>(null);
   const [selectedStartup, setSelectedStartup] = useState<any>(null);
   const [selectedDemande, setSelectedDemande] = useState<any>(null);
-  const [commentaireAdmin, setCommentaireAdmin] = useState("");
   const [selectedExpertProfile, setSelectedExpertProfile] = useState<any>(null);
   const [selectedFormationValidation, setSelectedFormationValidation] = useState<any>(null);
   const [selectedPodcastValidation, setSelectedPodcastValidation] = useState<any>(null);
@@ -1935,10 +2256,23 @@ export default function DashboardAdmin() {
   async function marquerLu(id: number) { const r = await fetch(`${BASE}/contact/messages/${id}/lu`, { method: "PATCH", headers: hdr() }); if (r.ok) { notify("Lu"); loadContactMessages(); } else notify("Erreur", false); }
   async function supprimerMessage(id: number) { if (!confirm("Supprimer ?")) return; const r = await fetch(`${BASE}/contact/messages/${id}`, { method: "DELETE", headers: hdr() }); if (r.ok) { notify("Supprimé"); loadContactMessages(); } else notify("Erreur", false); }
   async function envoyerReponse(e: React.FormEvent) { e.preventDefault(); if (!replyText.trim()) { notify("Écrivez une réponse", false); return; } setSendingReply(true); try { const r = await fetch(`${BASE}/contact/messages/${replyModal.messageId}/repondre`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ reponse: replyText }) }); if (r.ok) { notify("Envoyé !"); setReplyModal({ open: false, messageId: 0, email: "", nom: "", prenom: "" }); setReplyText(""); loadContactMessages(); } else notify("Erreur", false); } catch { notify("Erreur", false); } setSendingReply(false); }
-  async function changerStatutDemande(id: number, statut: string) { const body: any = { statut }; if (commentaireAdmin) body.commentaire_admin = commentaireAdmin; const r = await fetch(`${BASE}/demandes-service/${id}/statut`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify(body) }); if (r.ok) { notify("Statut mis à jour"); setSelectedDemande(null); setCommentaireAdmin(""); loadDemandes(); } else notify("Erreur", false); }
+  async function changerStatutDemande(id: number, statut: string) { const body: any = { statut }; const r = await fetch(`${BASE}/demandes-service/${id}/statut`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify(body) }); if (r.ok) { notify("Statut mis à jour"); setSelectedDemande(null); loadDemandes(); } else notify("Erreur", false); }
   async function accepterFormationDemande(demandeId: number) { const r = await fetch(`${BASE}/demandes-service/formation/${demandeId}/accept`, { method: "PATCH", headers: hdrJ() }); if (r.ok) { notify("Acceptée"); setSelectedDemande(null); loadDemandes(); loadFormations(); } else notify("Erreur", false); }
   async function refuserFormationDemande(demandeId: number) { if (!confirm("Refuser ?")) return; const r = await fetch(`${BASE}/demandes-service/formation/${demandeId}/reject`, { method: "PATCH", headers: hdrJ() }); if (r.ok) { notify("Refusée"); setSelectedDemande(null); loadDemandes(); loadFormations(); } else notify("Erreur", false); }
-  async function notifierExperts(demandeId: number, expertIds: number[]) { try { const r = await fetch(`${BASE}/demandes-service/${demandeId}/notifier-experts`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ expert_ids: expertIds }) }); if (r.ok) { notify(`${expertIds.length} expert(s) notifié(s)`); await loadDemandes(); setSelectedDemande((prev: any) => prev && prev.id === demandeId ? { ...prev, experts_notifies: [...(prev.experts_notifies || []), ...expertIds] } : prev); } else { const err = await r.text(); notify(`Erreur : ${err}`, false); } } catch { notify("Erreur réseau", false); } }
+  async function notifierExperts(demandeId: number, expertIds: number[]) {
+    try {
+      const r = await fetch(`${BASE}/demandes-service/${demandeId}/notifier-experts`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ expert_ids: expertIds }) });
+      if (r.ok) {
+        await changerStatutDemande(demandeId, "notifie_experts");
+        notify(`${expertIds.length} expert(s) notifié(s)`);
+        await loadDemandes();
+        setSelectedDemande((prev: any) => prev && prev.id === demandeId ? { ...prev, experts_notifies: [...(prev.experts_notifies || []), ...expertIds] } : prev);
+      } else {
+        const err = await r.text();
+        notify(`Erreur : ${err}`, false);
+      }
+    } catch { notify("Erreur réseau", false); }
+  }
   function getDemandeDomaine(demande: any): string { if (demande.domaine) return demande.domaine; const match = demande.description?.match(/\[Domaine:\s*([^\]]+)\]/i); return match ? match[1] : "Autre"; }
   async function publierFormationExpert(id: number) { try { let r = await fetch(`${BASE}/formations/admin/${id}/statut`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify({ statut: "publie" }) }); if (!r.ok) r = await fetch(`${BASE}/formations/expert/statut/${id}`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify({ statut: "publie" }) }); if (r.ok) { notify("Formation publiée !"); setSelectedFormationValidation(null); await loadFormations(); } else notify("Erreur", false); } catch { notify("Erreur réseau", false); } }
   async function refuserFormationExpert(id: number) { if (!confirm("Refuser ?")) return; try { let r = await fetch(`${BASE}/formations/admin/${id}/statut`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify({ statut: "refuse" }) }); if (!r.ok) r = await fetch(`${BASE}/formations/expert/statut/${id}`, { method: "PATCH", headers: hdrJ(), body: JSON.stringify({ statut: "refuse" }) }); if (r.ok) { notify("Refusée"); setSelectedFormationValidation(null); await loadFormations(); } else notify("Erreur", false); } catch { notify("Erreur réseau", false); } }
@@ -1961,31 +2295,26 @@ export default function DashboardAdmin() {
   const brouillons = articles.filter(a => a.statut === "brouillon").length;
   const formationsEnAttenteExpert = formations.filter(f => f.statut !== "publie" && f.statut !== "archive");
   const podcastsEnAttenteExpert = podcasts.filter(p => p.statut !== "publie" && p.statut !== "archive");
-  const tous_podcasts_onglet = podcasts;
-  const toutes_formations_onglet = formations;
   const totalNotifs = enAttenteExperts.length + enAttenteStartups.length + modificationsAtt.length + temosAttente.length + brouillons + formationsEnAttenteExpert.length + podcastsEnAttenteExpert.length + msgsNonLus + demandes.filter(d => d.statut === "en_attente").length;
 
   const navItems: { id: Tab; label: string; count?: number; color: string }[] = [
     { id: "dashboard", label: "Tableau de bord", color: C.teal },
-    { id: "demandes", label: "Demandes", count: demandes.filter(d => d.statut === "en_attente").length + formationsEnAttenteExpert.length + podcastsEnAttenteExpert.length, color: C.purple },
-    { id: "experts", label: "Experts", count: enAttenteExperts.length, color: C.cyan },
-    { id: "startups", label: "Startups", count: enAttenteStartups.length, color: C.orange },
+    { id: "utilisateurs", label: "Utilisateurs", count: enAttenteExperts.length + enAttenteStartups.length, color: C.orange },
+    { id: "demandes", label: "Demandes", count: demandes.filter(d => d.statut === "en_attente").length, color: C.blueM },
+    { id: "proposition", label: "Proposition", count: formationsEnAttenteExpert.length + podcastsEnAttenteExpert.length, color: C.purple },
+    { id: "services", label: "Services", count: 0, color: "#8B5CF6" },
     { id: "temoignages", label: "Témoignages", count: temosAttente.length, color: C.amber },
     { id: "contacts", label: "Messages", count: msgsNonLus, color: C.greenM },
-    { id: "blog", label: "Blog", count: brouillons, color: C.blueM },
-    { id: "formations", label: "Formations", color: C.purple },
-    { id: "podcasts", label: "Podcasts", color: C.cyan },
-    { id: "medias", label: "Médias", color: C.red },
-    { id: "news", label: "News & Newsletter", color: C.teal },
-    { id: "contenu", label: "Contenu Plateforme", color: "#8B5CF6" },
+    { id: "contenu_accueil", label: "Contenu d'accueil", color: "#8B5CF6" },
   ];
 
   if (loadingAuth) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Chargement...</div>;
   if (!realUser || realUser.role !== "admin") return null;
 
+  // Rendu principal
   return (
-    <>
-      <style>{`
+    <React.Fragment>
+      <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         body{font-family:'DM Sans',sans-serif;background:${C.bg};color:${C.text};}
@@ -1993,7 +2322,7 @@ export default function DashboardAdmin() {
         .inp:focus{border-color:${C.teal};box-shadow:0 0 0 3px ${C.teal}18;}
         textarea.inp{resize:vertical;}
         select.inp{cursor:pointer;}
-        .lbl{font-size:10.5px;font-weight:700;color:${C.textSub};text-transform:uppercase;letter-spacing:1.2px;display:block;margin-bottom:5px;}
+        .lbl{font-size:10.5px;font-weight:700;color:${C.textSub};textTransform:uppercase;letter-spacing:1.2px;display:block;margin-bottom:5px;}
         .btn{font-family:'DM Sans',sans-serif;font-weight:600;border:none;border-radius:9px;cursor:pointer;padding:8px 15px;font-size:13px;transition:all .16s;display:inline-flex;align-items:center;gap:6px;line-height:1.4;}
         .btn-teal{background:${C.teal};color:#fff;}.btn-teal:hover{background:${C.tealD};}
         .btn-green{background:${C.greenL};color:${C.green};}.btn-green:hover{background:${C.greenM};color:#fff;}
@@ -2029,7 +2358,7 @@ export default function DashboardAdmin() {
 
       {selectedExpert && <ModalExpertDetail expert={selectedExpert} onClose={() => setSelectedExpert(null)} onValider={(id: number) => valider("experts", id)} onRefuser={(id: number) => refuser("experts", id)} />}
       {selectedStartup && <ModalStartupDetail startup={selectedStartup} onClose={() => setSelectedStartup(null)} onValider={(id: number) => valider("startups", id)} onRefuser={(id: number) => refuser("startups", id)} />}
-      {selectedDemande && <ModalDemandeService demande={selectedDemande} experts={experts} commentaireAdmin={commentaireAdmin} setCommentaireAdmin={setCommentaireAdmin} onChangerStatut={changerStatutDemande} onNotifierExperts={notifierExperts} onAccepterFormation={accepterFormationDemande} onRefuserFormation={refuserFormationDemande} onClose={() => { setSelectedDemande(null); setCommentaireAdmin(""); }} getDemandeDomaine={getDemandeDomaine} setSelectedExpertProfile={setSelectedExpertProfile} devisList={devisCache[selectedDemande?.id] || []} onLoadDevis={loadDevisForDemande} />}
+      {selectedDemande && <ModalDemandeService demande={selectedDemande} experts={experts} onNotifierExperts={notifierExperts} onAccepterFormation={accepterFormationDemande} onRefuserFormation={refuserFormationDemande} onClose={() => { setSelectedDemande(null); }} getDemandeDomaine={getDemandeDomaine} setSelectedExpertProfile={setSelectedExpertProfile} devisList={devisCache[selectedDemande?.id] || []} onLoadDevis={loadDevisForDemande} />}
       {selectedExpertProfile && <ModalExpertDetail expert={selectedExpertProfile} onClose={() => setSelectedExpertProfile(null)} onValider={(id: number) => valider("experts", id)} onRefuser={(id: number) => refuser("experts", id)} />}
       {showFormationForm && <FormationFormModal formation={editingFormation} onClose={() => { setShowFormationForm(false); setEditingFormation(null); }} onSave={() => loadFormations()} />}
       {showPodcastForm && <PodcastFormModal podcast={editingPodcast} onClose={() => { setShowPodcastForm(false); setEditingPodcast(null); }} onSave={() => loadPodcasts()} />}
@@ -2139,80 +2468,23 @@ export default function DashboardAdmin() {
             ) : (
               <div className="fade-in">
                 {tab === "dashboard" && <BIDashboardView experts={experts} startups={startups} temoignages={temoignages} demandes={demandes} formationsProposees={formationsEnAttenteExpert} podcastsProposees={podcastsEnAttenteExpert} formations={formations} podcasts={podcasts} articles={articles} setTab={setTab} isOnline={isOnline} />}
-                {tab === "demandes" && <DemandesView demandes={demandes} formations={formations} podcasts={podcasts} experts={experts} formationsEnAttenteExpert={formationsEnAttenteExpert} podcastsEnAttenteExpert={podcastsEnAttenteExpert} onOpenDemande={(d: any) => { setSelectedDemande(d); setCommentaireAdmin(d.commentaire_admin || ""); }} onPublierFormationExpert={publierFormationExpert} onRefuserFormationExpert={refuserFormationExpert} onPublierPodcastExpert={publierPodcastExpert} onRefuserPodcastExpert={refuserPodcastExpert} onSetFormationValidation={setSelectedFormationValidation} onSetPodcastValidation={setSelectedPodcastValidation} onLoadDevisForDemande={loadDevisForDemande} />}
-                {tab === "experts" && (
-                  <div>
-                    {modificationsAtt.length > 0 && (
-                      <div style={{ background: C.amberL, border: `1px solid ${C.amber}55`, borderRadius: 14, padding: "16px 20px", marginBottom: 18 }}>
-                        <div style={{ fontWeight: 700, color: "#92400E", fontSize: 13.5, marginBottom: 11 }}>Modifications en attente ({modificationsAtt.length})</div>
-                        {modificationsAtt.map((e: any) => (
-                          <div key={e.id} style={{ background: C.white, borderRadius: 10, padding: "11px 13px", marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={34} color={C.amber} /><div><div style={{ fontWeight: 600, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div><div style={{ fontSize: 11, color: C.textSub }}>{e.user?.email}</div></div></div>
-                            <div style={{ display: "flex", gap: 6 }}><button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => validerModification(e.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12 }} onClick={() => refuserModification(e.id)}>Refuser</button><button className="btn btn-blue" style={{ fontSize: 12 }} onClick={() => setSelectedExpert(e)}>Voir</button></div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <DataTable
-                      title={`Experts — ${experts.length} total · ${enAttenteExperts.length} en attente`}
-                      columns={[{ key: "user.prenom", label: "Expert", sortable: true }, { key: "user.email", label: "Email", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "localisation", label: "Localisation" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                      data={experts} searchKeys={["user.prenom", "user.nom", "user.email", "domaine", "localisation"]}
-                      filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
-                      renderRow={(e: any) => (
-                        <tr key={e.id}>
-                          <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar prenom={e.user?.prenom} nom={e.user?.nom} size={32} color={C.teal} /><div style={{ fontWeight: 700, fontSize: 13 }}>{e.user?.prenom} {e.user?.nom}</div></div></td>
-                          <td style={{ color: C.textSub, fontSize: 12 }}>{e.user?.email}</td>
-                          <td><span style={{ background: `${C.teal}12`, color: C.tealD, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{e.domaine || "—"}</span></td>
-                          <td style={{ color: C.textSub, fontSize: 12 }}>{e.localisation || "—"}</td>
-                          <td><StatusBadge statut={e.statut} /></td>
-                          <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedExpert(e)}>Voir</button>{e.statut === "en_attente" && <><button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("experts", e.id)}>Valider</button><button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("experts", e.id)}>Refuser</button></>}</div></td>
-                        </tr>
-                      )}
-                      emptyText="Aucun expert"
-                    />
-                  </div>
-                )}
-                {tab === "startups" && (
-                  <DataTable
-                    title={`Startups — ${startups.length} total · ${enAttenteStartups.length} en attente`}
-                    columns={[{ key: "user.prenom", label: "Responsable", sortable: true }, { key: "user.email", label: "Email" }, { key: "nom_startup", label: "Startup", sortable: true }, { key: "secteur", label: "Secteur", sortable: true }, { key: "localisation", label: "Localisation", sortable: true }, { key: "taille", label: "Taille" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={startups}
-                    searchKeys={["user.prenom", "user.nom", "user.email", "nom_startup", "secteur", "localisation"]}
-                    filters={[{ key: "statut", label: "Filtrer", options: [{ value: "valide", label: "Validé" }, { value: "en_attente", label: "En attente" }, { value: "refuse", label: "Refusé" }] }]}
-                    renderRow={(s: any) => (
-                      <tr key={s.id}>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                            <Avatar prenom={s.user?.prenom} nom={s.user?.nom} size={32} color={C.orange} />
-                            <span style={{ fontWeight: 700, fontSize: 13 }}>{s.user?.prenom} {s.user?.nom}</span>
-                          </div>
-                        </td>
-                        <td style={{ color: C.textSub, fontSize: 12 }}>{s.user?.email}</td>
-                        <td style={{ fontWeight: 700 }}>{s.nom_startup || "—"}</td>
-                        <td>
-                          <span style={{ background: `${C.orange}12`, color: C.orange, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>
-                            {s.secteur || "—"}
-                          </span>
-                        </td>
-                        <td style={{ color: C.textSub, fontSize: 12 }}>{s.localisation || s.user?.localisation || "—"}</td>
-                        <td style={{ color: C.textSub }}>{s.taille || "—"}</td>
-                        <td><StatusBadge statut={s.statut} /></td>
-                        <td>
-                          <div style={{ display: "flex", gap: 5 }}>
-                            <button className="btn btn-blue" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setSelectedStartup(s)}>Voir</button>
-                            {s.statut === "en_attente" && (
-                              <>
-                                <button className="btn btn-green" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => valider("startups", s.id)}>Valider</button>
-                                <button className="btn btn-red" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => refuser("startups", s.id)}>Refuser</button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    emptyText="Aucune startup"
-                  />
-                )}
+                {tab === "utilisateurs" && <UtilisateursView startups={startups} experts={experts} onValiderStartup={(id: number) => valider("startups", id)} onRefuserStartup={(id: number) => refuser("startups", id)} onValiderExpert={(id: number) => valider("experts", id)} onRefuserExpert={(id: number) => refuser("experts", id)} onSetSelectedStartup={setSelectedStartup} onSetSelectedExpert={setSelectedExpert} modificationsAtt={modificationsAtt} onValiderModification={validerModification} onRefuserModification={refuserModification} />}
+                {tab === "demandes" && <DemandesStartupsView demandes={demandes} experts={experts} onOpenDemande={(d: any) => { setSelectedDemande(d); }} onLoadDevisForDemande={loadDevisForDemande} />}
+                {tab === "proposition" && <PropositionExpertView formationsEnAttente={formationsEnAttenteExpert} podcastsEnAttente={podcastsEnAttenteExpert} onExaminerFormation={setSelectedFormationValidation} onValiderFormation={publierFormationExpert} onRefuserFormation={refuserFormationExpert} onExaminerPodcast={setSelectedPodcastValidation} onValiderPodcast={publierPodcastExpert} onRefuserPodcast={refuserPodcastExpert} />}
+                {tab === "services" && <ServicesView 
+                  formations={formations} 
+                  podcasts={podcasts}
+                  onPublierFormation={publierFormation}
+                  onArchiverFormation={archiverFormation}
+                  onSupprimerFormation={supprimerFormation}
+                  onEditFormation={(f: any) => { setEditingFormation(f); setShowFormationForm(true); }}
+                  onAddFormation={() => { setEditingFormation(null); setShowFormationForm(true); }}
+                  onPublierPodcast={publierPodcast}
+                  onArchiverPodcast={archiverPodcast}
+                  onSupprimerPodcast={supprimerPodcast}
+                  onEditPodcast={(p: any) => { setEditingPodcast(p); setShowPodcastForm(true); }}
+                  onAddPodcast={() => { setEditingPodcast(null); setShowPodcastForm(true); }}
+                />}
                 {tab === "temoignages" && (
                   <div>
                     <h1 style={{ fontSize: 20, fontWeight: 900, color: C.text, marginBottom: 20 }}>Témoignages ({temoignages.length})</h1>
@@ -2222,7 +2494,7 @@ export default function DashboardAdmin() {
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}><Avatar prenom={t.user?.prenom} nom={t.user?.nom} size={36} color={C.amber} /><div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{t.user?.prenom} {t.user?.nom}</div><div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>{[1,2,3,4,5].map(s => <span key={s} style={{ color: s <= (t.note || 5) ? C.amber : C.border, fontSize: 13 }}>★</span>)}<span style={{ fontSize: 11, color: C.textSub }}>· {new Date(t.createdAt).toLocaleDateString("fr-FR")}</span></div></div></div>
                           <div style={{ background: "#F8FAFC", borderRadius: 9, padding: "11px 13px" }}><p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.72, fontStyle: "italic", margin: 0 }}>"{t.texte}"</p></div>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 7, alignItems: "flex-end" }}><StatusBadge statut={t.statut === "valide" ? "publie" : t.statut === "refuse" ? "refuse" : "en_attente"} /><div style={{ display: "flex", gap: 5 }}>{t.statut === "en_attente" && <><button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => validerTemo(t.id)}>Publier</button><button className="btn btn-red" style={{ fontSize: 12 }} onClick={() => refuserTemo(t.id)}>Refuser</button></>}<button className="btn btn-gray" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => supprimerTemo(t.id)}>Supprimer</button></div></div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 7, alignItems: "flex-end" }}><StatusBadge statut={t.statut === "valide" ? "publie" : t.statut === "refuse" ? "refuse" : "en_attente"} /><div style={{ display: "flex", gap: 5 }}>{t.statut === "en_attente" && <React.Fragment><button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => validerTemo(t.id)}>Publier</button><button className="btn btn-red" style={{ fontSize: 12 }} onClick={() => refuserTemo(t.id)}>Refuser</button></React.Fragment>}<button className="btn btn-gray" style={{ fontSize: 12, padding: "5px 9px" }} onClick={() => supprimerTemo(t.id)}>Supprimer</button></div></div>
                       </div>
                     ))}
                   </div>
@@ -2246,116 +2518,7 @@ export default function DashboardAdmin() {
                     ))}
                   </div>
                 )}
-                {tab === "blog" && (
-                  <DataTable
-                    title={`Blog — ${articles.length} articles`}
-                    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "type", label: "Type", sortable: true }, { key: "categorie", label: "Catégorie", sortable: true }, { key: "image", label: "Image" }, { key: "pdf", label: "PDF" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={articles} searchKeys={["titre", "description", "categorie"]}
-                    filters={[{ key: "statut", label: "Filtrer", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }, { key: "type", label: "Type", options: [{ value: "article", label: "Article" }, { value: "conseil", label: "Conseil" }] }]}
-                    actions={<button className="btn btn-teal" style={{ fontSize: 12 }} onClick={() => { setEditingArticle(null); setShowArticleModal(true); }}>Nouvel article</button>}
-                    renderRow={(a: any) => (
-                      <tr key={a.id}>
-                        <td><div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>{a.titre}</div><div style={{ fontSize: 11, color: C.textSub, marginTop: 2 }}>{(a.description || "").slice(0, 60)}{(a.description || "").length > 60 ? "..." : ""}</div></td>
-                        <td><span style={{ background: C.blueL, color: C.blue, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{a.type}</span></td>
-                        <td style={{ color: C.textSub }}>{a.categorie || "—"}</td>
-                        <td>{a.image ? <a href={`${BASE}/uploads/articles-img/${a.image}`} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.tealL, color: C.tealD, textDecoration: "none", padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}><FaImage />Image</a> : <span style={{ color: C.textSub, fontSize: 11 }}>—</span>}</td>
-                        <td>{a.pdf ? <a href={`${BASE}/uploads/articles-pdf/${a.pdf}`} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.cyanL, color: C.cyan, textDecoration: "none", padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}><FaFilePdf />PDF</a> : <span style={{ color: C.textSub, fontSize: 11 }}>—</span>}</td>
-                        <td><StatusBadge statut={a.statut} /></td>
-                        <td><div style={{ display: "flex", gap: 5 }}>
-                          {a.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 12 }} onClick={() => publierArticle(a.id)}>Publier</button>}
-                          <button className="btn btn-teal" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => { setEditingArticle(a); setShowArticleModal(true); }}>Modifier</button>
-                          <button className="btn btn-red" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => supprimerArticle(a.id)}>Supprimer</button>
-                        </div></td>
-                      </tr>
-                    )}
-                    emptyText="Aucun article"
-                  />
-                )}
-                {tab === "formations" && (
-                  <DataTable
-                    title={`Formations — ${toutes_formations_onglet.length} au total`}
-                    columns={[{ key: "titre", label: "Formation", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "formateurs", label: "Formateur(s)" }, { key: "mode", label: "Mode", sortable: true }, { key: "prix", label: "Prix" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={toutes_formations_onglet} searchKeys={["titre", "domaine", "description"]}
-                    filters={[{ key: "statut", label: "Tous les statuts", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }, { key: "mode", label: "Tous les modes", options: [{ value: "en_ligne", label: "En ligne" }, { value: "presentiel", label: "Présentiel" }, { value: "hybride", label: "Hybride" }] }]}
-                    actions={<button className="btn btn-teal" style={{ fontSize: 12 }} onClick={() => { setEditingFormation(null); setShowFormationForm(true); }}>Ajouter</button>}
-                    renderRow={(f: any) => {
-                      let formateursText = "—";
-                      if (f.formateur_details && Array.isArray(f.formateur_details) && f.formateur_details.length > 0) formateursText = f.formateur_details.map((fd: any) => `${fd.prenom} ${fd.nom}`.trim()).join(", ");
-                      else if (f.formateur && f.formateur.trim()) formateursText = f.formateur;
-                      return (
-                        <tr key={f.id}>
-                          <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                            {f.image ? <img src={`${BASE}/uploads/formations/${f.image}`} style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="" /> : <div style={{ width: 36, height: 36, borderRadius: 8, background: `linear-gradient(135deg, ${C.purple}, #5B21B6)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#fff", fontWeight: 700 }}>F</div>}
-                            <div><div style={{ fontWeight: 700, fontSize: 13 }}>{f.titre}</div>{f.expert_id && <span style={{ background: C.purple, color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 8.5, fontWeight: 700 }}>EXPERT</span>}</div>
-                          </div></td>
-                          <td><span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{f.domaine || "—"}</span></td>
-                          <td><span style={{ color: C.textSub, fontSize: 12 }}>{formateursText}</span></td>
-                          <td><span style={{ color: C.textSub, fontSize: 12 }}>{f.mode === "en_ligne" ? "En ligne" : f.mode === "presentiel" ? "Présentiel" : f.mode || "—"}</span></td>
-                          <td><span style={{ fontWeight: 600 }}>{f.gratuit ? <span style={{ color: C.greenM }}>Gratuit</span> : f.prix ? `${f.prix} DT` : "—"}</span></td>
-                          <td><StatusBadge statut={f.statut} /></td>
-                          <td><div style={{ display: "flex", gap: 4 }}>
-                            {f.statut !== "publie" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => publierFormation(f.id)}>Publier</button>}
-                            {f.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => archiverFormation(f.id)}>Archiver</button>}
-                            {!f.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => { setEditingFormation(f); setShowFormationForm(true); }}>Modifier</button>}
-                            <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => supprimerFormation(f.id)}>Supprimer</button>
-                          </div></td>
-                        </tr>
-                      );
-                    }}
-                    emptyText="Aucune formation"
-                  />
-                )}
-                {tab === "podcasts" && (
-                  <DataTable
-                    title={`Podcasts et Vidéos — ${tous_podcasts_onglet.length} au total`}
-                    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "auteur", label: "Auteur", sortable: true }, { key: "domaine", label: "Domaine", sortable: true }, { key: "type_media", label: "Format" }, { key: "statut", label: "Statut", sortable: true }, { key: "actions", label: "Actions" }]}
-                    data={tous_podcasts_onglet} searchKeys={["titre", "auteur", "domaine", "description"]}
-                    filters={[{ key: "statut", label: "Statut", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }, { value: "archive", label: "Archivé" }] }]}
-                    actions={<button className="btn btn-cyan" style={{ fontSize: 12 }} onClick={() => { setEditingPodcast(null); setShowPodcastForm(true); }}>Ajouter un podcast</button>}
-                    renderRow={(p: any) => (
-                      <tr key={p.id}>
-                        <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.cyan}, ${C.cyan}99)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            {p.image ? <img src={`${BASE}/uploads/podcasts-images/${p.image}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>V</span>}
-                          </div>
-                          <div><div style={{ fontWeight: 700, fontSize: 13 }}>{p.titre}</div>{p.expert_id && <span style={{ background: C.cyan, color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 8.5, fontWeight: 700 }}>EXPERT</span>}</div>
-                        </div></td>
-                        <td style={{ color: C.textSub }}>{p.auteur || "—"}</td>
-                        <td><span style={{ background: `${C.cyan}12`, color: C.cyan, borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 600 }}>{p.domaine || "—"}</span></td>
-                        <td>{p.url_audio && p.url_audio.startsWith("http") ? <span style={{ background: `${C.blueM}12`, color: C.blueM, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>Lien</span> : <span style={{ background: `${C.purple}12`, color: C.purple, borderRadius: 6, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>MP4</span>}</td>
-                        <td><StatusBadge statut={p.statut} /></td>
-                        <td><div style={{ display: "flex", gap: 4 }}>
-                          {p.statut === "brouillon" && <button className="btn btn-green" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => publierPodcast(p.id)}>Publier</button>}
-                          {p.statut === "publie" && <button className="btn btn-gray" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => archiverPodcast(p.id)}>Archiver</button>}
-                          {!p.expert_id && <button className="btn btn-blue" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => { setEditingPodcast(p); setShowPodcastForm(true); }}>Modifier</button>}
-                          <button className="btn btn-red" style={{ fontSize: 11, padding: "4px 9px" }} onClick={() => supprimerPodcast(p.id)}>Supprimer</button>
-                        </div></td>
-                      </tr>
-                    )}
-                    emptyText="Aucun podcast"
-                  />
-                )}
-                {tab === "medias" && (
-                  <DataTable
-                    title={`Médias — ${medias.length} éléments`}
-                    columns={[{ key: "titre", label: "Titre", sortable: true }, { key: "emission", label: "Émission" }, { key: "date_publication", label: "Date" }, { key: "statut", label: "Statut" }, { key: "actions", label: "" }]}
-                    data={medias} searchKeys={["titre", "description", "emission"]}
-                    filters={[{ key: "statut", label: "Filtrer", options: [{ value: "publie", label: "Publié" }, { value: "brouillon", label: "Brouillon" }] }]}
-                    actions={<button className="btn btn-teal" style={{ fontSize: 12 }} onClick={() => { setEditingMedia(null); setShowMediaModal(true); }}>Ajouter un média</button>}
-                    renderRow={(m: any) => (
-                      <tr key={m.id}>
-                        <td><div style={{ fontWeight: 700, fontSize: 13 }}>{m.titre}</div><div style={{ fontSize: 11, color: C.textSub, marginTop: 2 }}>{m.description?.slice(0, 60)}</div></td>
-                        <td style={{ color: C.textSub }}>{m.emission || "—"}</td>
-                        <td style={{ fontSize: 12, color: C.textSub }}>{new Date(m.date_publication).toLocaleDateString("fr-FR")}</td>
-                        <td><StatusBadge statut={m.statut} /></td>
-                        <td><div style={{ display: "flex", gap: 5 }}><button className="btn btn-blue" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => { setEditingMedia(m); setShowMediaModal(true); }}>Modifier</button><button className="btn btn-red" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => supprimerMedia(m.id)}>Supprimer</button></div></td>
-                      </tr>
-                    )}
-                    emptyText="Aucun média"
-                  />
-                )}
-                {tab === "news" && <NewsView token={tokenVal()} />}
-                {tab === "contenu" && <ContenuPlateformeView token={tokenVal()} />}
+                {tab === "contenu_accueil" && <ContenuAccueilView token={tokenVal()} articles={articles} medias={medias} onPublierArticle={publierArticle} onSupprimerArticle={supprimerArticle} onEditArticle={(a: any) => { setEditingArticle(a); setShowArticleModal(true); }} onAddArticle={() => { setEditingArticle(null); setShowArticleModal(true); }} onEditMedia={(m: any) => { setEditingMedia(m); setShowMediaModal(true); }} onSupprimerMedia={supprimerMedia} onAddMedia={() => { setEditingMedia(null); setShowMediaModal(true); }} />}
               </div>
             )}
           </main>
@@ -2366,6 +2529,6 @@ export default function DashboardAdmin() {
           </footer>
         </div>
       </div>
-    </>
+    </React.Fragment>
   );
 }

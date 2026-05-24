@@ -1,19 +1,18 @@
-// src/experts/experts.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MulterModule } from '@nestjs/platform-express';
-import { ExpertsService } from './experts.service';
+import { HttpModule } from '@nestjs/axios';   // ← IMPORTANT
 import { ExpertsController } from './experts.controller';
+import { ExpertsService } from './experts.service';
 import { Expert } from '../user/expert.entity';
 import { User } from '../user/user.entity';
 import { MailModule } from '../mail/mail.module';
-import * as path from 'path';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Expert, User]),
-    MulterModule.register({
-      dest: path.join(process.cwd(), 'uploads', 'photos'),
+    HttpModule.register({
+      timeout: 30000,
+      maxRedirects: 5,
     }),
     MailModule,
   ],

@@ -1,4 +1,3 @@
-// src/media/media.controller.ts
 import {
   Controller,
   Get,
@@ -73,7 +72,7 @@ export class MediaController {
         { name: 'miniature_file', maxCount: 1 },
         { name: 'video_file', maxCount: 1 },
       ],
-      { storage: videoStorage, fileFilter: videoFileFilter, limits: { fileSize: 500 * 1024 * 1024 } }, // 500 MB max
+      { storage: videoStorage, fileFilter: videoFileFilter, limits: { fileSize: 500 * 1024 * 1024 } },
     ),
   )
   async create(

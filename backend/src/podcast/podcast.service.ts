@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+// src/podcast/podcast.service.ts
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Podcast } from './podcast.entity';
@@ -15,7 +16,9 @@ export class PodcastService {
     @InjectRepository(Podcast)
     private podcastRepo: Repository<Podcast>,
     private mailService: MailService,
-  ) {}
+  ) {
+    this.logger.log('PodcastService initialisé');
+  }
 
   private async ensurePodcastExists(id: number): Promise<Podcast> {
     const podcast = await this.podcastRepo.findOne({ where: { id } });
@@ -37,9 +40,13 @@ export class PodcastService {
     videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
-    // ✅ Vérification : soit un fichier vidéo, soit une URL externe
-    if (!videoFile && !dto.url_audio) {
-      throw new BadRequestException('Le fichier vidéo ou une URL externe (YouTube, Vimeo, etc.) est obligatoire');
+    this.logger.log(`create - videoFile: ${!!videoFile}, video_url: ${dto.video_url}`);
+    
+    const hasVideoFile = !!videoFile;
+    const hasVideoUrl = dto.video_url && dto.video_url.trim() !== '';
+    
+    if (!hasVideoFile && !hasVideoUrl) {
+      throw new BadRequestException('Le fichier vidéo ou une URL externe est obligatoire');
     }
     
     const podcast = this.podcastRepo.create({
@@ -48,15 +55,11 @@ export class PodcastService {
       auteur: dto.auteur || '',
       domaine: dto.domaine || '',
       statut: dto.statut || 'en_attente',
-      // ✅ Si fichier uploadé, on prend le nom; sinon, on prend l'URL fournie
-      url_audio: videoFile ? videoFile.filename : dto.url_audio,
+      url_audio: videoFile ? videoFile.filename : (dto.video_url || dto.url_audio || ''),
       image: imageFile?.filename || '',
     });
     
     const saved = await this.podcastRepo.save(podcast);
-    if (!saved || !saved.id) {
-      throw new BadRequestException('Erreur lors de la création du podcast');
-    }
     this.logger.log(`Podcast créé (admin) : ${saved.id}`);
     return saved;
   }
@@ -77,7 +80,10 @@ export class PodcastService {
       podcast.url_audio = videoFile.filename;
     }
     
-    // ✅ Si une URL est fournie dans le DTO (mise à jour)
+    if (dto.video_url !== undefined && !videoFile) {
+      podcast.url_audio = dto.video_url;
+    }
+    
     if (dto.url_audio !== undefined && !videoFile) {
       podcast.url_audio = dto.url_audio;
     }
@@ -97,9 +103,6 @@ export class PodcastService {
     if (dto.statut !== undefined) podcast.statut = dto.statut;
 
     const updated = await this.podcastRepo.save(podcast);
-    if (!updated) {
-      throw new BadRequestException('Erreur lors de la mise à jour du podcast');
-    }
     this.logger.log(`Podcast ${id} mis à jour`);
     return updated;
   }
@@ -108,16 +111,12 @@ export class PodcastService {
     const podcast = await this.ensurePodcastExists(id);
     podcast.statut = statut;
     const updated = await this.podcastRepo.save(podcast);
-    if (!updated) {
-      throw new BadRequestException('Erreur lors de la mise à jour du statut');
-    }
     this.logger.log(`Podcast ${id} : statut changé à ${statut}`);
     return updated;
   }
 
   async delete(id: number): Promise<void> {
     const podcast = await this.ensurePodcastExists(id);
-    // ✅ Ne supprimer le fichier que si c'est un fichier local (pas une URL externe)
     if (podcast.url_audio && !podcast.url_audio.startsWith('http')) {
       const audioPath = path.join(process.cwd(), 'uploads', 'podcasts-audio', podcast.url_audio);
       if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
@@ -138,52 +137,82 @@ export class PodcastService {
     videoFile?: Express.Multer.File,
     imageFile?: Express.Multer.File,
   ): Promise<Podcast> {
-    // ✅ Vérification : soit un fichier vidéo, soit une URL externe
-    if (!videoFile && !dto.url_audio) {
+    this.logger.log(`=== createByExpert ===`);
+    this.logger.log(`Expert ID: ${expertId}`);
+    this.logger.log(`Titre: ${dto.titre}`);
+    this.logger.log(`videoFile: ${videoFile ? videoFile.originalname : 'non fourni'}`);
+    this.logger.log(`imageFile: ${imageFile ? imageFile.originalname : 'non fourni'}`);
+    
+    const hasVideoFile = !!videoFile;
+    const hasVideoUrl = dto.video_url && dto.video_url.trim() !== '';
+    
+    this.logger.log(`hasVideoFile: ${hasVideoFile}, hasVideoUrl: ${hasVideoUrl}`);
+    
+    if (!hasVideoFile && !hasVideoUrl) {
       throw new BadRequestException('Le fichier vidéo ou une URL externe (YouTube, Vimeo, etc.) est obligatoire');
     }
     
-    const podcast = this.podcastRepo.create({
-      titre: dto.titre,
-      description: dto.description || '',
-      auteur: dto.auteur || '',
-      domaine: dto.domaine || '',
-      statut: 'en_attente',
-      url_audio: videoFile ? videoFile.filename : dto.url_audio,
-      image: imageFile?.filename || '',
-      expert_id: expertId,
-    });
-    
-    const saved = await this.podcastRepo.save(podcast);
-    if (!saved || !saved.id) {
-      throw new BadRequestException('Erreur lors de la création du podcast par l’expert');
-    }
-    
     try {
-      if (this.mailService && expertUser) {
-        await this.mailService.sendPodcastProposeeNotification(
-          expertUser.prenom || 'Expert',
-          expertUser.nom || '',
-          expertUser.email || '',
-          dto.titre || 'Sans titre',
-          dto.domaine || 'Non spécifié',
-          dto.description || ''
-        );
-        this.logger.log(`📧 Notification admin envoyée pour le podcast: ${saved.id}`);
+      const podcastData: Partial<Podcast> = {
+        titre: dto.titre,
+        description: dto.description || '',
+        auteur: dto.auteur || `${expertUser.prenom} ${expertUser.nom}`,
+        domaine: dto.domaine || '',
+        statut: 'en_attente',
+        expert_id: expertId,
+      };
+      
+      if (videoFile) {
+        podcastData.url_audio = videoFile.filename;
+        this.logger.log(`Fichier vidéo sauvegardé: ${videoFile.filename}`);
+      } else if (dto.video_url) {
+        podcastData.url_audio = dto.video_url;
+        this.logger.log(`URL vidéo sauvegardée: ${dto.video_url}`);
       }
-    } catch (emailError) {
-      this.logger.error(`❌ Erreur envoi email admin pour podcast: ${emailError.message}`);
+      
+      if (imageFile) {
+        podcastData.image = imageFile.filename;
+        this.logger.log(`Image sauvegardée: ${imageFile.filename}`);
+      }
+      
+      const podcast = this.podcastRepo.create(podcastData);
+      const saved = await this.podcastRepo.save(podcast);
+      
+      this.logger.log(`Podcast créé avec succès par expert ${expertId} : ${saved.id}`);
+      
+      // Envoi d'email (non bloquant)
+      try {
+        if (this.mailService && expertUser?.email) {
+          await this.mailService.sendPodcastProposeeNotification(
+            expertUser.prenom || 'Expert',
+            expertUser.nom || '',
+            expertUser.email,
+            dto.titre || 'Sans titre',
+            dto.domaine || 'Non spécifié',
+            dto.description || ''
+          );
+          this.logger.log(`Email envoyé à ${expertUser.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error(`Erreur envoi email (non bloquante): ${emailError.message}`);
+      }
+      
+      return saved;
+    } catch (error) {
+      this.logger.error(`Erreur dans createByExpert: ${error.message}`);
+      this.logger.error(error.stack);
+      throw new InternalServerErrorException(`Erreur lors de la création du podcast: ${error.message}`);
     }
-    
-    this.logger.log(`Podcast créé par expert ${expertId} : ${saved.id}`);
-    return saved;
   }
 
   async findByExpert(expertId: number): Promise<Podcast[]> {
-    return this.podcastRepo.find({
+    this.logger.log(`Recherche podcasts pour expert ${expertId}`);
+    const podcasts = await this.podcastRepo.find({
       where: { expert_id: expertId },
       order: { date_creation: 'DESC' },
     });
+    this.logger.log(`Trouvé ${podcasts.length} podcast(s)`);
+    return podcasts;
   }
 
   async updateByExpert(

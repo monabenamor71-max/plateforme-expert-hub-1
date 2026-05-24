@@ -1,3 +1,4 @@
+// src/formations/formations.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Formation } from './formation.entity';
@@ -9,7 +10,7 @@ import { Expert } from '../user/expert.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Formation, Expert]),
-    MailModule,  // ← TRÈS IMPORTANT: MailModule doit être importé
+    MailModule,  // ← CRUCIAL : MailModule doit être importé
   ],
   controllers: [FormationsController],
   providers: [FormationsService],

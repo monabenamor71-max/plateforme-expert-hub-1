@@ -84,22 +84,23 @@ export class MailService {
   }
 
   // ==================== CONFIRMATION D'EMAIL ====================
+// src/mail/mail.service.ts (extrait modifié)
 async sendConfirmationEmail(email: string, token: string) {
-    // ✅ CHANGEMENT ICI : lien direct vers /confirmation (pas /auth/confirm)
-   const confirmLink = `${this.baseUrl}/confirmation?token=${token}`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const confirmLink = `${frontendUrl}/confirmation?token=${token}`;
   console.log(`\n📧 LIEN DE CONFIRMATION pour ${email} :\n${confirmLink}\n`);
-    this.logger.log(`Lien : ${confirmLink}`);
+  this.logger.log(`Lien : ${confirmLink}`);
 
-    const content = `
-      <h2 style="color: #0A2540; font-size: 22px; margin-bottom: 12px;">Bienvenue sur BEH 🚀</h2>
-      <p style="color: #475569; font-size: 15px; line-height: 1.6;">Merci de vous être inscrit. Avant de continuer, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous.</p>
-      <p style="color: #64748B; font-size: 13px; margin-top: 20px;">Ce lien expire dans 24 heures.</p>
-      <p style="margin-top: 20px; font-size: 13px;">Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :<br/><a href="${confirmLink}" style="word-break: break-all;">${confirmLink}</a></p>
-    `;
+  const content = `
+    <h2 style="color: #0A2540; font-size: 22px; margin-bottom: 12px;">Bienvenue sur BEH 🚀</h2>
+    <p style="color: #475569; font-size: 15px; line-height: 1.6;">Merci de vous être inscrit. Avant de continuer, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous.</p>
+    <p style="color: #64748B; font-size: 13px; margin-top: 20px;">Ce lien expire dans 24 heures.</p>
+    <p style="margin-top: 20px; font-size: 13px;">Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :<br/><a href="${confirmLink}" style="word-break: break-all;">${confirmLink}</a></p>
+  `;
 
-    const html = this.getBaseHtml(content, { url: confirmLink, text: '✅ Confirmer mon compte' });
-    await this.sendEmail(email, 'Confirmation de votre adresse email', html);
-  }
+  const html = this.getBaseHtml(content, { url: confirmLink, text: '✅ Confirmer mon compte' });
+  await this.sendEmail(email, 'Confirmation de votre adresse email', html);
+}
 
   // ==================== NOTIFICATION ADMIN (INSCRIPTION) ====================
   async sendAdminNotification(nom: string, role: string, email: string) {

@@ -1,35 +1,35 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { User } from '../user/user.entity';
-import { Expert } from '../user/expert.entity';
+import { Expert } from '../user/expert.entity';  // ✅ chemin corrigé
 
 @Entity('rendezvous')
 export class Rendezvous {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  expert_id: number;
+  expert_id!: number;
 
   @Column()
-  client_id: number;
+  client_id!: number;
 
-  @Column({ nullable: true })   // ← AJOUTER CE CHAMP
-  sujet: string;
+  @Column({ nullable: true })
+  sujet?: string;
 
   @ManyToOne(() => Expert)
   @JoinColumn({ name: 'expert_id' })
-  expert: Expert;
+  expert!: Expert;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'client_id' })
-  client: User;
+  client!: User;
 
   @Column({ type: 'datetime' })
-  date_rdv: Date;
+  date_rdv!: Date;
 
   @Column({ type: 'enum', enum: ['en_attente', 'confirme', 'annule'], default: 'en_attente' })
-  statut: string;
+  statut!: string;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 }

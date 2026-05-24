@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('experts')
@@ -9,7 +9,7 @@ export class Expert {
   @Column({ name: 'user_id' })
   user_id!: number;
 
-  @ManyToOne(() => User, { eager: true })
+  @OneToOne(() => User, user => user.expert)
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
@@ -21,6 +21,10 @@ export class Expert {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   cv?: string;
+
+  // ✅ Texte du CV pour analyse
+  @Column({ type: 'text', nullable: true })
+  cv_text?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   portfolio?: string;
@@ -45,6 +49,19 @@ export class Expert {
 
   @Column({ type: 'text', nullable: true })
   modifications_en_attente?: string;
+
+  // ✅ Résultats de l'analyse IA
+  @Column({ type: 'int', nullable: true })
+  cv_analysis_score?: number;
+
+  @Column({ type: 'text', nullable: true })
+  cv_analysis_skills?: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  cv_analysis_decision?: string;
+
+  @Column({ type: 'text', nullable: true })
+  cv_analysis_explanation?: string;
 
   @CreateDateColumn()
   createdAt!: Date;

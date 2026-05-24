@@ -1,5 +1,32 @@
-import { IsString, IsOptional, IsBoolean, IsInt, Min, IsDateString, IsEnum, IsUrl } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsBoolean, IsInt, Min, IsDateString, IsEnum, IsUrl, IsArray, ValidateNested } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+
+class FormateurDetailDto {
+  @Transform(({ value }) => (value === null || value === undefined ? '' : String(value)))
+  @IsString()
+  @IsOptional()
+  prenom?: string;
+
+  @Transform(({ value }) => (value === null || value === undefined ? '' : String(value)))
+  @IsString()
+  @IsOptional()
+  nom?: string;
+
+  @Transform(({ value }) => (value === null || value === undefined ? '' : String(value)))
+  @IsString()
+  @IsOptional()
+  domaine?: string;
+
+  @Transform(({ value }) => (value === null || value === undefined ? '' : String(value)))
+  @IsString()
+  @IsOptional()
+  image?: string;
+
+  @Transform(({ value }) => (value === null || value === undefined ? '' : String(value)))
+  @IsString()
+  @IsOptional()
+  bio?: string;
+}
 
 export class CreateFormationDto {
   @IsString()
@@ -17,21 +44,43 @@ export class CreateFormationDto {
   @IsOptional()
   formateur?: string;
 
-  // Pas de validation stricte, on va parser manuellement dans le service
-  @IsOptional()
   @Transform(({ value }) => {
-    if (!value) return [];
+    // Si c'est une chaîne JSON, la parser
     if (typeof value === 'string') {
       try {
         const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch { return []; }
+        if (Array.isArray(parsed)) {
+          return parsed.map(item => ({
+            prenom: item?.prenom ?? '',
+            nom: item?.nom ?? '',
+            domaine: item?.domaine ?? '',
+            bio: item?.bio ?? '',
+            image: item?.image ?? '',
+          }));
+        }
+        return [];
+      } catch {
+        return [];
+      }
     }
-    return Array.isArray(value) ? value : [];
+    // Si c'est déjà un tableau
+    if (Array.isArray(value)) {
+      return value.map(item => ({
+        prenom: item?.prenom ?? '',
+        nom: item?.nom ?? '',
+        domaine: item?.domaine ?? '',
+        bio: item?.bio ?? '',
+        image: item?.image ?? '',
+      }));
+    }
+    return [];
   })
-  formateur_details?: any[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FormateurDetailDto)
+  @IsOptional()
+  formateur_details?: FormateurDetailDto[];
 
-  // ... tous les autres champs (prix, places_limitees, etc.) avec les transformations existantes
   @IsEnum(['gratuit', 'payant'])
   @IsOptional()
   type?: string;
@@ -68,7 +117,7 @@ export class CreateFormationDto {
   @IsOptional()
   duree?: string;
 
-  @IsEnum(['en_ligne', 'presentiel'])
+  @IsEnum(['en_ligne', 'presentiel', 'hybride'])
   @IsOptional()
   mode?: string;
 

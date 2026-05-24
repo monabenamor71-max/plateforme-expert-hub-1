@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class UpdateProfilDto {
   @IsString()
@@ -21,8 +21,7 @@ export class UpdateProfilDto {
   @IsOptional()
   telephone?: string;
 
-  // ✅ Plus aucune contrainte de plage
+  // ✅ Plus aucune validation (ni entier, ni plage)
   @IsOptional()
-  @IsInt()
   annee_debut_experience?: number;
 }

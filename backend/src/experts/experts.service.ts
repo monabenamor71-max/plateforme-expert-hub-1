@@ -1,11 +1,11 @@
-// src/experts/experts.service.ts
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { Expert } from '../user/expert.entity';
 import { User } from '../user/user.entity';
 import { MailService } from '../mail/mail.service';
-import { RequestModificationDto } from './dto/request-modification.dto';
 import { UpdateProfilDto } from './dto/update-profil.dto';
 
 @Injectable()
@@ -16,6 +16,7 @@ export class ExpertsService {
     @InjectRepository(Expert) private expertRepo: Repository<Expert>,
     @InjectRepository(User) private userRepo: Repository<User>,
     private mailService: MailService,
+    private httpService: HttpService,   // ← INJECTION POUR APPEL HTTP
   ) {}
 
   async getMoi(userId: number) {
@@ -59,6 +60,41 @@ export class ExpertsService {
       relations: ['user'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  // ✅ ANALYSE CV
+  async analyzeCv(expertId: number) {
+    const expert = await this.expertRepo.findOne({ where: { id: expertId } });
+    if (!expert) {
+      throw new NotFoundException(`Expert ${expertId} non trouvé`);
+    }
+    if (!expert.cv_text) {
+      throw new BadRequestException('Aucun texte de CV disponible pour cet expert.');
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post('http://localhost:5000/analyze-cv', {
+          expert_id: expertId,
+          cv_text: expert.cv_text,
+        }),
+      );
+
+      const analysis = response.data;
+
+      // Sauvegarde des résultats
+      await this.expertRepo.update(expertId, {
+        cv_analysis_score: analysis.score,
+        cv_analysis_skills: JSON.stringify(analysis.skills),
+        cv_analysis_decision: analysis.decision,
+        cv_analysis_explanation: analysis.explanation,
+      });
+
+      return analysis;
+    } catch (error) {
+      this.logger.error(`Erreur appel IA pour expert ${expertId}: ${error.message}`);
+      throw new BadRequestException('Le service d’analyse de CV est temporairement indisponible');
+    }
   }
 
   async updateProfil(userId: number, body: any) {

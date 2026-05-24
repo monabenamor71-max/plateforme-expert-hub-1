@@ -21,7 +21,11 @@ export class CreatePodcastDto {
 
   @IsOptional()
   @IsString()
-  url_audio?: string;  // ← AJOUTE CETTE LIGNE
+  video_url?: string;
+
+  @IsOptional()
+  @IsString()
+  url_audio?: string;
 
   @IsIn(['en_attente', 'publie', 'refuse'])
   @IsOptional()
@@ -48,7 +52,11 @@ export class UpdatePodcastDto {
 
   @IsOptional()
   @IsString()
-  url_audio?: string;  // ← AJOUTE CETTE LIGNE
+  video_url?: string;
+
+  @IsOptional()
+  @IsString()
+  url_audio?: string;
 
   @IsIn(['en_attente', 'publie', 'refuse'])
   @IsOptional()
