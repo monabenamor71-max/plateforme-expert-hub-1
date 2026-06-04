@@ -1,10 +1,10 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Request as NestRequest, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Put, Body, Param, Request as NestRequest, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { TemoignagesService } from './temoignages.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { Request as ExpressRequest } from 'express';
 
 interface RequestWithUser extends ExpressRequest {
-  user: { id: number };
+  user: { id: number; role?: string };
 }
 
 @Controller('temoignages')
@@ -13,8 +13,12 @@ export class TemoignagesController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async create(@Body() body: { texte: string }, @NestRequest() req: RequestWithUser) {
-    const dto = { user_id: req.user.id, texte: body.texte };
+  async create(@Body() body: { texte: string; note?: number }, @NestRequest() req: RequestWithUser) {
+    const dto = { 
+      user_id: req.user.id, 
+      texte: body.texte,
+      note: body.note || 5
+    };
     return this.temoignagesService.create(dto);
   }
 
@@ -44,7 +48,23 @@ export class TemoignagesController {
     return this.temoignagesService.refuser(id);
   }
 
+  // AJOUT: MODIFIER UN TÉMOIGNAGE (PUT)
+  @Put(':id')
+  @UseGuards(JwtAuthGuard)
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { texte: string; note: number },
+    @NestRequest() req: RequestWithUser
+  ) {
+    return this.temoignagesService.update(id, req.user.id, {
+      texte: body.texte,
+      note: body.note,
+    });
+  }
+
+  // SUPPRIMER - CORRIGÉ (1 argument seulement)
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   async supprimer(@Param('id', ParseIntPipe) id: number) {
     return this.temoignagesService.supprimer(id);
   }

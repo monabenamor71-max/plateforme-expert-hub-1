@@ -68,6 +68,16 @@ function Lbl({ children }: { children: React.ReactNode }) {
   return <label style={{ fontSize: 11, fontWeight: 700, color: "#7D8FAA", textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>{children}</label>;
 }
 
+// Composant FL (Field Label) utilisé dans contact_admin
+function FL({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: "#7D8FAA", textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
 // ==================== MODAL CERTIFICATION ====================
 function CertificationModal({ formation, clientInfo, expertInfo, onClose, onSend }: {
   formation: any; clientInfo: any; expertInfo: any;
@@ -567,7 +577,7 @@ function ProposerFormationModal({ onClose, onSuccess, expertData, user, tk }: { 
   );
 }
 
-// ==================== CREATE PODCAST MODAL - CORRIGÉ POUR LE BACKEND ====================
+// ==================== CREATE PODCAST MODAL ====================
 function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () => void; onSuccess: () => void; expertData: any }) {
   const [titre, setTitre] = useState("");
   const [description, setDescription] = useState("");
@@ -583,67 +593,46 @@ function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
     if (!titre.trim()) {
       setError("Titre requis");
       return;
     }
-    
     if (!useExternalLink && !videoFile) {
       setError("Veuillez sélectionner un fichier vidéo");
       return;
     }
-    
     if (useExternalLink && !externalLink.trim()) {
       setError("Veuillez saisir un lien valide");
       return;
     }
-    
     setLoading(true);
     setError("");
-    
     const fd = new FormData();
-    
-    // Champs texte
     fd.append("titre", titre);
     if (description) fd.append("description", description);
     if (auteur) fd.append("auteur", auteur);
     if (domaine) fd.append("domaine", domaine);
-    
-    // ⚠️ IMPORTANT: Le backend attend "video_url" (pas "url_audio") pour les liens externes
     if (useExternalLink) {
       fd.append("video_url", externalLink);
-      console.log("Envoi avec lien externe (video_url):", externalLink);
     } else if (videoFile) {
       fd.append("video_file", videoFile);
-      console.log("Envoi avec fichier (video_file):", videoFile.name);
     }
-    
-    // Image de couverture (optionnelle)
     if (imageFile) {
       fd.append("image_file", imageFile);
     }
-    
     try {
       const token = localStorage.getItem("access_token");
-      
       const res = await fetch(`${BASE}/podcasts/expert/proposer`, {
         method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-        },
+        headers: { "Authorization": `Bearer ${token}` },
         body: fd,
       });
-      
-      const responseText = await res.text();
-      console.log("Réponse serveur:", res.status, responseText);
-      
       if (res.ok) {
         alert("✅ Podcast proposé avec succès !");
         onSuccess();
         onClose();
       } else {
+        const responseText = await res.text();
         setError(responseText || "Erreur lors de l'envoi");
       }
     } catch (err: any) {
@@ -660,9 +649,7 @@ function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () =>
         <div style={{ background: "linear-gradient(135deg,#2d1b5e,#4c1d95)", padding: "20px 28px", borderRadius: "24px 24px 0 0", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 13, background: "rgba(139,92,246,.2)", border: "1.5px solid rgba(139,92,246,.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <FaMicrophone style={{ color: "#C4B5FD", fontSize: 20 }} />
-              </div>
+              <div style={{ width: 46, height: 46, borderRadius: 13, background: "rgba(139,92,246,.2)", border: "1.5px solid rgba(139,92,246,.4)", display: "flex", alignItems: "center", justifyContent: "center" }}><FaMicrophone style={{ color: "#C4B5FD", fontSize: 20 }} /></div>
               <div>
                 <div style={{ color: "rgba(255,255,255,.6)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 4 }}>Espace Expert</div>
                 <div style={{ color: "#fff", fontWeight: 900, fontSize: 18 }}>Proposer un podcast / vidéo</div>
@@ -671,92 +658,32 @@ function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () =>
             <button onClick={onClose} style={{ background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 16 }}><FaTimes /></button>
           </div>
         </div>
-        
         <form onSubmit={handleSubmit} style={{ padding: "24px 28px", maxHeight: "80vh", overflowY: "auto" }}>
           {error && (
             <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 10, padding: "12px", marginBottom: 16, fontSize: 13, color: "#DC2626" }}>
               <FaExclamationTriangle style={{ display: "inline", marginRight: 6 }} /> {error}
             </div>
           )}
-          
-          <div style={{ marginBottom: 16 }}>
-            <Lbl>Titre *</Lbl>
-            <input 
-              className="inp" 
-              required 
-              value={titre} 
-              onChange={e => setTitre(e.target.value)} 
-              placeholder="Titre de votre vidéo/podcast" 
-              maxLength={150} 
-            />
-          </div>
-          
-          <div style={{ marginBottom: 16 }}>
-            <Lbl>Description</Lbl>
-            <textarea 
-              className="inp" 
-              rows={3} 
-              value={description} 
-              onChange={e => setDescription(e.target.value)} 
-              placeholder="Description de votre contenu..." 
-            />
-          </div>
-          
+          <div style={{ marginBottom: 16 }}><Lbl>Titre *</Lbl><input className="inp" required value={titre} onChange={e => setTitre(e.target.value)} placeholder="Titre de votre vidéo/podcast" maxLength={150} /></div>
+          <div style={{ marginBottom: 16 }}><Lbl>Description</Lbl><textarea className="inp" rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Description de votre contenu..." /></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-            <div>
-              <Lbl>Auteur</Lbl>
-              <input 
-                className="inp" 
-                value={auteur} 
-                onChange={e => setAuteur(e.target.value)} 
-                placeholder="Votre nom" 
-              />
-            </div>
-            <div>
-              <Lbl>Domaine</Lbl>
-              <select className="inp" value={domaine} onChange={e => setDomaine(e.target.value)}>
-                <option value="">Sélectionner...</option>
-                {DOMAINES_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
+            <div><Lbl>Auteur</Lbl><input className="inp" value={auteur} onChange={e => setAuteur(e.target.value)} placeholder="Votre nom" /></div>
+            <div><Lbl>Domaine</Lbl><select className="inp" value={domaine} onChange={e => setDomaine(e.target.value)}><option value="">Sélectionner...</option>{DOMAINES_LIST.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
           </div>
-
           <div style={{ marginBottom: 20, display: "flex", gap: 16, background: "#F8FAFC", padding: "12px 16px", borderRadius: 12, border: "1.5px solid #E2E8F0" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-              <input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier (MP4)
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-              <input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube, Vimeo, etc.)
-            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}><input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier (MP4)</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}><input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube, Vimeo, etc.)</label>
           </div>
-
           {!useExternalLink ? (
             <div style={{ marginBottom: 16 }}>
               <Lbl>Fichier vidéo *</Lbl>
               <label className="upload-zone" style={{ minHeight: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}>
-                <input 
-                  type="file" 
-                  accept="video/mp4,video/webm,video/quicktime" 
-                  onChange={e => { 
-                    const f = e.target.files?.[0]; 
-                    if (f) {
-                      setVideoFile(f);
-                      console.log("Fichier sélectionné:", f.name, f.size, f.type);
-                    }
-                  }} 
-                  style={{ display: "none" }} 
-                />
+                <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={e => { const f = e.target.files?.[0]; if (f) setVideoFile(f); }} style={{ display: "none" }} />
                 {videoFile ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <FaVideo style={{ color: "#7C3AED", fontSize: 24 }} />
                     <span style={{ fontSize: 12, color: "#0A2540" }}>{videoFile.name}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => setVideoFile(null)} 
-                      style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer" }}
-                    >
-                      <FaTimes />
-                    </button>
+                    <button type="button" onClick={() => setVideoFile(null)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer" }}><FaTimes /></button>
                   </div>
                 ) : (
                   <div style={{ textAlign: "center" }}>
@@ -771,45 +698,19 @@ function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () =>
               <Lbl>Lien externe *</Lbl>
               <div style={{ position: "relative" }}>
                 <FaLink style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: 13 }} />
-                <input 
-                  className="inp" 
-                  placeholder="https://www.youtube.com/watch?v=..." 
-                  value={externalLink} 
-                  onChange={e => setExternalLink(e.target.value)} 
-                  style={{ paddingLeft: 34 }} 
-                />
+                <input className="inp" placeholder="https://www.youtube.com/watch?v=..." value={externalLink} onChange={e => setExternalLink(e.target.value)} style={{ paddingLeft: 34 }} />
               </div>
-              <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
-                Supporte YouTube, Vimeo, Dailymotion, etc.
-              </div>
+              <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>Supporte YouTube, Vimeo, Dailymotion, etc.</div>
             </div>
           )}
-
           <div style={{ marginBottom: 20 }}>
             <Lbl>Image de couverture (optionnelle)</Lbl>
             <label className="upload-zone" style={{ minHeight: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}>
-              <input 
-                type="file" 
-                accept="image/jpeg,image/png,image/webp" 
-                onChange={e => { 
-                  const f = e.target.files?.[0]; 
-                  if (f) { 
-                    setImageFile(f); 
-                    setImagePreview(URL.createObjectURL(f)); 
-                  } 
-                }} 
-                style={{ display: "none" }} 
-              />
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const f = e.target.files?.[0]; if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); } }} style={{ display: "none" }} />
               {imagePreview ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <img src={imagePreview} style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover" }} alt="" />
-                  <button 
-                    type="button" 
-                    onClick={() => { setImageFile(null); setImagePreview(""); }} 
-                    style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer" }}
-                  >
-                    Supprimer
-                  </button>
+                  <button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer" }}>Supprimer</button>
                 </div>
               ) : (
                 <div style={{ textAlign: "center" }}>
@@ -819,37 +720,12 @@ function CreatePodcastModal({ onClose, onSuccess, expertData }: { onClose: () =>
               )}
             </label>
           </div>
-
           <div style={{ marginTop: 20, background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#0369A1", display: "flex", alignItems: "center", gap: 8 }}>
             <FaInfoCircle style={{ flexShrink: 0 }} /> Votre vidéo sera soumise en statut "En attente" et examinée par l'administrateur.
           </div>
-
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 24 }}>
-            <button 
-              type="button" 
-              style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }} 
-              onClick={onClose}
-            >
-              Annuler
-            </button>
-            <button 
-              type="submit" 
-              disabled={loading} 
-              style={{ 
-                background: loading ? "#E2E8F0" : "#7C3AED", 
-                color: loading ? "#94A3B8" : "#fff", 
-                border: "none", 
-                borderRadius: 10, 
-                padding: "10px 24px", 
-                fontWeight: 700, 
-                fontSize: 13, 
-                cursor: loading ? "not-allowed" : "pointer", 
-                fontFamily: "inherit", 
-                display: "flex", 
-                alignItems: "center", 
-                gap: 6 
-              }}
-            >
+            <button type="button" style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }} onClick={onClose}>Annuler</button>
+            <button type="submit" disabled={loading} style={{ background: loading ? "#E2E8F0" : "#7C3AED", color: loading ? "#94A3B8" : "#fff", border: "none", borderRadius: 10, padding: "10px 24px", fontWeight: 700, fontSize: 13, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
               {loading ? <><FaSpinner style={{ animation: "spin .8s linear infinite" }} /> Envoi...</> : <><FaPaperPlane size={12} /> Proposer</>}
             </button>
           </div>
@@ -875,21 +751,18 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!titre.trim()) { alert("Titre requis"); return; }
-    
     setLoading(true);
     const fd = new FormData();
     fd.append("titre", titre);
     fd.append("description", description);
     fd.append("auteur", auteur);
     fd.append("domaine", domaine);
-    
     if (useExternalLink && externalLink.trim()) {
       fd.append("url_audio", externalLink);
     } else if (videoFile) {
       fd.append("video_file", videoFile);
     }
     if (imageFile) fd.append("image_file", imageFile);
-
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${BASE}/podcasts/expert/modifier/${podcast.id}`, {
@@ -920,16 +793,10 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
             <div><Lbl>Auteur</Lbl><input className="inp" value={auteur} onChange={e => setAuteur(e.target.value)} /></div>
             <div><Lbl>Domaine</Lbl><input className="inp" value={domaine} onChange={e => setDomaine(e.target.value)} /></div>
           </div>
-
           <div style={{ marginBottom: 16, display: "flex", gap: 16, background: "#F8FAFC", padding: "12px 16px", borderRadius: 12 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-              <input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier MP4
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-              <input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube...)
-            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}><input type="radio" checked={!useExternalLink} onChange={() => setUseExternalLink(false)} /> Uploader un fichier MP4</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}><input type="radio" checked={useExternalLink} onChange={() => setUseExternalLink(true)} /> Lien externe (YouTube...)</label>
           </div>
-
           {!useExternalLink ? (
             <div style={{ marginBottom: 16 }}>
               <Lbl>Fichier vidéo (MP4)</Lbl>
@@ -950,7 +817,6 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
               </div>
             </div>
           )}
-
           <div style={{ marginBottom: 16 }}>
             <Lbl>Image de couverture</Lbl>
             <label className="upload-zone" style={{ minHeight: 70, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -958,7 +824,6 @@ function EditPodcastModal({ podcast, onClose, onSuccess }: { podcast: any; onClo
               {imagePreview ? <img src={imagePreview} style={{ maxHeight: 60, borderRadius: 6 }} alt="" /> : <><FaImage style={{ color: "#94A3B8", fontSize: 22 }} /><span>Modifier l'image</span></>}
             </label>
           </div>
-
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <button type="button" style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={onClose}>Annuler</button>
             <button type="submit" disabled={loading} style={{ background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
@@ -999,20 +864,13 @@ function PodcastDetailModal({ podcast, onClose }: { podcast: any; onClose: () =>
         </div>
         <div style={{ padding: "24px 28px" }}>
           {podcast.description && <p style={{ fontSize: 14, color: "#475569", lineHeight: 1.8, marginBottom: 20 }}>{podcast.description}</p>}
-          
           {isExternalLink ? (
             <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", marginBottom: 16, borderRadius: 12, background: "#000" }}>
-              <iframe
-                src={getEmbedUrl(podcast.url_audio)}
-                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
-                allowFullScreen
-                title={podcast.titre}
-              />
+              <iframe src={getEmbedUrl(podcast.url_audio)} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }} allowFullScreen title={podcast.titre} />
             </div>
           ) : (
             <video src={`${BASE}/uploads/podcasts-audio/${podcast.url_audio}`} controls style={{ width: "100%", marginBottom: 16, borderRadius: 12 }} />
           )}
-          
           <button style={{ width: "100%", background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 9, padding: "10px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }} onClick={onClose}>Fermer</button>
         </div>
       </div>
@@ -1117,6 +975,8 @@ export default function DashboardExpert() {
   const [devisMission, setDevisMission] = useState<any>(null);
   const [devisForm, setDevisForm] = useState({ montant: "", description: "", delai: "" });
   const [showDevisModal, setShowDevisModal] = useState(false);
+  const [adminMessages, setAdminMessages] = useState<any[]>([]);
+  const [adminNewReplyCount, setAdminNewReplyCount] = useState(0);
   const [contactAdminForm, setContactAdminForm] = useState({ sujet: "", message: "" });
   const [sendingContactAdmin, setSendingContactAdmin] = useState(false);
   const [contactAdminStatus, setContactAdminStatus] = useState<"idle" | "success" | "error">("idle");
@@ -1150,6 +1010,25 @@ export default function DashboardExpert() {
   const unreadMsgCount = allMessages.filter(m => m.receiver_id === user?.id && !m.lu).length;
   const pendingRdvCount = rdvs.filter(r => r.statut === "en_attente").length;
   const notificationsCount = notifications.length;
+
+  // Charger les messages admin
+  useEffect(() => {
+    if (!user || tab !== "contact_admin") return;
+    const loadAdminMessages = async () => {
+      try {
+        const res = await fetch(`${BASE}/contact/messages`, { headers: hdr() });
+        if (res.ok) {
+          const all = await res.json();
+          const userEmail = user.email;
+          const filtered = all.filter((msg: any) => msg.email === userEmail);
+          setAdminMessages(filtered);
+          const unreadReplies = filtered.filter((msg: any) => msg.admin_reply && !msg.is_read).length;
+          setAdminNewReplyCount(unreadReplies);
+        }
+      } catch {}
+    };
+    loadAdminMessages();
+  }, [tab, user, hdr]);
 
   const handleNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1188,9 +1067,7 @@ export default function DashboardExpert() {
     setNewsLoading(true);
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch(`${BASE}/news/startup`, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
+      const response = await fetch(`${BASE}/news/startup`, { headers: { Authorization: `Bearer ${token}` } });
       if (response.ok) {
         const data = await response.json();
         if (data.canView === true) {
@@ -1216,17 +1093,13 @@ export default function DashboardExpert() {
     const currentExpertId = expertId || expert?.id;
     if (!token || !currentExpertId) return;
     try {
-      const res = await fetch(`${BASE}/demandes-service/expert/notifications`, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
+      const res = await fetch(`${BASE}/demandes-service/expert/notifications`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { 
         const data = await res.json(); 
         setNotifications(Array.isArray(data) ? data : []); 
         return; 
       }
-      const res2 = await fetch(`${BASE}/demandes-service/all`, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
+      const res2 = await fetch(`${BASE}/demandes-service/all`, { headers: { Authorization: `Bearer ${token}` } });
       if (res2.ok) {
         const allDemandes = await res2.json();
         const filtered = (Array.isArray(allDemandes) ? allDemandes : []).filter((d: any) => {
@@ -1250,9 +1123,7 @@ export default function DashboardExpert() {
     const token = tk(); 
     if (!token) return;
     try {
-      const res = await fetch(`${BASE}/demandes-service/expert/assignees`, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
+      const res = await fetch(`${BASE}/demandes-service/expert/assignees`, { headers: { Authorization: `Bearer ${token}` } });
       setDemandesAssignees(res.ok ? await res.json() : []);
     } catch { 
       setDemandesAssignees([]); 
@@ -1487,7 +1358,7 @@ export default function DashboardExpert() {
     }
   }
 
-  async function envoyerMessageAdmin(e: React.FormEvent) {
+  const envoyerMessageAdmin = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!contactAdminForm.message.trim()) return; 
     setSendingContactAdmin(true);
@@ -1500,20 +1371,38 @@ export default function DashboardExpert() {
           prenom: user?.prenom || "", 
           email: user?.email || "", 
           subject: contactAdminForm.sujet || "Message d'un expert", 
-          message: contactAdminForm.message 
+          message: contactAdminForm.message,
+          client_type: "expert"
         }) 
       });
       if (r.ok) { 
         setContactAdminStatus("success"); 
         setContactAdminForm({ sujet: "", message: "" }); 
-        setTimeout(() => setContactAdminStatus("idle"), 5000); 
+        setTimeout(() => setContactAdminStatus("idle"), 5000);
+        notify("✅ Message envoyé à l'administrateur");
+        const res = await fetch(`${BASE}/contact/messages`, { headers: hdr() });
+        if (res.ok) {
+          const all = await res.json();
+          const filtered = all.filter((msg: any) => msg.email === user?.email);
+          setAdminMessages(filtered);
+        }
       } else setContactAdminStatus("error");
     } catch { 
       setContactAdminStatus("error"); 
     } finally { 
       setSendingContactAdmin(false); 
     }
-  }
+  };
+
+  const loadContactInfo = useCallback(async () => {
+    try {
+      const r = await fetch(`${BASE}/histoire`);
+      if (r.ok) {
+        const d = await r.json();
+        setContactInfo({ email: d.email_contact || "plateformebeh@gmail.com", telephone: d.telephone_contact || "29524360" });
+      } else setContactInfo({ email: "plateformebeh@gmail.com", telephone: "29524360" });
+    } catch { setContactInfo({ email: "plateformebeh@gmail.com", telephone: "29524360" }); }
+  }, []);
 
   // AUTHENTIFICATION
   useEffect(() => {
@@ -1786,7 +1675,7 @@ export default function DashboardExpert() {
     { id: "messages", label: "Messagerie", icon: <FaComments size={15} />, badge: unreadMsgCount > 0 ? unreadMsgCount : undefined },
     { id: "rdv", label: "Rendez-vous", icon: <FaCalendarCheck size={15} />, badge: pendingRdvCount > 0 ? pendingRdvCount : undefined },
     { id: "notifications", label: "Actualités", icon: <FaBullhorn size={15} />, badge: newsNotificationsCount > 0 ? newsNotificationsCount : undefined },
-    { id: "contact_admin", label: "Support", icon: <FaHeadset size={15} /> },
+    { id: "contact_admin", label: "Contacter administrateur", icon: <FaHeadset size={15} /> },
   ];
 
   // ÉCRANS DE CHARGEMENT
@@ -1933,8 +1822,7 @@ export default function DashboardExpert() {
               </div>
             </div>
             <form onSubmit={acceptMissionAndCreateDevis} style={{ padding: "24px 28px" }}>
-              <div style={{ marginBottom: 18 }}>
-                <Lbl>Montant proposé (DT) *</Lbl>
+              <div style={{ marginBottom: 18 }}><Lbl>Montant proposé (DT) *</Lbl>
                 <div style={{ position: "relative" }}>
                   <input className="inp" type="number" min="1" step="0.5" required value={devisForm.montant} onChange={e => setDevisForm({ ...devisForm, montant: e.target.value })} placeholder="Ex: 500" style={{ paddingRight: 50 }} />
                   <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>DT</span>
@@ -2768,41 +2656,155 @@ export default function DashboardExpert() {
               </div>
             )}
 
-            {/* CONTACT ADMIN */}
+            {/* CONTACTER ADMINISTRATEUR */}
             {tab === "contact_admin" && (
               <div className="fade-up">
-                <div className="card" style={{ padding: "24px", textAlign: "center", marginBottom: 20 }}>
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Contacter l'administrateur</h2>
-                  <p style={{ color: "#64748B", marginBottom: 20 }}>Pour toute question ou problème, contactez-nous par email ou téléphone.</p>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-                    <a href={MAILTO_HREF} style={{ background: "#F7B500", color: "#0A2540", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>📧 Envoyer un email</a>
-                    <a href={TEL_HREF} style={{ background: "#10B981", color: "#fff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>📞 Appeler</a>
+                <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3f6f)", borderRadius: 20, padding: "36px 40px", marginBottom: 28, position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+                  <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(247,181,0,.2)", border: "2px solid rgba(247,181,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <FaHeadset style={{ color: "#F7B500", fontSize: 28 }} />
+                    </div>
+                    <div>
+                      <div style={{ color: "rgba(255,255,255,.6)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 5 }}>Support et Assistance</div>
+                      <h1 style={{ color: "#fff", fontWeight: 900, fontSize: "clamp(20px,3vw,30px)", marginBottom: 8 }}>Contacter l'Administrateur</h1>
+                      <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13.5, lineHeight: 1.7, maxWidth: 520 }}>Besoin d'aide, d'une information ou d'un signalement ? Notre équipe vous répond rapidement.</p>
+                    </div>
                   </div>
                 </div>
-                <div className="card" style={{ padding: "24px" }}>
-                  <form onSubmit={envoyerMessageAdmin}>
-                    <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: "block", marginBottom: 4 }}>Sujet</label>
-                      <select className="inp" value={contactAdminForm.sujet} onChange={e => setContactAdminForm({ ...contactAdminForm, sujet: e.target.value })}>
-                        <option value="">— Sélectionnez un sujet —</option>
-                        <option value="Demande d'information">Demande d'information</option>
-                        <option value="Problème technique">Problème technique</option>
-                        <option value="Validation de profil">Validation de profil</option>
-                        <option value="Signalement">Signalement</option>
-                        <option value="Autre">Autre</option>
-                      </select>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
+                  {[
+                    { icon: <FaEnvelope size={22} />, title: "Envoyer un e-mail", subtitle: "Email direct", value: contactInfo?.email || "plateformebeh@gmail.com", href: MAILTO_HREF, color: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE" },
+                    { icon: <FaPhone size={22} />, title: "Appeler l'équipe", subtitle: "Téléphone direct", value: `+216 ${contactInfo?.telephone || "29524360"}`, href: TEL_HREF, color: "#10B981", bg: "#ECFDF5", border: "#A7F3D0" },
+                  ].map((card, i) => (
+                    <a key={i} href={card.href} target="_blank" rel="noopener noreferrer" style={{ background: "#fff", border: `1.5px solid ${card.border}`, borderRadius: 18, padding: "24px", display: "flex", alignItems: "center", gap: 20, textDecoration: "none", transition: "all .22s" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = card.color; (e.currentTarget as HTMLAnchorElement).style.boxShadow = `0 8px 32px ${card.color}20`; (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-3px)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = card.border; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; (e.currentTarget as HTMLAnchorElement).style.transform = "none"; }}>
+                      <div style={{ width: 60, height: 60, borderRadius: 16, background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", color: card.color, flexShrink: 0 }}>{card.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>{card.subtitle}</div>
+                        <div style={{ fontWeight: 800, fontSize: 15, color: "#0A2540", marginBottom: 3 }}>{card.title}</div>
+                        <div style={{ fontSize: 13, color: card.color, fontWeight: 600 }}>{card.value}</div>
+                      </div>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: card.color }}><FaArrowRight size={14} /></div>
+                    </a>
+                  ))}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                  {/* Formulaire d'envoi */}
+                  <div className="card" style={{ overflow: "hidden" }}>
+                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                        <FaPaperPlane style={{ color: "#F7B500" }} size={16} /> Envoyer un message
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748B" }}>Votre message sera transmis à l'administrateur.</div>
                     </div>
-                    <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: "block", marginBottom: 4 }}>Message *</label>
-                      <textarea className="inp" rows={5} required value={contactAdminForm.message} onChange={e => setContactAdminForm({ ...contactAdminForm, message: e.target.value })} />
+                    <div style={{ padding: "24px" }}>
+                      {contactAdminStatus === "success" && (
+                        <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, color: "#059669" }}>
+                          <FaCheckCircle size={16} /> Message envoyé avec succès !
+                        </div>
+                      )}
+                      {contactAdminStatus === "error" && (
+                        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, color: "#DC2626" }}>
+                          <FaExclamationTriangle size={16} /> Erreur. Essayez par email directement.
+                        </div>
+                      )}
+                      <div style={{ background: "#F8FAFC", border: "1px solid #E8EEF6", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Vos informations</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div style={{ background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #E8EEF6" }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 2 }}>Nom complet</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#0A2540" }}>{user?.prenom} {user?.nom}</div>
+                          </div>
+                          <div style={{ background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #E8EEF6" }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 2 }}>Email</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#0A2540" }}>{user?.email || "—"}</div>
+                          </div>
+                          {expert?.domaine && (
+                            <div style={{ gridColumn: "span 2", background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #E8EEF6" }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 2 }}>Domaine d'expertise</div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#0A2540" }}>{expert.domaine}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <form onSubmit={envoyerMessageAdmin}>
+                        <div style={{ marginBottom: 16 }}>
+                          <FL label="Sujet">
+                            <select className="inp" value={contactAdminForm.sujet} onChange={e => setContactAdminForm({ ...contactAdminForm, sujet: e.target.value })}>
+                              <option value="">— Sélectionnez un sujet —</option>
+                              <option value="Demande d'information">Demande d'information</option>
+                              <option value="Problème technique">Problème technique</option>
+                              <option value="Validation de profil">Validation de profil</option>
+                              <option value="Signalement">Signalement</option>
+                              <option value="Formation ou podcast">Formation / Podcast</option>
+                              
+                              <option value="Autre">Autre</option>
+                            </select>
+                          </FL>
+                        </div>
+                        <div style={{ marginBottom: 20 }}>
+                          <FL label="Message *">
+                            <textarea className="inp" rows={6} required placeholder="Décrivez votre demande en détail..." value={contactAdminForm.message} onChange={e => setContactAdminForm({ ...contactAdminForm, message: e.target.value })} />
+                          </FL>
+                        </div>
+                        <button type="submit" style={{ width: "100%", background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 10, padding: "13px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} disabled={sendingContactAdmin}>
+                          {sendingContactAdmin ? <><FaSpinner style={{ animation: "spin .8s linear infinite" }} /> Envoi en cours...</> : <><FaPaperPlane size={14} /> Envoyer le message</>}
+                        </button>
+                      </form>
                     </div>
-                    {contactAdminStatus === "success" && <p style={{ color: "#10B981", marginBottom: 12 }}>✅ Message envoyé avec succès !</p>}
-                    {contactAdminStatus === "error" && <p style={{ color: "#DC2626", marginBottom: 12 }}>❌ Erreur. Veuillez réessayer.</p>}
-                    <button type="submit" disabled={sendingContactAdmin} style={{ width: "100%", background: "#F7B500", color: "#0A2540", border: "none", borderRadius: 8, padding: "12px", fontWeight: 700, cursor: "pointer" }}>
-                      {sendingContactAdmin ? "Envoi..." : "Envoyer le message"}
-                    </button>
-                  </form>
+                  </div>
+
+                  {/* Historique des échanges */}
+                  <div className="card" style={{ overflow: "hidden" }}>
+                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                        <FaComments style={{ color: "#F7B500" }} size={16} /> Historique
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748B" }}>Vos messages et les réponses de l'administrateur.</div>
+                    </div>
+                    <div style={{ padding: "16px", maxHeight: 480, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+                      {adminMessages.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8" }}>
+                          <FaEnvelope size={32} style={{ opacity: 0.4, marginBottom: 10 }} />
+                          <div>Aucun message échangé.</div>
+                          <div style={{ fontSize: 12 }}>Utilisez le formulaire pour contacter l'administrateur.</div>
+                        </div>
+                      ) : (
+                        adminMessages
+                          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                          .map((msg) => (
+                            <div key={msg.id} className="admin-message-item" style={{ background: msg.admin_reply ? "#F0FDF4" : "#FFF8E1", borderRadius: 12, padding: "14px 16px", border: `1px solid ${msg.admin_reply ? "#DCFCE7" : "#FDE68A"}`, transition: "all .2s" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                                <div style={{ width: 28, height: 28, borderRadius: "50%", background: msg.admin_reply ? "#10B981" : "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                                  {msg.admin_reply ? "A" : "E"}
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: 13, color: msg.admin_reply ? "#065F46" : "#92400E" }}>{msg.admin_reply ? "Administrateur BEH" : `${user?.prenom} ${user?.nom}`}</div>
+                                  <div style={{ fontSize: 10, color: "#94A3B8" }}>{new Date(msg.createdAt).toLocaleString("fr-FR")}</div>
+                                </div>
+                                {!msg.is_read && msg.admin_reply && (
+                                  <span style={{ marginLeft: "auto", background: "#FEF3C7", color: "#B45309", borderRadius: 99, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>Nouvelle réponse</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.6, marginBottom: 6 }}>{msg.message}</div>
+                              {msg.admin_reply && (
+                                <div style={{ marginTop: 8, background: "#fff", borderRadius: 8, padding: "8px 10px", border: "1px solid #DCFCE7" }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: "#059669", marginBottom: 3 }}>📨 Réponse de l'administrateur :</div>
+                                  <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>{msg.admin_reply}</div>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                      )}
+                    </div>
+                    <div style={{ padding: "12px 16px", borderTop: "1px solid #F1F5F9", background: "#FAFBFE", fontSize: 11, color: "#94A3B8", textAlign: "center" }}>
+                      Les réponses apparaîtront ici dès que l'administrateur vous répondra.
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

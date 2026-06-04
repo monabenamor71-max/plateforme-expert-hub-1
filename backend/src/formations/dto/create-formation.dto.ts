@@ -45,7 +45,6 @@ export class CreateFormationDto {
   formateur?: string;
 
   @Transform(({ value }) => {
-    // Si c'est une chaîne JSON, la parser
     if (typeof value === 'string') {
       try {
         const parsed = JSON.parse(value);
@@ -63,7 +62,6 @@ export class CreateFormationDto {
         return [];
       }
     }
-    // Si c'est déjà un tableau
     if (Array.isArray(value)) {
       return value.map(item => ({
         prenom: item?.prenom ?? '',
@@ -102,6 +100,16 @@ export class CreateFormationDto {
   @IsBoolean()
   @IsOptional()
   places_limitees?: boolean;
+
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    const num = parseInt(value, 10);
+    return isNaN(num) ? undefined : num;
+  })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  places_max?: number;
 
   @Transform(({ value }) => {
     if (value === undefined || value === null || value === '') return undefined;

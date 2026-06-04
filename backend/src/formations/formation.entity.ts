@@ -14,18 +14,16 @@ export class Formation {
   @Column({ nullable: true })
   domaine?: string;
 
-  // Pour la rétrocompatibilité (un seul formateur texte)
   @Column({ nullable: true })
   formateur?: string;
 
-  // ✅ Nouvelle structure JSON pour plusieurs formateurs
   @Column({ type: "json", nullable: true })
   formateur_details?: Array<{
     prenom: string;
     nom: string;
     domaine: string;
     image: string;
-    bio: string;   // texte libre, peut contenir des puces (lignes séparées par \n)
+    bio: string;
   }>;
 
   @Column({ default: "payant" })
@@ -37,7 +35,10 @@ export class Formation {
   @Column({ default: false })
   places_limitees!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
+places_max!: number;
+
+  @Column({ type: "int", nullable: true })
   places_disponibles?: number;
 
   @Column({ nullable: true })

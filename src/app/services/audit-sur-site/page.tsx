@@ -4,9 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   FaSearchPlus, FaArrowRight, FaArrowLeft,
-  FaChartLine, FaHandsHelping, FaGraduationCap, FaDesktop,
-  FaExclamationTriangle, FaUsers, FaTrophy, FaClock, FaShieldAlt,
-  FaCheck, FaLayerGroup, FaStar,
+  FaChartLine, FaGraduationCap, FaDesktop,
+  FaCheck, FaStar,
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
@@ -33,21 +32,21 @@ function FadeUp({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 const COLOR = "#8B5CF6";
 
 const PROBLEMES = [
-  { icon: "⚡", label: "Processus non maîtrisés", desc: "Vos équipes travaillent sans méthode claire, causant des retards répétés." },
-  { icon: "👁", label: "Manque de visibilité sur les opérations", desc: "Impossible de savoir ce qui se passe réellement sur le terrain." },
-  { icon: "📉", label: "Baisse de performance sans raison claire", desc: "Les résultats chutent mais l'origine du problème reste floue." },
-  { icon: "📋", label: "Absence d'audit interne sur les normes ISO", desc: "Votre conformité n'est ni vérifiée ni documentée régulièrement." },
-  { icon: "🏗", label: "Absence de tour manager", desc: "Aucun responsable pour coordonner les opérations terrain au quotidien." },
-  { icon: "🔀", label: "Écarts entre procédures et réalité terrain", desc: "Ce qui est écrit et ce qui se fait sont deux réalités différentes." },
-  { icon: "🤝", label: "Manque de coordination entre équipes", desc: "Chaque département travaille en silo, sans communication transversale." },
+  { label: "Processus non maîtrisés", desc: "Vos équipes travaillent sans méthode claire, causant des retards répétés." },
+  { label: "Manque de visibilité sur les opérations", desc: "Impossible de savoir ce qui se passe réellement sur le terrain." },
+  { label: "Baisse de performance sans raison claire", desc: "Les résultats chutent mais l'origine du problème reste floue." },
+  { label: "Absence d'audit interne sur les normes ISO", desc: "Votre conformité n'est ni vérifiée ni documentée régulièrement." },
+  { label: "Absence de tour manager", desc: "Aucun responsable pour coordonner les opérations terrain au quotidien." },
+  { label: "Écarts entre procédures et réalité terrain", desc: "Ce qui est écrit et ce qui se fait sont deux réalités différentes." },
+  { label: "Manque de coordination entre équipes", desc: "Chaque département travaille en silo, sans communication transversale." },
 ];
 
 const METHODOLOGIE = [
-  { num: 1, color: "#8B5CF6", icon: "📋", title: "Préparation & Cadrage", desc: "Analyse des besoins et compréhension du contexte métier avant toute intervention.", tag: "" },
-  { num: 2, color: "#6366F1", icon: "🔍", title: "Audit Terrain", desc: "Observation in situ, entretiens et collecte de données qualitatives sur site.", tag: "" },
-  { num: 3, color: "#3B82F6", icon: "📊", title: "Analyse des Écarts", desc: "Identification des dysfonctionnements, risques et axes d'amélioration prioritaires.", tag: "" },
-  { num: 4, color: "#0EA5E9", icon: "📄", title: "Rapport de Synthèse", desc: "Documentation structurée des constats avec preuves et recommandations claires.", tag: "" },
-  { num: 5, color: "#22C55E", icon: "✅", title: "Plan d'Action", desc: "Feuille de route opérationnelle avec responsables, délais et indicateurs de suivi.", tag: "" },
+  { num: 1, color: "#8B5CF6", title: "Préparation & Cadrage", desc: "Analyse des besoins et compréhension du contexte métier avant toute intervention." },
+  { num: 2, color: "#6366F1", title: "Audit Terrain", desc: "Observation in situ, entretiens et collecte de données qualitatives sur site." },
+  { num: 3, color: "#3B82F6", title: "Analyse des Écarts", desc: "Identification des dysfonctionnements, risques et axes d'amélioration prioritaires." },
+  { num: 4, color: "#0EA5E9", title: "Rapport de Synthèse", desc: "Documentation structurée des constats avec preuves et recommandations claires." },
+  { num: 5, color: "#22C55E", title: "Plan d'Action", desc: "Feuille de route opérationnelle avec responsables, délais et indicateurs de suivi." },
 ];
 
 const OTHERS = [
@@ -66,22 +65,46 @@ const NAV = [
 export default function AuditPage() {
   const [open, setOpen] = useState(false);
   const [expandedP, setExpandedP] = useState<number | null>(null);
-  
-  // ==================== TAUX DE SATISFACTION DEPUIS L'ADMIN (TABLE HISTOIRE) ====================
-  const [tauxSatisfaction, setTauxSatisfaction] = useState<number>(94);
+
+  // ==================== STATS RÉELLES DEPUIS LA BASE DE DONNÉES ====================
+  const [nbExperts, setNbExperts] = useState<number | null>(null);
+  const [nbStartups, setNbStartups] = useState<number | null>(null);
+  const [tauxSatisfaction, setTauxSatisfaction] = useState<number | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${BASE}/histoire`);
-        if (res.ok) {
-          const data = await res.json();
-          // Utiliser le même champ que la page Consulting
-          setTauxSatisfaction(data.taux_satisfaction || 94);
+        // Nombre d'experts validés
+        const expertsRes = await fetch(`${BASE}/experts/liste`);
+        if (expertsRes.ok) {
+          const experts = await expertsRes.json();
+          setNbExperts(Array.isArray(experts) ? experts.filter((e: any) => e.statut === "valide").length : 0);
+        }
+
+        // Nombre de startups validées
+        const startupsRes = await fetch(`${BASE}/startups/liste`);
+        if (startupsRes.ok) {
+          const startups = await startupsRes.json();
+          setNbStartups(Array.isArray(startups) ? startups.filter((s: any) => s.statut === "valide").length : 0);
+        }
+
+        // Taux de satisfaction depuis les témoignages
+        const temosRes = await fetch(`${BASE}/temoignages/publics`);
+        if (temosRes.ok) {
+          const temos = await temosRes.json();
+          if (Array.isArray(temos) && temos.length > 0) {
+            const total = temos.reduce((sum: number, t: any) => sum + (t.note || 5), 0);
+            setTauxSatisfaction(Math.round((total / temos.length / 5) * 100));
+          } else {
+            setTauxSatisfaction(94);
+          }
         }
       } catch (error) {
         console.error("Erreur chargement stats:", error);
+        setNbExperts(0);
+        setNbStartups(0);
+        setTauxSatisfaction(94);
       } finally {
         setLoadingStats(false);
       }
@@ -89,19 +112,12 @@ export default function AuditPage() {
     fetchStats();
   }, []);
 
-  // Calculer la note en étoiles
   const renderStars = () => {
-    const note = tauxSatisfaction / 20;
+    const note = (tauxSatisfaction ?? 94) / 20;
     return (
       <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
         {[1, 2, 3, 4, 5].map((s) => (
-          <FaStar
-            key={s}
-            style={{
-              color: s <= Math.round(note) ? "#F7B500" : "rgba(255,255,255,.3)",
-              fontSize: 10,
-            }}
-          />
+          <FaStar key={s} style={{ color: s <= Math.round(note) ? "#F7B500" : "rgba(255,255,255,.3)", fontSize: 10 }} />
         ))}
       </div>
     );
@@ -115,9 +131,7 @@ export default function AuditPage() {
         @keyframes floatY{0%,100%{transform:translateY(-50%) rotate(45deg)}50%{transform:translateY(calc(-50% - 14px)) rotate(45deg)}}
         @keyframes fadeSlideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes heroIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes slideInLeft{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:translateX(0)}}
         @keyframes slideInRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         .diamond-float{animation:floatY 7s ease-in-out infinite;position:absolute;pointer-events:none;}
         .h1{animation:heroIn .8s cubic-bezier(.22,1,.36,1) .08s both}
@@ -138,7 +152,6 @@ export default function AuditPage() {
         .pb-card.active{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.04);}
         .pb-detail{overflow:hidden;transition:max-height .35s cubic-bezier(.22,1,.36,1),opacity .3s;max-height:0;opacity:0;}
         .pb-detail.open{max-height:60px;opacity:1;}
-        .meth-step{position:relative;display:flex;gap:20px;align-items:flex-start;margin-bottom:0;}
         .meth-dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2.5px solid;}
         .meth-body{background:#F8FAFC;border:1px solid #E8EEF6;border-radius:14px;padding:18px 20px;flex:1;transition:all .3s;}
         .meth-body:hover{background:#fff;box-shadow:0 8px 28px rgba(139,92,246,.12);border-color:rgba(139,92,246,.25);transform:translateX(4px);}
@@ -146,8 +159,8 @@ export default function AuditPage() {
         .stat-card:hover{transform:translateY(-4px);background:rgba(255,255,255,.12);}
         .nav-link-w{color:#0A2540;text-decoration:none;font-size:15px;font-weight:500;transition:color .2s;}
         .nav-link-w:hover{color:#F7B500;}
-        .stat-number{font-size:28px;font-weight:900;color:#fff;line-height:1;margin-bottom:6px}
-        .stat-loading{width:30px;height:30px;border:3px solid #F7B500;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
+        .stat-number{font-size:36px;font-weight:900;color:#F7B500;line-height:1;margin-bottom:4px}
+        .stat-loading{width:28px;height:28px;border:3px solid #F7B500;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
       `}</style>
 
       {/* HEADER */}
@@ -156,7 +169,6 @@ export default function AuditPage() {
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none" }}>
             <svg width="44" height="44" viewBox="0 0 46 46" fill="none">
               <rect width="46" height="46" rx="12" fill="#0A2540" />
-              <rect x="23" y="7" width="13" height="13" rx="2" transform="rotate(45 23 7)" fill="#F7B500" opacity="0.15" />
               <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="#F7B500" fontSize="15" fontWeight="900" fontFamily="Arial">BEH</text>
             </svg>
             <span style={{ fontWeight: 800, fontSize: 18, color: "#0A2540", letterSpacing: "-0.3px" }}>
@@ -196,6 +208,7 @@ export default function AuditPage() {
             <span style={{ color: "#A78BFA", fontWeight: 600 }}>Audit sur site</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+            {/* TEXTE GAUCHE */}
             <div>
               <div className="h1" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
                 <div style={{ width: 64, height: 64, borderRadius: 20, background: "rgba(139,92,246,.2)", border: "1.5px solid rgba(139,92,246,.5)", color: "#A78BFA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}><FaSearchPlus /></div>
@@ -225,32 +238,48 @@ export default function AuditPage() {
                 </Link>
               </div>
             </div>
+
+            {/* 3 STATS DROITE */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* TAUX DE SATISFACTION - MAINTENANT DYNAMIQUE DEPUIS L'ADMIN */}
-              <div className="stat-card" style={{ animationDelay: "0.2s" }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F7B50025", color: "#F7B500", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 16 }}>
-                  <FaTrophy />
-                </div>
+
+              {/* Experts certifiés */}
+              <div className="stat-card" style={{ animationDelay: "0.1s" }}>
+
                 <div className="stat-number">
-                  {loadingStats ? <div className="stat-loading" /> : `${tauxSatisfaction}%`}
+                  {loadingStats ? <div className="stat-loading" /> : nbExperts ?? 0}
                 </div>
-                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Clients satisfaits</div>
-                {!loadingStats && renderStars()}
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Experts certifiés</div>
               </div>
-              {/* Délai de rapport - statique */}
-              <div className="stat-card" style={{ animationDelay: "0.3s" }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: "#22C55E25", color: "#22C55E", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 16 }}>
-                  <FaClock />
+
+              {/* Startups accompagnées */}
+              <div className="stat-card" style={{ animationDelay: "0.2s" }}>
+
+                <div className="stat-number">
+                  {loadingStats ? <div className="stat-loading" /> : nbStartups ?? 0}
                 </div>
-                <div className="stat-number">5 jours</div>
-                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Délai de rapport</div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Startups accompagnées</div>
               </div>
+
+              {/* Taux de satisfaction — occupe toute la largeur */}
+              <div className="stat-card" style={{ animationDelay: "0.3s", gridColumn: "1 / -1" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+
+                  <div>
+                    <div className="stat-number">
+                      {loadingStats ? <div className="stat-loading" /> : `${tauxSatisfaction ?? 94}%`}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)", fontWeight: 600 }}>Taux de satisfaction clients</div>
+                    {!loadingStats && renderStars()}
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       </section>
 
-      {/* CORPS - Identique à l'original */}
+      {/* CORPS */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
 
         {/* Problèmes */}
@@ -271,9 +300,7 @@ export default function AuditPage() {
                   <div
                     className={`pb-card${expandedP === i ? " active" : ""}`}
                     onClick={() => setExpandedP(expandedP === i ? null : i)}>
-                    <div style={{ width: 42, height: 42, borderRadius: 12, background: expandedP === i ? "rgba(139,92,246,.12)" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                      {p.icon}
-                    </div>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: expandedP === i ? COLOR : "#CBD5E1", flexShrink: 0, marginTop: 6 }} />
                     <div style={{ flex: 1 }}>
                       <span style={{ fontWeight: 700, fontSize: 14.5, color: "#0A2540" }}>{p.label}</span>
                       <div className={`pb-detail${expandedP === i ? " open" : ""}`}>
@@ -303,7 +330,7 @@ export default function AuditPage() {
             <div>
               {METHODOLOGIE.map((m, i) => (
                 <FadeUp key={m.num} delay={i * 0.1}>
-                  <div className="meth-step" style={{ marginBottom: i < METHODOLOGIE.length - 1 ? 32 : 0, position: "relative" }}>
+                  <div style={{ position: "relative", display: "flex", gap: 20, alignItems: "flex-start", marginBottom: i < METHODOLOGIE.length - 1 ? 32 : 0 }}>
                     {i < METHODOLOGIE.length - 1 && (
                       <div style={{ position: "absolute", left: 21, top: 44, bottom: -32, width: 2, background: `linear-gradient(${m.color},${METHODOLOGIE[i + 1].color})`, opacity: 0.3 }} />
                     )}
@@ -311,10 +338,7 @@ export default function AuditPage() {
                       <span style={{ fontSize: 16, fontWeight: 900 }}>{m.num}</span>
                     </div>
                     <div className="meth-body">
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontWeight: 800, fontSize: 15, color: "#0A2540" }}>{m.title}</span>
-                        <span style={{ background: `${m.color}15`, color: m.color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99 }}>{m.tag}</span>
-                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "#0A2540", marginBottom: 8 }}>{m.title}</div>
                       <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.7, margin: 0 }}>{m.desc}</p>
                     </div>
                   </div>

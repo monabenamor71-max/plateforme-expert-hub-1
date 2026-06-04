@@ -1,4 +1,3 @@
-// src/formations/dto/update-formation.dto.ts
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateFormationDto } from './create-formation.dto';
 

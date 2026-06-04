@@ -16,10 +16,17 @@ import {
   FaInfoCircle, FaPlayCircle, FaDownload, FaChevronDown, FaPhone,
   FaVideo, FaBell, FaEnvelope, FaNewspaper, FaEye, FaEyeSlash,
   FaUser, FaLaptop, FaFilter, FaSync, FaFileAlt, FaArrowUp,
-  FaHeadset, FaExclamationTriangle, FaSpinner,
+  FaHeadset, FaExclamationTriangle, FaSpinner, FaPlus,
+  FaWhatsapp, FaFacebook, FaLinkedin, FaTwitter, FaGlobe,
+  FaHeart, FaThumbsUp, FaThumbsDown, FaReply, FaCog, FaSignOutAlt,
+  FaHome
 } from "react-icons/fa";
 
 const BASE = "http://localhost:3001";
+
+// ============================================
+// CONFIGURATION DES SERVICES
+// ============================================
 
 const SERVICES_INFO: Record<string, any> = {
   consulting: {
@@ -41,13 +48,13 @@ const SERVICES_INFO: Record<string, any> = {
     points: ["Application Web", "Application Mobile", "Support & maintenance"],
   },
   "formation-sur-mesure": {
-    label: "Formation sur mesure", icon: <FaGraduationCap />, color: "#F59E0B",
-    desc: "Programmes certifiants sur mesure animés par nos experts.",
+    label: "Formation", icon: <FaGraduationCap />, color: "#F59E0B",
+    desc: "Programmes certifiants animés par nos experts.",
     duree: "1 jour à 3 mois",
     points: ["Contenu sur mesure", "Formateurs certifiés", "Certification incluse"],
   },
   podcasts: {
-    label: "Podcasts & Vidéos", icon: <FaVideo />, color: "#7C3AED",
+    label: "Podcast", icon: <FaVideo />, color: "#7C3AED",
     desc: "Contenus vidéo exclusifs avec des experts reconnus dans leur domaine.",
     duree: "Disponible 24/7",
     points: ["Accès illimité", "Experts certifiés", "Nouveaux contenus réguliers"],
@@ -76,6 +83,10 @@ const S_COLOR: Record<string, string> = {
 
 type ServiceSlug = "consulting" | "audit-sur-site" | "nos-plateformes" | "formation-sur-mesure" | "podcasts";
 type Tab = "accueil" | "services" | "profil" | "experts" | "rdv" | "messages" | "temoignages" | "mes-demandes" | "mes-devis" | "notifications" | "contact_admin";
+
+// ============================================
+// COMPOSANTS UTILITAIRES
+// ============================================
 
 function RdvStatusBadge({ statut }: { statut: string }) {
   const c: Record<string, any> = {
@@ -149,7 +160,250 @@ function AutoField({ label, icon, value, onChange }: { label: string; icon: Reac
   );
 }
 
-// ==================== MODALES ====================
+// ============================================
+// MODAL POUR MODIFIER UN TÉMOIGNAGE
+// ============================================
+
+function ModalEditTemoignage({ temoignage, onClose, onSave }: any) {
+  const [loading, setLoading] = useState(false);
+  const [texte, setTexte] = useState(temoignage?.texte || "");
+  const [note, setNote] = useState(temoignage?.note || 5);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!texte.trim()) {
+      alert("Veuillez écrire votre témoignage");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/temoignages/${temoignage.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({
+          texte: texte,
+          note: note,
+        }),
+      });
+
+      if (res.ok) {
+        alert("Témoignage modifié avec succès !");
+        onSave();
+        onClose();
+      } else {
+        const err = await res.text();
+        alert(`Erreur: ${err}`);
+      }
+    } catch (err) {
+      console.error("Erreur:", err);
+      alert("Erreur réseau");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 550 }} onClick={(e: any) => e.stopPropagation()}>
+        <div style={{
+          background: `linear-gradient(135deg, #1B3A4B, #F59E0B)`,
+          padding: "22px 26px", borderRadius: "20px 20px 0 0",
+          display: "flex", alignItems: "center", justifyContent: "space-between"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: "rgba(255,255,255,.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, color: "#fff", fontWeight: 700
+            }}>
+              <FaEdit />
+            </div>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Modifier mon témoignage</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: "rgba(255,255,255,.15)", border: "none",
+            borderRadius: 10, width: 36, height: 36, cursor: "pointer",
+            color: "#fff", fontSize: 16
+          }}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: "24px 28px", maxHeight: "70vh", overflowY: "auto" }}>
+          <div style={{ marginBottom: 20 }}>
+            <label className="lbl">Votre note</label>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              {[1, 2, 3, 4, 5].map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setNote(s)}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: s <= note ? "#F59E0B" : "#F1F5F9",
+                    color: s <= note ? "#fff" : "#94A3B8",
+                    border: "none",
+                    fontSize: 20,
+                    cursor: "pointer",
+                    transition: "all .2s"
+                  }}
+                >
+                  ★
+                </button>
+              ))}
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#F59E0B", alignSelf: "center", marginLeft: 8 }}>
+                {note}/5
+              </span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <label className="lbl">Votre témoignage</label>
+            <textarea
+              className="inp"
+              rows={5}
+              required
+              value={texte}
+              onChange={e => setTexte(e.target.value)}
+              placeholder="Partagez votre expérience avec BEH..."
+              style={{ resize: "none" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 8, borderTop: `1px solid #DDE3EA` }}>
+            <button type="button" className="btn btn-gray" onClick={onClose}>Annuler</button>
+            <button type="submit" className="btn btn-teal" disabled={loading}>
+              {loading ? "Enregistrement..." : "Enregistrer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// MODAL EDIT RENDEZ-VOUS
+// ============================================
+
+function ModalEditRendezVous({ rendezVous, experts, onClose, onSave }: any) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    sujet: rendezVous?.sujet || "",
+    date_rdv: rendezVous?.date_rdv ? new Date(rendezVous.date_rdv).toISOString().slice(0, 16) : "",
+    expert_id: String(rendezVous?.expert_id || ""),
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.date_rdv) {
+      alert("Veuillez sélectionner une date et heure");
+      return;
+    }
+    if (!form.expert_id) {
+      alert("Veuillez sélectionner un expert");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/rendez-vous/${rendezVous.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({
+          sujet: form.sujet,
+          date_rdv: form.date_rdv,
+          expert_id: parseInt(form.expert_id, 10),
+        }),
+      });
+
+      if (res.ok) {
+        alert("Rendez-vous modifié avec succès !");
+        onSave();
+        onClose();
+      } else {
+        const err = await res.text();
+        alert(`Erreur: ${err}`);
+      }
+    } catch (err) {
+      console.error("Erreur:", err);
+      alert("Erreur réseau");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 550 }} onClick={(e: any) => e.stopPropagation()}>
+        <div style={{
+          background: `linear-gradient(135deg, #1B3A4B, #1E88E5)`,
+          padding: "22px 26px", borderRadius: "20px 20px 0 0",
+          display: "flex", alignItems: "center", justifyContent: "space-between"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: "rgba(255,255,255,.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, color: "#fff", fontWeight: 700
+            }}>
+              <FaEdit />
+            </div>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Modifier le rendez-vous</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: "rgba(255,255,255,.15)", border: "none",
+            borderRadius: 10, width: 36, height: 36, cursor: "pointer",
+            color: "#fff", fontSize: 16
+          }}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: "24px 28px", maxHeight: "70vh", overflowY: "auto" }}>
+          <div style={{ marginBottom: 16 }}>
+            <label className="lbl">Sujet *</label>
+            <input className="inp" required value={form.sujet} onChange={e => setForm({ ...form, sujet: e.target.value })} placeholder="Ex: Réunion de suivi" />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label className="lbl">Expert *</label>
+            <select className="inp" required value={form.expert_id} onChange={e => setForm({ ...form, expert_id: e.target.value })}>
+              <option value="">Sélectionner un expert</option>
+              {experts.filter((e: any) => e.statut === "valide").map((e: any) => (
+                <option key={e.id} value={e.id}>
+                  {e.user?.prenom} {e.user?.nom} - {e.domaine || "Expert"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <label className="lbl">Date et heure *</label>
+            <input className="inp" type="datetime-local" required value={form.date_rdv} onChange={e => setForm({ ...form, date_rdv: e.target.value })} min={new Date().toISOString().slice(0, 16)} />
+          </div>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", paddingTop: 8, borderTop: `1px solid #DDE3EA` }}>
+            <button type="button" className="btn btn-gray" onClick={onClose}>Annuler</button>
+            <button type="submit" className="btn btn-teal" disabled={loading}>
+              {loading ? "Enregistrement..." : "Confirmer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// MODALS SERVICE (ServiceFormModal, PlateformeFormModal, etc.)
+// ============================================
+
 function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending, demandeEdit }: any) {
   const svc = SERVICES_INFO[slug];
   const [domaine, setDomaine] = useState(demandeEdit?.domaine || "");
@@ -255,7 +509,6 @@ function ServiceFormModal({ slug, startup, realUser, onClose, onSubmit, sending,
 }
 
 function PlateformeFormModal({ startup, realUser, onClose, onSubmit, sending, demandeEdit }: any) {
-  const svc = SERVICES_INFO["nos-plateformes"];
   const [typeApp, setTypeApp] = useState<"web-app" | "mobile" | "">(demandeEdit?.type_application || "");
   const [description, setDescription] = useState(demandeEdit?.description || "");
   const [objectif, setObjectif] = useState(demandeEdit?.objectif || "");
@@ -524,7 +777,10 @@ function FormationCard({ f, demanderFormation, demandeExiste, annulerDemandeForm
   );
 }
 
-// ==================== COMPOSANT PRINCIPAL ====================
+// ============================================
+// COMPOSANT PRINCIPAL DASHBOARD STARTUP
+// ============================================
+
 export default function DashboardStartup() {
   const router = useRouter();
   const [realUser, setRealUser] = useState<any>(null);
@@ -544,11 +800,13 @@ export default function DashboardStartup() {
   const [sendingDemande, setSendingDemande] = useState(false);
   const [editingDemande, setEditingDemande] = useState<any>(null);
 
+  // Témoignages - AJOUT DES ÉTATS POUR MODIFICATION/SUPPRESSION
+  const [editingTemoignage, setEditingTemoignage] = useState<any>(null);
+
   // Experts
   const [experts, setExperts] = useState<any[]>([]);
   const [pubExperts, setPubExperts] = useState<any[]>([]);
   const [loadingExperts, setLoadingExperts] = useState(false);
-  const [expertsError, setExpertsError] = useState<string | null>(null);
   const [expertFilter, setExpertFilter] = useState("");
 
   // RDV
@@ -556,6 +814,7 @@ export default function DashboardStartup() {
   const [propositions, setPropositions] = useState<any[]>([]);
   const [propositionsVues, setPropositionsVues] = useState<Set<number>>(new Set());
   const [rdvForm, setRdvForm] = useState({ expert_id: "", date_rdv: "", sujet: "" });
+  const [editingRdv, setEditingRdv] = useState<any>(null);
 
   // Messages
   const [allMessages, setAllMessages] = useState<any[]>([]);
@@ -591,18 +850,17 @@ export default function DashboardStartup() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [editProfil, setEditProfil] = useState({ nom_startup: "", secteur: "", taille: "", site_web: "", description: "", fonction: "", localisation: "" });
 
-  // Newsletter & Notifications (News)
+  // Newsletter & Notifications
   const [nlEmail, setNlEmail] = useState("");
   const [nlSent, setNlSent] = useState(false);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlError, setNlError] = useState("");
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [notifError, setNotifError] = useState("");
   const [readNewsIds, setReadNewsIds] = useState<Set<number>>(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Contact Admin (avec historique)
+  // Contact Admin
   const [adminMessages, setAdminMessages] = useState<any[]>([]);
   const [adminNewReplyCount, setAdminNewReplyCount] = useState(0);
   const [contactAdminForm, setContactAdminForm] = useState({ sujet: "", message: "" });
@@ -649,26 +907,23 @@ export default function DashboardStartup() {
     document.body.appendChild(toastDiv);
     setTimeout(() => toastDiv.remove(), 3500);
   }
+  
   const forceLogout = useCallback(() => { localStorage.removeItem("access_token"); localStorage.removeItem("user"); window.location.href = "/connexion"; }, []);
 
-  // Chargement des actualités (News)
+  // Chargement des actualités
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);
-    setNotifError("");
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(`${BASE}/news/startup`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
       if (data.canView === false) {
-        setNotifError("non_abonne");
         setNotifications([]);
       } else {
         setNotifications(data.news || []);
-        setNotifError("");
       }
     } catch (err) {
       setNotifications([]);
-      setNotifError("");
     } finally {
       setNotifLoading(false);
     }
@@ -756,7 +1011,7 @@ export default function DashboardStartup() {
 
   // Experts recommandés
   const loadRecommendedExperts = useCallback(async () => {
-    setLoadingExperts(true); setExpertsError(null);
+    setLoadingExperts(true);
     let list: any[] = [];
     try {
       if (!startup?.secteur) {
@@ -770,7 +1025,7 @@ export default function DashboardStartup() {
       try {
         const fb = await fetch(`${BASE}/experts/liste`);
         if (fb.ok) list = await fb.json();
-      } catch { setExpertsError("Impossible de charger les experts."); setLoadingExperts(false); return; }
+      } catch { setLoadingExperts(false); return; }
     }
     if (startup?.secteur && list.length) {
       const s = startup.secteur.toLowerCase().trim();
@@ -897,18 +1152,82 @@ export default function DashboardStartup() {
     if (r.ok) { notify("✅ RDV annulé"); await loadStartupData(tk()); } else notify("❌ Erreur", false);
   };
 
-  // Témoignages
+  const handleRdvUpdated = async () => {
+    await loadStartupData(tk());
+    notify("Liste des rendez-vous mise à jour");
+  };
+
+  // Témoignages - FONCTIONS CORRIGÉES
   const envoyerTemoignage = async () => {
     if (!newTemo.trim()) { notify("Veuillez écrire votre témoignage", false); return; }
     setSendingTemo(true);
     try {
-      const r = await fetch(`${BASE}/temoignages`, { method: "POST", headers: hdrJ(), body: JSON.stringify({ texte: newTemo, note: newTemoNote }) });
-      if (r.ok) { notify("⭐ Témoignage envoyé !"); setNewTemo(""); setNewTemoNote(5); await loadStartupData(tk()); }
-      else notify("❌ Erreur", false);
-    } catch { notify("❌ Erreur réseau", false); } finally { setSendingTemo(false); }
+      const r = await fetch(`${BASE}/temoignages`, { 
+        method: "POST", 
+        headers: hdrJ(), 
+        body: JSON.stringify({ texte: newTemo, note: newTemoNote }) 
+      });
+      if (r.ok) { 
+        notify("⭐ Témoignage envoyé !"); 
+        setNewTemo(""); 
+        setNewTemoNote(5); 
+        await loadStartupData(tk()); 
+        await loadPublicTestimonials();
+      } else {
+        const err = await r.text();
+        notify(`❌ Erreur: ${err}`, false);
+      }
+    } catch { notify("❌ Erreur réseau", false); } 
+    finally { setSendingTemo(false); }
   };
 
-  const loadPublicTestimonials = useCallback(async () => { const r = await fetch(`${BASE}/temoignages/publics`); if (r.ok) setPubTemos(await r.json()); }, []);
+  // SUPPRIMER UN TÉMOIGNAGE
+  const supprimerTemoignage = async (id: number) => {
+    if (!confirm("Supprimer ce témoignage ? Cette action est irréversible.")) return;
+    try {
+      const r = await fetch(`${BASE}/temoignages/${id}`, { 
+        method: "DELETE", 
+        headers: hdr() 
+      });
+      if (r.ok) {
+        notify("✅ Témoignage supprimé avec succès !");
+        await loadStartupData(tk());
+        await loadPublicTestimonials();
+      } else {
+        notify("❌ Erreur lors de la suppression", false);
+      }
+    } catch {
+      notify("❌ Erreur réseau", false);
+    }
+  };
+
+  // MODIFIER UN TÉMOIGNAGE
+  const modifierTemoignage = async (id: number, data: { texte: string; note: number }) => {
+    try {
+      const r = await fetch(`${BASE}/temoignages/${id}`, { 
+        method: "PUT", 
+        headers: hdrJ(),
+        body: JSON.stringify(data)
+      });
+      if (r.ok) {
+        notify("✅ Témoignage modifié avec succès !");
+        await loadStartupData(tk());
+        await loadPublicTestimonials();
+        return true;
+      } else {
+        notify("❌ Erreur lors de la modification", false);
+        return false;
+      }
+    } catch {
+      notify("❌ Erreur réseau", false);
+      return false;
+    }
+  };
+
+  const loadPublicTestimonials = useCallback(async () => { 
+    const r = await fetch(`${BASE}/temoignages/publics`); 
+    if (r.ok) setPubTemos(await r.json()); 
+  }, []);
 
   // Formations & Podcasts
   const loadFormationsData = useCallback(async () => {
@@ -999,7 +1318,7 @@ export default function DashboardStartup() {
     if (r.ok) { notify("✅ Photo mise à jour !"); await loadStartupData(tk()); setPhotoFile(null); setPhotoPreview(""); } else notify("Erreur upload", false);
   };
 
-  // ==================== GESTION DES MESSAGES AVEC L'ADMIN ====================
+  // Messages admin
   const loadAdminMessages = useCallback(async () => {
     if (!realUser?.email) return;
     try {
@@ -1163,6 +1482,11 @@ export default function DashboardStartup() {
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes fadeInUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
         @keyframes scrollTopIn{from{opacity:0;transform:translateY(12px) scale(.85)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;border:none;border-radius:10px;cursor:pointer;padding:8px 16px;font-size:13px;transition:all .16s;display:inline-flex;align-items:center;gap:6px;line-height:1.4;}
+        .btn-teal{background:#00BFA5;color:#fff;}.btn-teal:hover{background:#00897B;}
+        .btn-gray{background:#F1F5F9;color:#475569;}.btn-gray:hover{background:#E2E8F0;}
+        .modal-bg{position:fixed;inset:0;background:rgba(10,37,64,.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);}
+        .modal{background:#fff;border-radius:24px;width:100%;max-width:700px;max-height:92vh;overflow-y:auto;box-shadow:0 28px 70px rgba(10,37,64,.22);}
         .scroll-top-btn{
           position:fixed;
           bottom:28px;
@@ -1187,27 +1511,46 @@ export default function DashboardStartup() {
           box-shadow:0 10px 32px rgba(10,37,64,.38);
           border-color:rgba(245,158,11,.9);
         }
-        .scroll-top-btn:active{
-          transform:scale(.95);
-        }
-        .admin-message-item{
-          transition:all .18s;
-        }
-        .admin-message-item:hover{
-          transform:translateX(5px);
-          background:#FEFCE8;
-        }
+        .scroll-top-btn:active{transform:scale(.95);}
+        .admin-message-item{transition:all .18s;}
+        .admin-message-item:hover{transform:translateX(5px);background:#FEFCE8;}
+        .fade-up{animation:fadeInUp .4s ease-out;}
       `}</style>
 
-      {showScrollTop && <button className="scroll-top-btn" onClick={scrollToTop} title="Retour en haut" aria-label="Retour en haut"><FaArrowUp size={16} /></button>}
+      {showScrollTop && <button className="scroll-top-btn" onClick={scrollToTop} title="Retour en haut"><FaArrowUp size={16} /></button>}
 
+      {/* Modals */}
       {selectedFormationId !== null && <FormationDetailModal formationId={selectedFormationId} onClose={() => setSelectedFormationId(null)} />}
       {selectedPodcast && <PodcastDetailModal podcast={selectedPodcast} onClose={() => setSelectedPodcast(null)} />}
       {showConsultingModal && <ServiceFormModal slug="consulting" startup={startup} realUser={realUser} onClose={() => { setShowConsultingModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showAuditModal && <ServiceFormModal slug="audit-sur-site" startup={startup} realUser={realUser} onClose={() => { setShowAuditModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showPlateformeModal && <PlateformeFormModal startup={startup} realUser={realUser} onClose={() => { setShowPlateformeModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
       {showFormationModal && <ServiceFormModal slug="formation-sur-mesure" startup={startup} realUser={realUser} onClose={() => { setShowFormationModal(false); setEditingDemande(null); }} onSubmit={envoyerDemande} sending={sendingDemande} demandeEdit={editingDemande} />}
+      
+      {/* Modal Edit Rendez-vous */}
+      {editingRdv && (
+        <ModalEditRendezVous 
+          rendezVous={editingRdv}
+          experts={experts}
+          onClose={() => setEditingRdv(null)}
+          onSave={handleRdvUpdated}
+        />
+      )}
 
+      {/* Modal Edit Témoignage - AJOUTÉ */}
+      {editingTemoignage && (
+        <ModalEditTemoignage 
+          temoignage={editingTemoignage}
+          onClose={() => setEditingTemoignage(null)}
+          onSave={() => {
+            setEditingTemoignage(null);
+            loadStartupData(tk());
+            loadPublicTestimonials();
+          }}
+        />
+      )}
+
+      {/* Header */}
       <header style={{ background: "linear-gradient(135deg,#0A2540 0%,#0c2d50 100%)", height: 64, padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 0 rgba(255,255,255,.06),0 4px 20px rgba(0,0,0,.25)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
@@ -1219,6 +1562,12 @@ export default function DashboardStartup() {
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#F59E0B" }}>{initials}</div>
             <div><div style={{ color: "#fff", fontWeight: 700, fontSize: 13, lineHeight: 1.2 }}>{startup?.nom_startup || `${realUser?.prenom} ${realUser?.nom}`}</div>{startup?.secteur && <div style={{ color: "rgba(255,255,255,.4)", fontSize: 10, lineHeight: 1 }}>{startup.secteur}</div>}</div>
           </div>
+          <button 
+            onClick={() => router.push("/")} 
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12, color: "#fff" }}
+          >
+            <FaHome size={12} /> Retour au site
+          </button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 99, padding: "5px 11px" }}>
@@ -1229,6 +1578,7 @@ export default function DashboardStartup() {
         </div>
       </header>
 
+      {/* Navigation Tabs */}
       <div style={{ background: "#fff", borderBottom: "1px solid #EEF2F8", position: "sticky", top: 64, zIndex: 90, boxShadow: "0 1px 6px rgba(10,37,64,.04)" }}>
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 28px", display: "flex", gap: 0, overflowX: "auto" }}>
           {TABS.map(t => {
@@ -1249,10 +1599,13 @@ export default function DashboardStartup() {
         </div>
       </div>
 
+      {/* Contenu principal */}
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 28px" }}>
+        
         {/* ==================== ACCUEIL ==================== */}
         {tab === "accueil" && (
-          <div>
+          <div className="fade-up">
+            {/* Hero Section */}
             <section style={{ position: "relative", overflow: "hidden", minHeight: 400, borderRadius: 18, marginBottom: 20 }}>
               <div style={{ position: "absolute", inset: 0 }}>
                 <Image src="/image.png" alt="" fill priority style={{ objectFit: "cover" }} sizes="100vw" />
@@ -1280,6 +1633,7 @@ export default function DashboardStartup() {
               </div>
             </section>
 
+            {/* ADN Section */}
             <section style={{ padding: "52px 0", background: "#F8FAFC", borderRadius: 18, marginBottom: 20 }}>
               <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px" }}>
                 <div style={{ textAlign: "center", marginBottom: 40 }}><h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: "clamp(26px,4vw,42px)", color: "#0A2540" }}>Notre <span style={{ fontStyle: "italic", color: "#F59E0B" }}>ADN</span></h2></div>
@@ -1299,6 +1653,7 @@ export default function DashboardStartup() {
               </div>
             </section>
 
+            {/* Experts recommandés */}
             <section style={{ padding: "52px 0", background: "#fff", borderRadius: 18, marginBottom: 20 }}>
               <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
@@ -1327,7 +1682,7 @@ export default function DashboardStartup() {
                                 {ex.description && <p style={{ fontSize: 11.5, color: "#64748B", lineHeight: 1.65, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ex.description}</p>}
                                 <div style={{ display: "flex", gap: 7, marginTop: "auto" }}>
                                   <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(ex); setTab("messages"); loadConversation(ex.user_id || ex.user?.id); }}><FaComments size={11} /> Message</button>
-                                  <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(ex.id), sujet: "" }); setTab("rdv"); }}><FaCalendar size={11} /> RDV</button>
+                                  <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "8px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(ex.id), sujet: "" }); setTab("rdv"); }}><FaCalendar size={11} /> Rendez-vous</button>
                                 </div>
                               </div>
                             </div>
@@ -1338,6 +1693,7 @@ export default function DashboardStartup() {
               </div>
             </section>
 
+            {/* Témoignages publics */}
             {pubTemos.length > 0 && (
               <section style={{ padding: "52px 0", background: "#F8FAFC", borderRadius: 18, marginBottom: 20 }}>
                 <div style={{ maxWidth: 740, margin: "0 auto", padding: "0 24px" }}>
@@ -1367,6 +1723,7 @@ export default function DashboardStartup() {
               </section>
             )}
 
+            {/* Newsletter */}
             <section style={{ padding: "44px 0", background: "#fff", borderRadius: 18, marginTop: 20 }}>
               <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
                 <div style={{ borderRadius: 22, background: "#FFF8E1", border: "1px solid rgba(245,158,11,.2)", position: "relative", padding: "40px 44px", textAlign: "center", overflow: "hidden" }}>
@@ -1398,7 +1755,7 @@ export default function DashboardStartup() {
 
         {/* ==================== SERVICES ==================== */}
         {tab === "services" && (
-          <div>
+          <div className="fade-up">
             <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8EEF6", padding: "6px 8px", marginBottom: 24, display: "flex", gap: 4, overflowX: "auto", flexWrap: "wrap" }}>
               {SERVICE_TABS.map(slug => {
                 const svc = SERVICES_INFO[slug];
@@ -1406,6 +1763,8 @@ export default function DashboardStartup() {
                 return <button key={slug} onClick={() => setActiveService(slug)} style={{ background: isOn ? svc.color : "transparent", color: isOn ? "#fff" : "#64748B", border: `1.5px solid ${isOn ? svc.color : "#E8EEF6"}`, borderRadius: 9, padding: "8px 16px", fontSize: 12.5, fontWeight: isOn ? 800 : 600, cursor: "pointer", fontFamily: "inherit", transition: "all .2s", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><span style={{ fontSize: 13 }}>{svc.icon}</span> {svc.label}</button>;
               })}
             </div>
+            
+            {/* Consulting */}
             {activeService === "consulting" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", borderRadius: 18, border: "1.5px solid rgba(59,130,246,.18)", overflow: "hidden" }}>
@@ -1448,6 +1807,8 @@ export default function DashboardStartup() {
                 </div>
               </div>
             )}
+            
+            {/* Audit sur site */}
             {activeService === "audit-sur-site" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", borderRadius: 18, border: "1.5px solid rgba(139,92,246,.18)", overflow: "hidden" }}>
@@ -1490,6 +1851,8 @@ export default function DashboardStartup() {
                 </div>
               </div>
             )}
+            
+            {/* Nos Plateformes */}
             {activeService === "nos-plateformes" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", borderRadius: 18, border: "1.5px solid rgba(16,185,129,.18)", overflow: "hidden" }}>
@@ -1533,6 +1896,8 @@ export default function DashboardStartup() {
                 </div>
               </div>
             )}
+            
+            {/* Formations */}
             {activeService === "formation-sur-mesure" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -1570,6 +1935,8 @@ export default function DashboardStartup() {
                   )}
               </div>
             )}
+            
+            {/* Podcasts */}
             {activeService === "podcasts" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
@@ -1617,7 +1984,7 @@ export default function DashboardStartup() {
 
         {/* ==================== EXPERTS ==================== */}
         {tab === "experts" && (
-          <div>
+          <div className="fade-up">
             <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
               <div style={{ position: "relative", flex: 1, minWidth: 200 }}><FaSearch style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#B8C4D6", fontSize: 12 }} /><input className="inp" placeholder="Rechercher par nom ou domaine..." style={{ paddingLeft: 36 }} value={expertFilter} onChange={e => setExpertFilter(e.target.value)} /></div>
               <div style={{ color: "#8A9AB5", fontSize: 13, fontWeight: 600 }}>{filteredExperts.length} expert(s)</div>
@@ -1638,7 +2005,7 @@ export default function DashboardStartup() {
                         {e.description && <p style={{ fontSize: 11.5, color: "#64748B", lineHeight: 1.65, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.description}</p>}
                         <div style={{ display: "flex", gap: 7 }}>
                           <button style={{ flex: 1, background: "#0A2540", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setSelectedExpert(e); setTab("messages"); loadConversation(e.user_id || e.user?.id); }}><FaComments size={11} /> Message</button>
-                          <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(e.id), sujet: "" }); setTab("rdv"); }}><FaCalendar size={11} /> RDV</button>
+                          <button style={{ flex: 1, background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 8, padding: "9px", fontWeight: 700, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => { setRdvForm({ ...rdvForm, expert_id: String(e.id), sujet: "" }); setTab("rdv"); }}><FaCalendar size={11} /> Rendez-vous</button>
                         </div>
                       </div>
                     </div>
@@ -1648,9 +2015,10 @@ export default function DashboardStartup() {
           </div>
         )}
 
-        {/* ==================== RDV ==================== */}
+        {/* ==================== RENDEZ-VOUS ==================== */}
         {tab === "rdv" && (
-          <div>
+          <div className="fade-up">
+            {/* Propositions de créneaux */}
             {propositions.length > 0 && (
               <div style={{ marginBottom: 28 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
@@ -1680,7 +2048,10 @@ export default function DashboardStartup() {
                 <div style={{ height: 1, background: "#E8EEF6", margin: "6px 0 20px" }} />
               </div>
             )}
+
+            {/* Formulaire et liste des RDV */}
             <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 18 }}>
+              {/* Formulaire de prise de RDV */}
               <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8EEF6", overflow: "hidden" }}>
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}><div style={{ fontWeight: 700, fontSize: 14.5, color: "#0A2540" }}>Prendre un RDV</div></div>
                 <div style={{ padding: "20px" }}>
@@ -1695,28 +2066,54 @@ export default function DashboardStartup() {
                   <button style={{ width: "100%", background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 10, padding: "12px", fontWeight: 800, fontSize: 13.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }} onClick={prendreRdv}><FaCalendar size={12} /> Confirmer le RDV</button>
                 </div>
               </div>
+
+              {/* Liste des RDV avec bouton MODIFIER */}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#0A2540", marginBottom: 13 }}>Mes rendez-vous ({rdvs.length})</div>
-                {rdvs.length === 0 ? <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8EEF6", padding: "40px 0", textAlign: "center" }}><div style={{ fontSize: 36, marginBottom: 10 }}>📅</div><div style={{ fontWeight: 600, color: "#8A9AB5" }}>Aucun rendez-vous planifié</div></div>
-                  : rdvs.map(r => (
+                {rdvs.length === 0 ? (
+                  <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8EEF6", padding: "40px 0", textAlign: "center" }}>
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>📅</div>
+                    <div style={{ fontWeight: 600, color: "#8A9AB5" }}>Aucun rendez-vous planifié</div>
+                  </div>
+                ) : (
+                  rdvs.map(r => (
                     <div key={r.id} style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #E8EEF6", overflow: "hidden", marginBottom: 10 }}>
                       <div style={{ height: 3, background: r.statut === "en_attente" ? "#F59E0B" : r.statut === "confirme" ? "#10B981" : "#EF4444" }} />
                       <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
                             <div style={{ width: 38, height: 38, borderRadius: 9, background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", color: "#F59E0B" }}><FaCalendar size={14} /></div>
-                            <div><div style={{ fontWeight: 800, fontSize: 14, color: "#0A2540" }}>{r.expert?.user?.prenom} {r.expert?.user?.nom}</div><div style={{ fontSize: 11, color: "#92400E", background: "#FEF3C7", borderRadius: 99, padding: "1px 8px", display: "inline-block", marginTop: 2 }}>{r.expert?.domaine}</div></div>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: 14, color: "#0A2540" }}>{r.expert?.user?.prenom} {r.expert?.user?.nom}</div>
+                              <div style={{ fontSize: 11, color: "#92400E", background: "#FEF3C7", borderRadius: 99, padding: "1px 8px", display: "inline-block", marginTop: 2 }}>{r.expert?.domaine}</div>
+                            </div>
                           </div>
                           {r.sujet && <div style={{ fontSize: 12.5, color: "#475569", fontWeight: 600, marginBottom: 5 }}>📌 {r.sujet}</div>}
                           <div style={{ fontSize: 12, color: "#64748B" }}><FaClock size={10} style={{ marginRight: 5 }} />{new Date(r.date_rdv).toLocaleString("fr-FR")}</div>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 7, alignItems: "flex-end" }}>
                           <RdvStatusBadge statut={r.statut} />
-                          {r.statut === "en_attente" && <button style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 7, padding: "5px 11px", fontSize: 11, cursor: "pointer", fontWeight: 700 }} onClick={() => annulerRdv(r.id)}>Annuler</button>}
+                          <div style={{ display: "flex", gap: 5 }}>
+                            <button 
+                              style={{ background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", borderRadius: 7, padding: "5px 11px", fontSize: 11, cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }} 
+                              onClick={() => setEditingRdv(r)}
+                            >
+                              <FaEdit size={9} /> Modifier
+                            </button>
+                            {r.statut === "en_attente" && (
+                              <button 
+                                style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 7, padding: "5px 11px", fontSize: 11, cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }} 
+                                onClick={() => annulerRdv(r.id)}
+                              >
+                                <FaTimes size={9} /> Annuler
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -1724,7 +2121,7 @@ export default function DashboardStartup() {
 
         {/* ==================== MESSAGES ==================== */}
         {tab === "messages" && (
-          <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14, height: "calc(100vh - 210px)" }}>
+          <div className="fade-up" style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14, height: "calc(100vh - 210px)" }}>
             <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8EEF6", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ padding: "13px 15px", borderBottom: "1px solid #F1F5F9", fontWeight: 700, fontSize: 13.5, color: "#0A2540", background: "#FAFBFE" }}>Experts ({experts.length})</div>
               <div style={{ overflowY: "auto", flex: 1 }}>
@@ -1776,7 +2173,7 @@ export default function DashboardStartup() {
 
         {/* ==================== TEMOIGNAGES ==================== */}
         {tab === "temoignages" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+          <div className="fade-up" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
             <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8EEF6", overflow: "hidden" }}>
               <div style={{ padding: "16px 20px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}><div style={{ fontWeight: 700, fontSize: 15, color: "#0A2540" }}>Partager mon expérience</div></div>
               <div style={{ padding: "22px" }}>
@@ -1796,7 +2193,23 @@ export default function DashboardStartup() {
                     <div key={t.id} style={{ background: "#F8FAFC", borderRadius: 11, padding: "13px 15px", marginBottom: 9, border: "1px solid #E8EEF6" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
                         <div style={{ display: "flex", gap: 2 }}>{[1, 2, 3, 4, 5].map(s => <span key={s} style={{ color: s <= (t.note || 5) ? "#F59E0B" : "#E2E8F0", fontSize: 14 }}>★</span>)}<span style={{ fontSize: 10.5, color: "#94A3B8", marginLeft: 5 }}>{new Date(t.createdAt).toLocaleDateString("fr-FR")}</span></div>
-                        <span style={{ background: t.statut === "valide" ? "#ECFDF5" : t.statut === "refuse" ? "#FEF2F2" : "#FFF8E1", color: t.statut === "valide" ? "#059669" : t.statut === "refuse" ? "#DC2626" : "#B45309", borderRadius: 99, padding: "2px 9px", fontSize: 10.5, fontWeight: 700 }}>{t.statut === "valide" ? "✅ Publié" : t.statut === "refuse" ? "❌ Refusé" : "⏳ En attente"}</span>
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <span style={{ background: t.statut === "valide" ? "#ECFDF5" : t.statut === "refuse" ? "#FEF2F2" : "#FFF8E1", color: t.statut === "valide" ? "#059669" : t.statut === "refuse" ? "#DC2626" : "#B45309", borderRadius: 99, padding: "2px 9px", fontSize: 10.5, fontWeight: 700 }}>{t.statut === "valide" ? "✅ Publié" : t.statut === "refuse" ? "❌ Refusé" : "⏳ En attente"}</span>
+                          <button 
+                            className="btn btn-blue" 
+                            style={{ fontSize: 10, padding: "4px 7px" }} 
+                            onClick={() => setEditingTemoignage(t)}
+                          >
+                            <FaEdit size={9} /> Modifier
+                          </button>
+                          <button 
+                            className="btn btn-red" 
+                            style={{ fontSize: 10, padding: "4px 7px" }} 
+                            onClick={() => supprimerTemoignage(t.id)}
+                          >
+                            <FaTrash size={9} /> Supprimer
+                          </button>
+                        </div>
                       </div>
                       <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, fontStyle: "italic", margin: 0 }}>"{t.texte}"</p>
                     </div>
@@ -1808,7 +2221,7 @@ export default function DashboardStartup() {
 
         {/* ==================== MES DEMANDES ==================== */}
         {tab === "mes-demandes" && (
-          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div className="fade-up" style={{ maxWidth: 960, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
               <div><h2 style={{ fontWeight: 800, fontSize: 20, color: "#0A2540" }}>Mes demandes de service</h2><div style={{ fontSize: 12.5, color: "#8A9AB5", marginTop: 3 }}>{demandes.length} demande(s)</div></div>
               <button style={{ background: "#F59E0B", color: "#0A2540", border: "none", borderRadius: 9, padding: "10px 18px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }} onClick={() => { setTab("services"); setActiveService("consulting"); }}><FaPaperPlane size={11} /> Nouvelle demande</button>
@@ -1861,7 +2274,7 @@ export default function DashboardStartup() {
 
         {/* ==================== MES DEVIS ==================== */}
         {tab === "mes-devis" && (
-          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div className="fade-up" style={{ maxWidth: 960, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
               <div><h2 style={{ fontWeight: 800, fontSize: 20, color: "#0A2540" }}>Devis reçus</h2><div style={{ fontSize: 12.5, color: "#8A9AB5", marginTop: 3 }}>{mesDevis.length} devis</div></div>
               <button style={{ background: "transparent", border: "1.5px solid #E2E8F0", color: "#475569", borderRadius: 9, padding: "9px 16px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }} onClick={loadMesDevis}>🔄 Actualiser</button>
@@ -1916,7 +2329,7 @@ export default function DashboardStartup() {
                               setTab("rdv");
                             }}
                           >
-                            <FaCalendar size={14} /> Planifier un RDV
+                            <FaCalendar size={14} /> Rendez-vous
                           </button>
                         </div>
                       </div>
@@ -1929,7 +2342,7 @@ export default function DashboardStartup() {
 
         {/* ==================== NOTIFICATIONS (NEWS) ==================== */}
         {tab === "notifications" && (
-          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div className="fade-up" style={{ maxWidth: 900, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
               <div>
                 <h2 style={{ fontWeight: 800, fontSize: 20, color: "#0A2540", display: "flex", alignItems: "center", gap: 10 }}>
@@ -2038,7 +2451,7 @@ export default function DashboardStartup() {
 
         {/* ==================== PROFIL ==================== */}
         {tab === "profil" && (
-          <div style={{ maxWidth: 680, margin: "0 auto" }}>
+          <div className="fade-up" style={{ maxWidth: 680, margin: "0 auto" }}>
             <div style={{ background: "#fff", borderRadius: 18, border: "1px solid #E8EEF6", overflow: "hidden" }}>
               <div style={{ background: "linear-gradient(135deg,#0A2540,#1a3f6f)", padding: "24px 22px", display: "flex", alignItems: "center", gap: 18 }}>
                 <div style={{ position: "relative", flexShrink: 0 }}>
@@ -2114,6 +2527,7 @@ export default function DashboardStartup() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              {/* Formulaire d'envoi de message */}
               <div className="card">
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
                   <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><FaPaperPlane style={{ color: "#F59E0B" }} size={16} /> Envoyer un message</div>
@@ -2142,11 +2556,8 @@ export default function DashboardStartup() {
                           <option value="">— Sélectionnez un sujet —</option>
                           <option value="Demande d'information">Demande d'information</option>
                           <option value="Problème technique">Problème technique</option>
-                          <option value="Validation de profil">Validation de profil</option>
                           <option value="Signalement">Signalement</option>
                           <option value="Formation ou podcast">Formation / Podcast</option>
-                          <option value="Mission ou devis">Mission / Devis</option>
-                          <option value="Certification">Certification client</option>
                           <option value="Autre">Autre</option>
                         </select>
                       </FL>
@@ -2163,6 +2574,7 @@ export default function DashboardStartup() {
                 </div>
               </div>
 
+              {/* Historique des échanges */}
               <div className="card">
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", background: "#FAFBFE" }}>
                   <div style={{ fontWeight: 800, fontSize: 17, color: "#0A2540", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}><FaComments style={{ color: "#F59E0B" }} size={16} /> Historique des échanges</div>
